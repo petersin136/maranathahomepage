@@ -1,26 +1,116 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+
+const personas = [
+  {
+    id: "tax",
+    icon: "📊",
+    title: "세무사",
+    description: "복잡한 세무 정보도 한눈에 정리되는 구조로 고객 신뢰를 빠르게 확보합니다.",
+  },
+  {
+    id: "law",
+    icon: "⚖️",
+    title: "변호사",
+    description: "전문성 강조 섹션과 고객 후기 구성으로 법률 서비스의 설득력을 높입니다.",
+  },
+  {
+    id: "medical",
+    icon: "🏥",
+    title: "병원",
+    description: "의료진 소개, 진료 예약 CTA 등을 명확하게 배치해 환자 경험을 향상시킵니다.",
+  },
+];
+
 export default function Section3() {
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setVisible(true);
+            observer.disconnect();
+          }
+        });
+      },
+      { threshold: 0.25 },
+    );
+
+    if (sectionRef.current) observer.observe(sectionRef.current);
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <section id="services" className="relative isolate overflow-hidden bg-neutral-100 py-24 dark:bg-neutral-900">
-      <div className="absolute inset-0 -z-10 opacity-50" aria-hidden>
-        <svg className="h-full w-full" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" fill="none" viewBox="0 0 1200 800">
-          <path
-            d="M0 200c120 40 240 120 360 120s240-80 360-80 240 80 360 80 240-80 360-120v600H0V200z"
-            className="fill-white dark:fill-neutral-950"
-          />
-        </svg>
+    <section
+      id="audience"
+      ref={sectionRef}
+      className="relative overflow-hidden bg-white px-6 py-24 sm:px-10 lg:px-16"
+      aria-labelledby="audience-heading"
+    >
+      <div className="mx-auto flex max-w-5xl flex-col gap-16">
+        <div className="space-y-4 text-center">
+          <h2 id="audience-heading" className="text-[36px] font-bold tracking-tight text-black sm:text-[44px]">
+            이런 분들을 위해 만듭니다
+          </h2>
+          <p className="mx-auto max-w-2xl text-base text-[#555555]">
+            전문가의 전문성을 보여주면서도 사용자가 신뢰할 수 있는 구조를 기본으로 제공합니다.
+          </p>
+        </div>
+
+        <div className="grid gap-8 sm:grid-cols-3">
+          {personas.map((persona, index) => (
+            <article
+              key={persona.id}
+              className={`glass-card group relative flex flex-col gap-6 rounded-[24px] border border-white/30 bg-white/50 p-10 text-left text-black shadow-[0_8px_32px_rgba(0,0,0,0.1)] backdrop-blur-xl transition-transform duration-600 ${
+                visible ? "glass-card--visible" : ""
+              }`}
+              style={{ transitionDelay: `${visible ? index * 120 : 0}ms` }}
+            >
+              <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-black text-3xl text-white shadow-[inset_0_8px_16px_rgba(255,255,255,0.3)]">
+                <span role="img" aria-hidden>
+                  {persona.icon}
+                </span>
+              </span>
+              <div className="space-y-3">
+                <h3 className="text-2xl font-semibold tracking-tight">{persona.title}</h3>
+                <p className="text-[16px] leading-relaxed text-[#555555]">{persona.description}</p>
+              </div>
+              <div className="pointer-events-none absolute inset-0 rounded-[24px] border border-white/20">
+                <div className="absolute inset-x-6 top-0 h-1 rounded-full bg-white/60 blur-[2px]" aria-hidden />
+              </div>
+            </article>
+          ))}
+        </div>
       </div>
-      <div className="mx-auto max-w-4xl px-6 text-center sm:px-8">
-        <h2 className="text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
-          운영 방식에 맞게 자유롭게 커스터마이징
-        </h2>
-        <p className="mt-6 text-base leading-relaxed text-neutral-600 dark:text-neutral-300">
-          교회, 보험 지점, 커뮤니티 사이트 등 다양한 목적에 맞춰 섹션과 콘텐츠를 변경하세요. Tailwind 유틸리티로 간단히
-          색상과 타이포그래피를 조정할 수 있으며, 필요 시 추가 페이지를 만들어 App Router 구조에 맞춰 확장할 수 있습니다.
-        </p>
-        <p className="mt-6 text-sm text-neutral-500 dark:text-neutral-400">
-          프로젝트마다 반복되는 초기 세팅 시간을 줄이고, 컨텐츠 제작과 사용자 경험에 더 많은 시간을 투자할 수 있습니다.
-        </p>
-      </div>
+
+      <style jsx>{`
+        .glass-card {
+          opacity: 0;
+          transform: translateY(40px);
+        }
+
+        .glass-card--visible {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
+        .glass-card:hover,
+        .glass-card:focus-visible {
+          transform: translateY(-10px);
+          background: rgba(255, 255, 255, 0.7);
+          box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
+        }
+
+        .glass-card:focus-visible {
+          outline: 2px solid rgba(0, 0, 0, 0.12);
+          outline-offset: 6px;
+        }
+      `}</style>
     </section>
   );
 }

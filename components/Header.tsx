@@ -5,10 +5,11 @@ import { useEffect, useState } from "react";
 import { clsx } from "clsx";
 
 const NAV_ITEMS = [
-  { href: "#features", label: "특징" },
-  { href: "#about", label: "소개" },
-  { href: "#services", label: "서비스" },
-  { href: "#contact", label: "문의" }
+  { href: "#hero", label: "홈페이지" },
+  { href: "#metrics", label: "신뢰지표" },
+  { href: "#comparison", label: "비교" },
+  { href: "#audience", label: "대상" },
+  { href: "#services", label: "서비스" }
 ];
 
 export default function Header() {
@@ -44,8 +45,8 @@ export default function Header() {
       aria-label="메인 헤더"
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
-        <Link href="#" className="text-lg font-semibold tracking-tight">
-          Simple Template
+        <Link href="#hero" className="text-lg font-semibold tracking-tight">
+          MARANATHA
         </Link>
         <nav className="hidden items-center gap-8 text-sm font-medium md:flex" aria-label="주 메뉴">
           {NAV_ITEMS.map((item) => (
