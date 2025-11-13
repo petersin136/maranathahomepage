@@ -68,13 +68,13 @@ export default function Hero() {
         </div>
 
           <div className="flex flex-wrap items-center gap-5">
-          <Link
-              href="/consult"
-              role="button"
+          <button
+              type="button"
+              onClick={() => document.getElementById("services")?.scrollIntoView({ behavior: "smooth", block: "start" })}
               className="inline-flex items-center justify-center rounded-full border border-emerald-200/40 bg-gradient-to-r from-emerald-300 via-teal-200 to-indigo-400 px-10 py-3.5 font-semibold uppercase tracking-[0.12em] text-slate-900 shadow-[0_12px_32px_rgba(102,255,212,0.25)] transition-transform duration-200 ease-out hover:-translate-y-1.5 hover:shadow-[0_18px_36px_rgba(102,255,212,0.3)] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
           >
               무료 상담 신청
-          </Link>
+          </button>
           <button
               type="button"
               onClick={handleScrollToPortfolio}
