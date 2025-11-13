@@ -5,12 +5,12 @@ import { useEffect, useState } from "react";
 import { clsx } from "clsx";
 
 const NAV_ITEMS = [
-  { href: "#hero", label: "홈페이지" },
-  { href: "#metrics", label: "신뢰지표" },
-  { href: "#comparison", label: "비교" },
-  { href: "#audience", label: "대상" },
-  { href: "#services", label: "서비스" }
-];
+  { hash: "hero", label: "홈페이지" },
+  { hash: "metrics", label: "신뢰지표" },
+  { hash: "comparison", label: "비교" },
+  { hash: "audience", label: "대상" },
+  { hash: "services", label: "서비스" }
+] as const;
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
@@ -45,12 +45,16 @@ export default function Header() {
       aria-label="메인 헤더"
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
-        <Link href="#hero" className="text-lg font-semibold tracking-tight">
+        <Link href={{ pathname: "/", hash: "hero" }} className="text-lg font-semibold tracking-tight">
           MARANATHA
         </Link>
         <nav className="hidden items-center gap-8 text-sm font-medium md:flex" aria-label="주 메뉴">
           {NAV_ITEMS.map((item) => (
-            <Link key={item.href} href={item.href} className="hover:text-neutral-600 dark:hover:text-neutral-300">
+            <Link
+              key={item.hash}
+              href={{ pathname: "/", hash: item.hash }}
+              className="hover:text-neutral-600 dark:hover:text-neutral-300"
+            >
               {item.label}
             </Link>
           ))}
@@ -84,9 +88,9 @@ export default function Header() {
       >
         <ul className="space-y-2 border-t border-neutral-200 bg-white px-6 py-4 text-sm font-medium dark:border-neutral-800 dark:bg-neutral-950">
           {NAV_ITEMS.map((item) => (
-            <li key={item.href}>
+            <li key={item.hash}>
               <Link
-                href={item.href}
+                href={{ pathname: "/", hash: item.hash }}
                 onClick={() => setOpen(false)}
                 className="block py-2 hover:text-neutral-600 dark:hover:text-neutral-300"
               >

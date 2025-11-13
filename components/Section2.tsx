@@ -145,7 +145,11 @@ export default function Section2() {
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-black via-black to-[#050505]" aria-hidden />
 
       <div className="marquee-shell" aria-hidden>
-        <div className="marquee-offset" aria-hidden>
+        <div
+          className="marquee-offset"
+          aria-hidden
+          style={{ transform: `translate3d(${scrollOffset}%, 0, 0)` }}
+        >
           <div className="marquee-row">
             {marqueeWords.map((item, index) => (
               <span key={`main-${index}`} className={item.colorClass}>{`${item.label}\u00A0`}</span>
