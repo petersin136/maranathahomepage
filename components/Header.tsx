@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { clsx } from "clsx";
 
@@ -45,8 +46,16 @@ export default function Header() {
       aria-label="메인 헤더"
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
-        <Link href={{ pathname: "/", hash: "hero" }} className="text-lg font-semibold tracking-tight">
-          MARANATHA
+        <Link href={{ pathname: "/", hash: "hero" }} className="flex items-center gap-3 text-lg font-semibold tracking-tight">
+          <Image
+            src="https://mhnrqqnwljoyiguqzrcp.supabase.co/storage/v1/object/public/portfolio-media/KakaoTalk_Photo_2025-06-23-00-02-43%20002-Photoroom-Photoroom.png"
+            alt="MARANATHA 로고"
+            width={32}
+            height={32}
+            className="h-8 w-8 object-contain"
+            priority
+          />
+          <span>MARANATHA</span>
         </Link>
         <nav className="hidden items-center gap-8 text-sm font-medium md:flex" aria-label="주 메뉴">
           {NAV_ITEMS.map((item) => (

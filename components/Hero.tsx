@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const headingLines = [
   "블로그는 취미,",
@@ -9,7 +9,9 @@ const headingLines = [
 ];
 
 export default function Hero() {
-  const [visualVisible, setVisualVisible] = useState(false);
+  const [animateIn, setAnimateIn] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const handleScrollToPortfolio = useCallback(() => {
     const target = document.getElementById("comparison");
     if (target) {
@@ -18,9 +20,46 @@ export default function Hero() {
   }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setVisualVisible(true), 450);
-    return () => window.clearTimeout(timer);
+    const videoElement = videoRef.current;
+    if (!videoElement) return;
+
+    const handleCanPlay = () => {
+      setVideoReady(true);
+    };
+
+    const handleError = (e: Event) => {
+      console.warn("영상 로딩 실패:", e);
+      setVideoReady(true);
+    };
+
+    const handleLoadStart = () => {
+      console.log("영상 로딩 시작");
+    };
+
+    videoElement.addEventListener("canplaythrough", handleCanPlay, { once: true });
+    videoElement.addEventListener("error", handleError, { once: true });
+    videoElement.addEventListener("loadstart", handleLoadStart, { once: true });
+
+    if (videoElement.readyState >= 3) {
+      setVideoReady(true);
+    }
+
+    return () => {
+      videoElement.removeEventListener("canplaythrough", handleCanPlay);
+      videoElement.removeEventListener("error", handleError);
+      videoElement.removeEventListener("loadstart", handleLoadStart);
+    };
   }, []);
+
+  useEffect(() => {
+    const raf = window.requestAnimationFrame(() => setAnimateIn(true));
+    return () => window.cancelAnimationFrame(raf);
+  }, []);
+
+  useEffect(() => {
+    if (!videoReady) return;
+    setAnimateIn(true);
+  }, [videoReady]);
 
   return (
     <section
@@ -84,45 +123,32 @@ export default function Hero() {
           </div>
         </div>
 
-        <div
-          className={`hero-visual ${visualVisible ? "hero-visual--visible" : ""}`}
-          role="presentation"
-          aria-hidden={!visualVisible}
-        >
+        <div className={`hero-visual ${animateIn ? "hero-visual--animate" : ""}`} role="presentation" aria-hidden={false}>
           <div className="hero-visual__glow" aria-hidden />
-          <div className="hero-visual__screen">
-            <div className="hero-visual__topbar">
-              <span />
-              <span />
-              <span />
-            </div>
-            <div className="hero-visual__content">
-              <div className="hero-visual__sidebar">
-                <div className="hero-visual__avatar" />
-                <div className="hero-visual__nav">
-                  <span />
-                  <span />
-                  <span />
-                  <span />
+          <div className="monitor">
+            <div className="monitor__frame">
+              <div className="monitor__bezel">
+                <div className={`monitor__screen ${videoReady ? "monitor__screen--ready" : ""}`}>
+                  <div className="monitor__placeholder" aria-hidden />
+                  <video
+                    ref={videoRef}
+                    className="monitor__video"
+                    src="https://mhnrqqnwljoyiguqzrcp.supabase.co/storage/v1/object/public/portfolio-media/1114.mov"
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    preload="auto"
+                    aria-hidden="true"
+                  />
+                  <div className="monitor__overlay" />
                 </div>
               </div>
-              <div className="hero-visual__main">
-                <div className="hero-visual__header">
-                  <span />
-                  <span />
-                </div>
-                <div className="hero-visual__metrics">
-                  <span />
-                  <span />
-                  <span />
-                </div>
-                <div className="hero-visual__cards">
-                  <div />
-                  <div />
-                  <div />
-                </div>
+              <div className="monitor__footer" aria-hidden>
+                <span className="monitor__wordmark">MARANATHA HOMEPAGE</span>
               </div>
             </div>
+            <div className="monitor__stand" aria-hidden />
           </div>
         </div>
       </div>
@@ -207,16 +233,14 @@ export default function Hero() {
           position: relative;
           width: min(760px, 96vw);
           aspect-ratio: 16 / 10;
-          opacity: 0;
-          transform: perspective(1200px) rotateY(-28deg) rotateX(12deg) translateY(140px) scale(0.92);
-          transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+          opacity: 1;
+          transform: perspective(1200px) rotateY(-16deg) rotateX(6deg) translateY(0) scale(1.32);
           filter: drop-shadow(0 60px 120px rgba(0, 0, 0, 0.6));
           pointer-events: none;
         }
 
-        .hero-visual--visible {
-          opacity: 1;
-          transform: perspective(1200px) rotateY(-16deg) rotateX(6deg) translateY(0) scale(1.32);
+        .hero-visual--animate {
+          animation: hero-visual-enter 1.2s cubic-bezier(0.4, 0, 0.2, 1) both;
         }
 
         .hero-visual__glow {
@@ -227,137 +251,127 @@ export default function Hero() {
           opacity: 0.6;
         }
 
-        .hero-visual__screen {
+        .monitor {
           position: relative;
           width: 100%;
           height: 100%;
-          border-radius: 24px;
-          overflow: hidden;
-          background: linear-gradient(140deg, rgba(18, 18, 20, 0.9), rgba(32, 17, 45, 0.95));
-          box-shadow:
-            inset 0 0 0 1px rgba(255, 255, 255, 0.06),
-            inset 0 45px 60px rgba(255, 255, 255, 0.04),
-            0 35px 80px rgba(0, 0, 0, 0.45);
+          padding: clamp(14px, 2.8vw, 22px);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-end;
         }
 
-        .hero-visual__screen::after {
-          content: "";
+        .monitor__frame {
+          position: relative;
+          width: 100%;
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          border-radius: 10px;
+          background: linear-gradient(145deg, rgba(24, 26, 32, 0.97), rgba(12, 12, 18, 0.99));
+          box-shadow:
+            inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+            inset 0 6px 16px rgba(255, 255, 255, 0.04),
+            0 36px 90px rgba(0, 0, 0, 0.48);
+        }
+
+        .monitor__bezel {
+          position: relative;
+          flex: 1;
+          padding: clamp(10px, 1.8vw, 16px);
+          border-radius: 10px 10px 0 0;
+        }
+
+        .monitor__screen {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          border-radius: 7px;
+          overflow: hidden;
+          box-shadow:
+            inset 0 0 0 1px rgba(255, 255, 255, 0.02),
+            inset 0 0 36px rgba(0, 0, 0, 0.45);
+          background: radial-gradient(circle at center, rgba(60, 64, 78, 0.24), rgba(20, 22, 30, 0.9));
+        }
+
+        .monitor__placeholder {
           position: absolute;
           inset: 0;
-          background: linear-gradient(120deg, rgba(255, 255, 255, 0.12), transparent 55%);
-          opacity: 0.35;
+          background: linear-gradient(140deg, rgba(40, 42, 58, 0.65), rgba(16, 18, 28, 0.9));
+          transition: opacity 0.3s ease-in-out;
         }
 
-        .hero-visual__topbar {
-          position: relative;
-          z-index: 1;
-          display: flex;
-          gap: 0.4rem;
-          padding: 1.2rem 1.4rem;
-        }
-
-        .hero-visual__topbar span {
-          display: inline-block;
-          height: 0.65rem;
-          width: 0.65rem;
-          border-radius: 9999px;
-          background: rgba(255, 255, 255, 0.25);
-        }
-
-        .hero-visual__content {
-          position: relative;
-          z-index: 1;
-          display: grid;
-          grid-template-columns: 140px 1fr;
-          padding: 0 1.6rem 1.6rem;
-          gap: 1.6rem;
-          height: calc(100% - 3.5rem);
-        }
-
-        .hero-visual__sidebar {
-          display: flex;
-          flex-direction: column;
-          gap: 1.2rem;
-          background: linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
-          border-radius: 18px;
-          padding: 1.2rem;
-          box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-        }
-
-        .hero-visual__avatar {
-          height: 54px;
-          border-radius: 16px;
-          background: linear-gradient(135deg, rgba(124, 58, 237, 0.9), rgba(255, 255, 255, 0.15));
-        }
-
-        .hero-visual__nav {
-          display: grid;
-          gap: 0.8rem;
-        }
-
-        .hero-visual__nav span {
+        .monitor__video {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
           display: block;
-          height: 10px;
-          border-radius: 9999px;
-          background: rgba(255, 255, 255, 0.14);
+          filter: saturate(1.04);
+          opacity: 0;
+          transition: opacity 0.4s ease-in-out;
         }
 
-        .hero-visual__main {
+        .monitor__screen--ready .monitor__video {
+          opacity: 1;
+        }
+
+        .monitor__screen--ready .monitor__placeholder {
+          opacity: 0;
+        }
+
+        .monitor__overlay {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(135deg, rgba(72, 54, 160, 0.05), rgba(8, 12, 20, 0.16));
+          pointer-events: none;
+        }
+
+        .monitor__footer {
+          position: relative;
           display: flex;
-          flex-direction: column;
-          gap: 1.2rem;
+          align-items: center;
+          justify-content: center;
+          padding: clamp(8px, 1.2vw, 12px);
+          border-radius: 0 0 10px 10px;
+          background: linear-gradient(180deg, rgba(236, 237, 244, 0.95), rgba(192, 196, 208, 0.88));
+          box-shadow:
+            inset 0 6px 12px rgba(255, 255, 255, 0.34),
+            inset 0 -8px 14px rgba(140, 142, 150, 0.22);
         }
 
-        .hero-visual__header {
-          display: flex;
-          gap: 1rem;
+        .monitor__wordmark {
+          font-size: clamp(0.68rem, 1.6vw, 0.9rem);
+          font-weight: 600;
+          letter-spacing: 0.36em;
+          color: rgba(56, 58, 68, 0.75);
+          text-transform: uppercase;
         }
 
-        .hero-visual__header span:first-of-type {
-          flex: 1;
-          height: 20px;
-          border-radius: 12px;
-          background: linear-gradient(120deg, rgba(255, 255, 255, 0.28), rgba(124, 58, 237, 0.4));
+        .monitor__stand {
+          position: absolute;
+          bottom: -1.6rem;
+          width: clamp(150px, 44%, 220px);
+          height: clamp(28px, 4vw, 40px);
+          z-index: -1;
+          background: linear-gradient(180deg, rgba(216, 218, 226, 0.9), rgba(152, 156, 168, 0.82));
+          clip-path: polygon(18% 0%, 82% 0%, 100% 100%, 0% 100%);
+          border-radius: 0 0 18px 18px;
+          box-shadow:
+            inset 0 3px 6px rgba(255, 255, 255, 0.4),
+            inset 0 -4px 8px rgba(0, 0, 0, 0.16),
+            0 14px 30px rgba(0, 0, 0, 0.4);
         }
 
-        .hero-visual__header span:last-of-type {
-          width: 64px;
-          height: 20px;
-          border-radius: 12px;
-          background: rgba(255, 255, 255, 0.14);
-        }
-
-        .hero-visual__metrics {
-          display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 0.8rem;
-        }
-
-        .hero-visual__metrics span {
-          height: 64px;
-          border-radius: 16px;
-          background: linear-gradient(140deg, rgba(255, 255, 255, 0.12), rgba(124, 58, 237, 0.3));
-        }
-
-        .hero-visual__cards {
-          display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 1rem;
-        }
-
-        .hero-visual__cards div {
-          height: 120px;
-          border-radius: 18px;
-          background: linear-gradient(160deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02));
-          box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-        }
-
-        .hero-visual__cards div:nth-child(2) {
-          background: linear-gradient(160deg, rgba(124, 58, 237, 0.7), rgba(72, 35, 140, 0.8));
-        }
-
-        .hero-visual__cards div:nth-child(3) {
-          background: linear-gradient(160deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02));
+        @keyframes hero-visual-enter {
+          0% {
+            opacity: 0;
+            transform: perspective(1200px) rotateY(-28deg) rotateX(12deg) translateY(140px) scale(0.92);
+          }
+          100% {
+            opacity: 1;
+            transform: perspective(1200px) rotateY(-16deg) rotateX(6deg) translateY(0) scale(1.32);
+          }
         }
 
         @media (max-width: 1024px) {
@@ -366,23 +380,71 @@ export default function Hero() {
             transform: perspective(1100px) rotateY(-20deg) rotateX(8deg) translateY(120px) scale(0.98);
           }
 
-          .hero-visual__content {
-            grid-template-columns: 110px 1fr;
+          .monitor {
+            padding: clamp(12px, 3.2vw, 20px);
+          }
+
+          .monitor__bezel {
+            padding: clamp(8px, 2vw, 14px);
+          }
+
+          .hero-visual--animate {
+            animation: hero-visual-enter-md 1.2s cubic-bezier(0.4, 0, 0.2, 1) both;
           }
         }
 
         @media (max-width: 768px) {
           .hero-visual {
             width: 96vw;
-            transform: perspective(1000px) rotateY(-12deg) rotateX(6deg) translateY(90px) scale(1);
-          }
-
-          .hero-visual--visible {
             transform: perspective(1000px) rotateY(-10deg) rotateX(4deg) translateY(0) scale(1.18);
           }
 
-          .hero-visual__content {
-            grid-template-columns: 1fr;
+          .monitor {
+            padding: clamp(10px, 4vw, 18px);
+          }
+
+          .monitor__frame {
+            border-radius: 8px;
+          }
+
+          .monitor__bezel {
+            padding: clamp(6px, 2.6vw, 12px);
+          }
+
+          .monitor__screen {
+            border-radius: 6px;
+          }
+
+          .monitor__stand {
+            bottom: -1.4rem;
+            width: clamp(130px, 48%, 190px);
+            height: clamp(22px, 5vw, 34px);
+          }
+
+          .hero-visual--animate {
+            animation: hero-visual-enter-sm 1.2s cubic-bezier(0.4, 0, 0.2, 1) both;
+          }
+        }
+
+        @keyframes hero-visual-enter-md {
+          0% {
+            opacity: 0;
+            transform: perspective(1100px) rotateY(-26deg) rotateX(10deg) translateY(110px) scale(0.9);
+          }
+          100% {
+            opacity: 1;
+            transform: perspective(1100px) rotateY(-20deg) rotateX(8deg) translateY(120px) scale(0.98);
+          }
+        }
+
+        @keyframes hero-visual-enter-sm {
+          0% {
+            opacity: 0;
+            transform: perspective(1000px) rotateY(-16deg) rotateX(7deg) translateY(80px) scale(0.96);
+          }
+          100% {
+            opacity: 1;
+            transform: perspective(1000px) rotateY(-10deg) rotateX(4deg) translateY(0) scale(1.18);
           }
         }
 

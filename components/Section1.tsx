@@ -236,12 +236,7 @@ export default function Section1() {
         .metric-card:hover .stat-accent,
         .metric-card:focus-visible .stat-accent {
           opacity: 1;
-          background: linear-gradient(
-            90deg,
-            rgba(15, 23, 42, 0),
-            rgba(15, 23, 42, 0.4),
-            rgba(15, 23, 42, 0)
-          );
+          background: linear-gradient(90deg, rgba(15, 23, 42, 0), rgba(15, 23, 42, 0.4), rgba(15, 23, 42, 0));
         }
 
         .stat-icon {
