@@ -5,21 +5,21 @@ import { useEffect, useMemo, useRef, useState } from "react";
 const cards = [
   {
     id: "loss",
-    targetValue: 1800,
-    suffix: "만원",
-    descriptionLines: ["홈페이지 없어서", "연간 손실되는 평균 매출"],
+    targetValue: 68,
+    suffix: "%",
+    descriptionLines: ["카톡 답장이 늦어", "예약을 포기한 고객"],
   },
   {
     id: "lead",
-    targetValue: 72,
-    suffix: "%",
-    descriptionLines: ["프로 웹사이트가 신뢰 판단에", "영향을 준다고 답한 고객"],
+    targetValue: 3,
+    suffix: "배",
+    descriptionLines: ["자동 응대 도입 후", "상담→예약 전환 증가"],
   },
   {
     id: "time",
-    targetValue: 3,
-    suffix: "초",
-    descriptionLines: ["첫인상에서 브랜드를 기억하는 데", "걸리는 평균 시간"],
+    targetValue: 24,
+    suffix: "시간",
+    descriptionLines: ["수동 응대에 묶이는", "하루 평균 응대 부담"],
   },
 ];
 
@@ -160,12 +160,12 @@ export default function Section1() {
 
       <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-16">
         <div className="space-y-5 text-center">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.32em] text-neutral-400">The Online Necessity</p>
+          <p className="text-[12px] font-semibold uppercase tracking-[0.32em] text-neutral-400">Salon Growth Essentials</p>
           <h2
             id="metrics-heading"
             className="text-[40px] font-bold tracking-[-0.02em] text-slate-900 sm:text-[52px] lg:text-[56px]"
           >
-            비즈니스 성장의 필수 요소
+            헤어샵 성장의 필수 요소
           </h2>
         </div>
 

@@ -4,22 +4,22 @@ import { useEffect, useRef, useState } from "react";
 
 const personas = [
   {
-    id: "tax",
-    icon: "📊",
-    title: "세무사",
-    description: "복잡한 세무 정보도 한눈에 정리되는 구조로 고객 신뢰를 빠르게 확보합니다.",
+    id: "solo",
+    icon: "✂️",
+    title: "1인 디자이너",
+    description: "시술 중에도 카톡 상담·예약을 놓치지 않도록 자동 응대로 운영을 도와줍니다.",
   },
   {
-    id: "law",
-    icon: "⚖️",
-    title: "변호사",
-    description: "전문성 강조 섹션과 고객 후기 구성으로 법률 서비스의 설득력을 높입니다.",
+    id: "owner",
+    icon: "💇",
+    title: "헤어샵 원장",
+    description: "직원 응대 부담을 줄이고, n8n 자동화로 예약 누수와 노쇼를 줄입니다.",
   },
   {
-    id: "medical",
-    icon: "🏥",
-    title: "병원",
-    description: "의료진 소개, 진료 예약 CTA 등을 명확하게 배치해 환자 경험을 향상시킵니다.",
+    id: "salon",
+    icon: "🏪",
+    title: "신규 오픈 살롱",
+    description: "랜딩페이지와 카톡 예약 플로우를 처음부터 세팅해 첫 고객 유입을 만듭니다.",
   },
 ];
 
@@ -58,7 +58,7 @@ export default function Section3() {
             이런 분들을 위해 만듭니다
           </h2>
           <p className="mx-auto max-w-2xl text-base text-[#555555]">
-            전문가의 전문성을 보여주면서도 사용자가 신뢰할 수 있는 구조를 기본으로 제공합니다.
+            카톡 상담부터 예약·랜딩페이지까지, 샵 운영에 맞게 자동화합니다.
           </p>
         </div>
 
