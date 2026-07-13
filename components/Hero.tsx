@@ -133,7 +133,7 @@ export default function Hero() {
                   <video
                     ref={videoRef}
                     className="monitor__video"
-                    src="https://mhnrqqnwljoyiguqzrcp.supabase.co/storage/v1/object/public/portfolio-media/1114.mov"
+                    src="https://sdaiokbvorwbomjasqzc.supabase.co/storage/v1/object/public/portfolio-media/1114.mov"
                     autoPlay
                     loop
                     muted

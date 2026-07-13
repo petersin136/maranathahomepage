@@ -48,7 +48,7 @@ export default function Header() {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
         <Link href={{ pathname: "/", hash: "hero" }} className="flex items-center gap-3 text-lg font-semibold tracking-tight">
           <Image
-            src="https://mhnrqqnwljoyiguqzrcp.supabase.co/storage/v1/object/public/portfolio-media/KakaoTalk_Photo_2025-06-23-00-02-43%20002-Photoroom-Photoroom.png"
+            src="https://sdaiokbvorwbomjasqzc.supabase.co/storage/v1/object/public/portfolio-media/KakaoTalk_Photo_2025-06-23-00-02-43%20002-Photoroom-Photoroom.png"
             alt="MARANATHA 로고"
             width={32}
             height={32}
