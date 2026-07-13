@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const headingLines = [
-  "블로그는 취미,",
-  "홈페이지는",
-  "신뢰입니다",
+  "카톡 상담,",
+  "예약은",
+  "자동입니다",
 ];
 
 export default function Hero() {
@@ -101,7 +101,7 @@ export default function Hero() {
               ))}
           </h1>
             <p className="w-full text-[20px] font-medium text-white/80 sm:text-[24px]">
-              전문가의 첫인상을 3초 만에 완성하는 맞춤형 웹사이트
+              헤어 디자이너·샵을 위한 카톡·n8n 예약 자동화와 랜딩페이지 마케팅 솔루션
           </p>
         </div>
 
@@ -145,7 +145,7 @@ export default function Hero() {
                 </div>
               </div>
               <div className="monitor__footer" aria-hidden>
-                <span className="monitor__wordmark">MARANATHA HOMEPAGE</span>
+                <span className="monitor__wordmark">HAIR UP</span>
               </div>
             </div>
             <div className="monitor__stand" aria-hidden />

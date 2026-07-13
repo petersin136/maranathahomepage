@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Website Template",
-  description: "Reusable Next.js website template with Tailwind and Supabase setup."
+  title: "헤어업 Hair Up",
+  description:
+    "헤어 디자이너와 샵을 위한 카톡·n8n 상담 예약 자동화와 랜딩페이지 마케팅 솔루션"
 };
 
 export default function RootLayout({

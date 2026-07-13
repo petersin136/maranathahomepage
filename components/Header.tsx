@@ -49,13 +49,18 @@ export default function Header() {
         <Link href={{ pathname: "/", hash: "hero" }} className="flex items-center gap-3 text-lg font-semibold tracking-tight">
           <Image
             src="https://sdaiokbvorwbomjasqzc.supabase.co/storage/v1/object/public/portfolio-media/KakaoTalk_Photo_2025-06-23-00-02-43%20002-Photoroom-Photoroom.png"
-            alt="MARANATHA 로고"
+            alt="헤어업 로고"
             width={32}
             height={32}
             className="h-8 w-8 object-contain"
             priority
           />
-          <span>MARANATHA</span>
+          <span className="flex items-baseline gap-2">
+            <span>헤어업</span>
+            <span className="text-sm font-medium tracking-wide text-neutral-500 dark:text-neutral-400">
+              Hair Up
+            </span>
+          </span>
         </Link>
         <nav className="hidden items-center gap-8 text-sm font-medium md:flex" aria-label="주 메뉴">
           {NAV_ITEMS.map((item) => (
