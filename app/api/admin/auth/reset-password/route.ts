@@ -27,53 +27,24 @@ export async function POST(request: Request) {
   try {
     const admin = getSupabaseServiceRole();
 
-    // email 쿼리로 직접 조회 (전체 listUsers 보다 안정적)
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!.trim().replace(/\/$/, "");
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!.trim().replace(/^["']|["']$/g, "");
-
-    const lookup = await fetch(
-      `${url}/auth/v1/admin/users?email=${encodeURIComponent(email)}`,
-      {
-        headers: {
-          apikey: serviceKey,
-          Authorization: `Bearer ${serviceKey}`
-        },
-        cache: "no-store"
-      }
-    );
-
-    const lookupJson = (await lookup.json()) as {
-      users?: { id: string; email?: string }[];
-      msg?: string;
-      error_code?: string;
-      message?: string;
-    };
-
-    if (!lookup.ok) {
-      console.error("[admin reset] lookup", lookup.status, lookupJson);
-      if (lookup.status === 403 || lookupJson.error_code === "not_admin") {
-        return NextResponse.json(
-          {
-            ok: false,
-            error:
-              "service_role 권한이 없습니다. 배포 환경의 SUPABASE_SERVICE_ROLE_KEY가 올바른지 확인해 주세요. (anon 키를 넣으면 이 오류가 납니다)"
-          },
-          { status: 500 }
-        );
-      }
+    // service_role 필수 — listUsers 로 이메일 매칭
+    const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+    if (error) {
+      console.error("[admin reset] listUsers", error);
       return NextResponse.json(
         {
           ok: false,
-          error: lookupJson.msg || lookupJson.message || "계정 조회에 실패했습니다."
+          error:
+            error.message?.includes("not_admin") || error.status === 403
+              ? "service_role 권한이 없습니다. SUPABASE_SERVICE_ROLE_KEY를 확인해 주세요."
+              : `계정 조회에 실패했습니다. (${error.message})`
         },
         { status: 500 }
       );
     }
 
-    const users = lookupJson.users ?? [];
-    const user = users.find((u) => u.email?.toLowerCase() === email) ?? users[0];
-
-    if (!user?.id) {
+    const user = data.users.find((u) => u.email?.toLowerCase() === email);
+    if (!user) {
       return NextResponse.json(
         { ok: false, error: "해당 이메일로 가입된 계정이 없습니다." },
         { status: 404 }
