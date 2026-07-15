@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { ConfigError, getSupabaseServiceRole } from "@/lib/supabase/admin";
 
 export async function POST(request: Request) {
   let body: { email?: string; password?: string };
@@ -25,18 +25,55 @@ export async function POST(request: Request) {
   }
 
   try {
-    const admin = getSupabaseAdmin();
-    const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
-    if (error) {
-      console.error("[admin reset]", error);
+    const admin = getSupabaseServiceRole();
+
+    // email 쿼리로 직접 조회 (전체 listUsers 보다 안정적)
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!.trim().replace(/\/$/, "");
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!.trim().replace(/^["']|["']$/g, "");
+
+    const lookup = await fetch(
+      `${url}/auth/v1/admin/users?email=${encodeURIComponent(email)}`,
+      {
+        headers: {
+          apikey: serviceKey,
+          Authorization: `Bearer ${serviceKey}`
+        },
+        cache: "no-store"
+      }
+    );
+
+    const lookupJson = (await lookup.json()) as {
+      users?: { id: string; email?: string }[];
+      msg?: string;
+      error_code?: string;
+      message?: string;
+    };
+
+    if (!lookup.ok) {
+      console.error("[admin reset] lookup", lookup.status, lookupJson);
+      if (lookup.status === 403 || lookupJson.error_code === "not_admin") {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              "service_role 권한이 없습니다. 배포 환경의 SUPABASE_SERVICE_ROLE_KEY가 올바른지 확인해 주세요. (anon 키를 넣으면 이 오류가 납니다)"
+          },
+          { status: 500 }
+        );
+      }
       return NextResponse.json(
-        { ok: false, error: "계정 조회에 실패했습니다. 서버 Supabase 설정을 확인해 주세요." },
+        {
+          ok: false,
+          error: lookupJson.msg || lookupJson.message || "계정 조회에 실패했습니다."
+        },
         { status: 500 }
       );
     }
 
-    const user = data.users.find((u) => u.email?.toLowerCase() === email);
-    if (!user) {
+    const users = lookupJson.users ?? [];
+    const user = users.find((u) => u.email?.toLowerCase() === email) ?? users[0];
+
+    if (!user?.id) {
       return NextResponse.json(
         { ok: false, error: "해당 이메일로 가입된 계정이 없습니다." },
         { status: 404 }
@@ -49,6 +86,7 @@ export async function POST(request: Request) {
     });
 
     if (updateError) {
+      console.error("[admin reset] update", updateError);
       return NextResponse.json(
         { ok: false, error: updateError.message || "비밀번호 변경에 실패했습니다." },
         { status: 400 }
@@ -58,14 +96,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[admin reset]", err);
+    if (err instanceof ConfigError) {
+      return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
+    }
     return NextResponse.json(
-      {
-        ok: false,
-        error:
-          err instanceof Error && err.message.includes("SUPABASE")
-            ? "서버에 Supabase 키가 설정되지 않았습니다. 배포 환경변수를 확인해 주세요."
-            : "비밀번호 변경 중 오류가 발생했습니다."
-      },
+      { ok: false, error: "비밀번호 변경 중 오류가 발생했습니다." },
       { status: 500 }
     );
   }
