@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/browser";
 
 function EyeIcon({ open }: { open: boolean }) {
   if (open) {
@@ -54,12 +53,16 @@ export default function AdminSignupForm() {
         return;
       }
 
-      const supabase = createClient();
-      const { error: loginError } = await supabase.auth.signInWithPassword({
-        email,
-        password
+      const loginRes = await fetch("/api/admin/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password
+        })
       });
-      if (loginError) {
+      const loginData = await loginRes.json();
+      if (!loginRes.ok || !loginData.ok) {
         setError("계정이 생성되었습니다. 로그인 페이지에서 로그인해 주세요.");
         router.replace("/admin/login");
         return;
@@ -84,6 +87,7 @@ export default function AdminSignupForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="mt-2 w-full border-b border-hu-black/50 bg-transparent py-2 font-sans-kr text-[15px] outline-none"
+          autoComplete="email"
         />
       </div>
       <div>
@@ -96,6 +100,7 @@ export default function AdminSignupForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full border-b border-hu-black/50 bg-transparent py-2 pr-10 font-sans-kr text-[15px] outline-none"
+            autoComplete="new-password"
           />
           <button
             type="button"
