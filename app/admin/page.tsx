@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { clsx } from "clsx";
+import { useEffect, useState, type ReactNode } from "react";
 
 type DashBooking = {
   id: string;
@@ -33,9 +32,8 @@ export default function AdminDashboardPage() {
   const [weekBookings, setWeekBookings] = useState<DashBooking[]>([]);
   const [monthBookings, setMonthBookings] = useState<DashBooking[]>([]);
   const [pendingBookings, setPendingBookings] = useState<DashBooking[]>([]);
-  const [showPending, setShowPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const pendingRef = useRef<HTMLDivElement>(null);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/dashboard")
@@ -52,15 +50,9 @@ export default function AdminDashboardPage() {
         setMonthBookings(data.monthBookings || []);
         setPendingBookings(data.pendingBookings || []);
       })
-      .catch((e) => setError(e.message));
+      .catch((e) => setError(e.message))
+      .finally(() => setLoaded(true));
   }, []);
-
-  const openPending = () => {
-    setShowPending(true);
-    requestAnimationFrame(() => {
-      pendingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  };
 
   return (
     <div>
@@ -70,53 +62,44 @@ export default function AdminDashboardPage() {
       {error ? <p className="mt-6 font-sans-kr text-[13px] text-[#9b4a4a]">{error}</p> : null}
 
       <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <button
-          type="button"
-          onClick={() =>
-            document.getElementById("dash-today")?.scrollIntoView({ behavior: "smooth" })
-          }
-          className="bg-hu-white px-8 py-7 text-left shadow-[0_1px_0_rgba(0,0,0,0.04)] transition hover:bg-hu-beige/40"
+        <a
+          href="#dash-today"
+          className="block cursor-pointer bg-hu-white px-8 py-7 text-left shadow-[0_1px_0_rgba(0,0,0,0.04)] transition hover:bg-hu-beige/40"
         >
           <p className="font-serif text-[12px] tracking-[0.14em] text-hu-accent">TODAY</p>
-          <p className="mt-3 font-serif text-[40px]">{todayCount}</p>
-          <p className="font-sans-kr text-[13px] text-hu-muted">오늘 예약</p>
-        </button>
-        <button
-          type="button"
-          onClick={openPending}
-          className={clsx(
-            "bg-hu-white px-8 py-7 text-left transition hover:bg-hu-beige/40",
-            showPending && "ring-1 ring-hu-black/15"
-          )}
+          <p className="mt-3 font-serif text-[40px] underline decoration-hu-black/20 underline-offset-8">
+            {loaded ? todayCount : "—"}
+          </p>
+          <p className="mt-1 font-sans-kr text-[13px] text-hu-muted">오늘 예약 · 클릭하면 아래로</p>
+        </a>
+        <a
+          href="#dash-pending"
+          className="block cursor-pointer bg-hu-white px-8 py-7 text-left transition hover:bg-hu-beige/40"
         >
           <p className="font-serif text-[12px] tracking-[0.14em] text-hu-accent">PENDING</p>
-          <p className="mt-3 font-serif text-[40px]">{pendingCount}</p>
-          <p className="font-sans-kr text-[13px] text-hu-muted">확정 대기 · 눌러서 보기</p>
-        </button>
+          <p className="mt-3 font-serif text-[40px] underline decoration-hu-black/20 underline-offset-8">
+            {loaded ? pendingCount : "—"}
+          </p>
+          <p className="mt-1 font-sans-kr text-[13px] text-hu-muted">확정 대기 · 클릭하면 아래로</p>
+        </a>
       </div>
 
-      {showPending ? (
-        <div ref={pendingRef} className="mt-10">
-          <BookingSection
-            title="확정 대기"
-            subtitle="PENDING"
-            empty="대기 중인 예약이 없습니다."
-            bookings={pendingBookings}
-            showDate
-            action={
-              <button
-                type="button"
-                onClick={() => setShowPending(false)}
-                className="font-sans-kr text-[12px] text-hu-muted underline"
-              >
-                닫기
-              </button>
-            }
-          />
-        </div>
-      ) : null}
+      <div id="dash-pending" className="mt-10 scroll-mt-8">
+        <BookingSection
+          title="확정 대기"
+          subtitle="PENDING · 숫자 클릭 시 이 목록"
+          empty="대기 중인 예약이 없습니다."
+          bookings={pendingBookings}
+          showDate
+          action={
+            <Link href="/admin/bookings" className="font-sans-kr text-[12px] text-hu-muted underline">
+              예약 전체
+            </Link>
+          }
+        />
+      </div>
 
-      <div id="dash-today" className="mt-10">
+      <div id="dash-today" className="mt-10 scroll-mt-8">
         <BookingSection
           title="오늘의 예약"
           empty="오늘 예약이 없습니다."
@@ -129,7 +112,7 @@ export default function AdminDashboardPage() {
         />
       </div>
 
-      <div className="mt-10">
+      <div id="dash-week" className="mt-10 scroll-mt-8">
         <BookingSection
           title="주간 예약"
           subtitle={
@@ -143,10 +126,10 @@ export default function AdminDashboardPage() {
         />
       </div>
 
-      <div className="mt-10">
+      <div id="dash-month" className="mt-10 scroll-mt-8">
         <BookingSection
           title="월간 예약"
-          subtitle="이번 달 · 주간 제외"
+          subtitle="이번 달 · 이번 주 제외"
           empty="이번 달(주간 제외) 예약이 없습니다."
           bookings={monthBookings}
           showDate
