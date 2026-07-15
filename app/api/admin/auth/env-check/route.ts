@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
+import {
+  cleanEnv,
+  getSupabaseAnonKey,
+  getSupabaseServiceRoleKey,
+  getSupabaseUrl
+} from "@/lib/supabase/env";
 
 export const runtime = "nodejs";
-
-function clean(value?: string | null) {
-  return value?.trim().replace(/^["']|["']$/g, "") || "";
-}
 
 function jwtPayload(token: string): Record<string, unknown> | null {
   try {
@@ -22,9 +24,10 @@ function jwtPayload(token: string): Record<string, unknown> | null {
 
 /** 배포 환경변수 점검용 (키 값 자체는 노출하지 않음) */
 export async function GET() {
-  const url = clean(process.env.NEXT_PUBLIC_SUPABASE_URL);
-  const anon = clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-  const service = clean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  const rawUrl = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const url = getSupabaseUrl();
+  const anon = getSupabaseAnonKey();
+  const service = getSupabaseServiceRoleKey();
 
   const anonPayload = anon ? jwtPayload(anon) : null;
   const servicePayload = service ? jwtPayload(service) : null;
@@ -32,16 +35,23 @@ export async function GET() {
   const serviceRole = (servicePayload?.role as string | undefined) ?? null;
   const anonRef = (anonPayload?.ref as string | undefined) ?? null;
   const serviceRef = (servicePayload?.ref as string | undefined) ?? null;
-  const urlHost = (() => {
-    try {
-      return url ? new URL(url).hostname : null;
-    } catch {
-      return null;
-    }
-  })();
+
+  let rawPathname: string | null = null;
+  let urlHost: string | null = null;
+  try {
+    if (rawUrl) rawPathname = new URL(rawUrl).pathname;
+  } catch {
+    rawPathname = "invalid";
+  }
+  try {
+    if (url) urlHost = new URL(url).hostname;
+  } catch {
+    urlHost = null;
+  }
 
   const refsMatch = Boolean(anonRef && serviceRef && anonRef === serviceRef);
   const urlMatchesRef = Boolean(urlHost && anonRef && urlHost.startsWith(`${anonRef}.`));
+  const pathLooksWrong = Boolean(rawPathname && rawPathname !== "/");
 
   const ok =
     Boolean(url && anon && service) &&
@@ -59,6 +69,8 @@ export async function GET() {
   else if (!urlMatchesRef)
     hint =
       "NEXT_PUBLIC_SUPABASE_URL 과 API 키의 프로젝트가 다릅니다. URL/키를 같은 프로젝트로 맞춰 주세요.";
+  else if (pathLooksWrong)
+    hint = `URL에 불필요한 경로(${rawPathname})가 붙어 있었습니다. 코드에서 origin만 사용하도록 교정했습니다. Vercel 값은 https://xxxx.supabase.co 형태만 넣는 걸 권장합니다.`;
 
   return NextResponse.json({
     ok,
@@ -70,6 +82,8 @@ export async function GET() {
       projectRefAnon: anonRef,
       projectRefService: serviceRef,
       urlHost,
+      rawPathname,
+      normalizedOrigin: url || null,
       refsMatch,
       urlMatchesRef
     },

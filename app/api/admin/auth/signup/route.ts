@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { authErrorKo } from "@/lib/admin/auth-errors";
+import {
+  getSupabaseServiceRoleKey,
+  getSupabaseUrl
+} from "@/lib/supabase/env";
 
 export const runtime = "nodejs";
-
-function clean(value?: string | null) {
-  return value?.trim().replace(/^["']|["']$/g, "") || "";
-}
 
 type AuthUser = { id: string; email?: string | null };
 
@@ -49,8 +49,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const url = clean(process.env.NEXT_PUBLIC_SUPABASE_URL).replace(/\/$/, "");
-  const serviceKey = clean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  const url = getSupabaseUrl();
+  const serviceKey = getSupabaseServiceRoleKey();
 
   if (!url || !serviceKey) {
     return NextResponse.json(
@@ -64,17 +64,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    // 이미 있으면 비밀번호만 갱신 (삭제 후 재가입 / 중복 가입 상황 해결)
     const listed = await listUsers(url, serviceKey);
     if (!listed.res.ok) {
       const raw =
         listed.json.msg || listed.json.message || `listUsers ${listed.res.status}`;
-      console.error("[admin signup] list", listed.res.status, listed.json);
+      console.error("[admin signup] list", listed.res.status, listed.json, { url });
       return NextResponse.json(
-        {
-          ok: false,
-          error: authErrorKo(raw, `계정 조회 실패: ${raw}`)
-        },
+        { ok: false, error: authErrorKo(raw, `계정 조회 실패: ${raw}`) },
         { status: 500 }
       );
     }
@@ -126,7 +122,6 @@ export async function POST(request: Request) {
       msg?: string;
       message?: string;
       error?: string;
-      error_code?: string;
     };
 
     if (!res.ok) {

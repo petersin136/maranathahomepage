@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
+import {
+  getSupabaseServiceRoleKey,
+  getSupabaseUrl
+} from "@/lib/supabase/env";
 
 export const runtime = "nodejs";
 
 type AuthUser = { id: string; email?: string | null };
 
-function clean(value?: string | null) {
-  return value?.trim().replace(/^["']|["']$/g, "") || "";
-}
-
 function authEnv() {
-  const url = clean(process.env.NEXT_PUBLIC_SUPABASE_URL).replace(/\/$/, "");
-  const serviceKey = clean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  const url = getSupabaseUrl();
+  const serviceKey = getSupabaseServiceRoleKey();
   if (!url) {
     return { error: "NEXT_PUBLIC_SUPABASE_URL이 없습니다." } as const;
   }

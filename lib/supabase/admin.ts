@@ -1,4 +1,9 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import {
+  getSupabaseAnonKey,
+  getSupabaseServiceRoleKey,
+  getSupabaseUrl
+} from "@/lib/supabase/env";
 
 /**
  * 서버 전용 Supabase 클라이언트.
@@ -6,9 +11,9 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
  * - 없으면 anon 키로 폴백 (RLS INSERT 정책에 의존, RETURNING은 제한될 수 있음)
  */
 export function getSupabaseAdmin(): SupabaseClient {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const serviceKey = cleanKey(process.env.SUPABASE_SERVICE_ROLE_KEY);
-  const anonKey = cleanKey(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const url = getSupabaseUrl();
+  const serviceKey = getSupabaseServiceRoleKey();
+  const anonKey = getSupabaseAnonKey();
 
   if (!url) {
     throw new Error("NEXT_PUBLIC_SUPABASE_URL is not set");
@@ -31,8 +36,8 @@ export function getSupabaseAdmin(): SupabaseClient {
 
 /** Auth Admin API용 — service_role 필수 (anon 폴백 없음) */
 export function getSupabaseServiceRole(): SupabaseClient {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const serviceKey = cleanKey(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  const url = getSupabaseUrl();
+  const serviceKey = getSupabaseServiceRoleKey();
 
   if (!url) {
     throw new ConfigError(
@@ -69,12 +74,6 @@ export class ConfigError extends Error {
     super(message);
     this.name = "ConfigError";
   }
-}
-
-function cleanKey(value?: string | null): string | undefined {
-  if (!value) return undefined;
-  const trimmed = value.trim().replace(/^["']|["']$/g, "");
-  return trimmed || undefined;
 }
 
 function jwtRole(token: string): string | null {

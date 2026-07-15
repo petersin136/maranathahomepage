@@ -2,12 +2,9 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { authErrorKo } from "@/lib/admin/auth-errors";
+import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
 
 export const runtime = "nodejs";
-
-function clean(value?: string | null) {
-  return value?.trim().replace(/^["']|["']$/g, "") || "";
-}
 
 export async function POST(request: Request) {
   let body: { email?: string; password?: string };
@@ -28,8 +25,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const url = clean(process.env.NEXT_PUBLIC_SUPABASE_URL).replace(/\/$/, "");
-  const anon = clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const url = getSupabaseUrl();
+  const anon = getSupabaseAnonKey();
   if (!url || !anon) {
     return NextResponse.json(
       { ok: false, error: "서버에 Supabase 환경변수가 없습니다." },
@@ -54,18 +51,14 @@ export async function POST(request: Request) {
     error_description?: string;
     msg?: string;
     error?: string;
-    error_code?: string;
   };
 
   if (!tokenRes.ok || !tokenJson.access_token || !tokenJson.refresh_token) {
     const raw =
       tokenJson.error_description || tokenJson.msg || tokenJson.error || `login ${tokenRes.status}`;
-    console.error("[admin login]", tokenRes.status, tokenJson);
+    console.error("[admin login]", tokenRes.status, tokenJson, { url });
     return NextResponse.json(
-      {
-        ok: false,
-        error: authErrorKo(raw, `로그인 실패: ${raw}`)
-      },
+      { ok: false, error: authErrorKo(raw, `로그인 실패: ${raw}`) },
       { status: 401 }
     );
   }

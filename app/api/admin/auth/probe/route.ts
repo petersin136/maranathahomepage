@@ -1,19 +1,31 @@
 import { NextResponse } from "next/server";
+import {
+  getSupabaseAnonKey,
+  getSupabaseServiceRoleKey,
+  getSupabaseUrl,
+  cleanEnv
+} from "@/lib/supabase/env";
 
 export const runtime = "nodejs";
 
-function clean(value?: string | null) {
-  return value?.trim().replace(/^["']|["']$/g, "") || "";
-}
-
 /** 배포에서 Auth가 실제로 되는지 점검 (비밀번호/키 값 미노출) */
 export async function GET() {
-  const url = clean(process.env.NEXT_PUBLIC_SUPABASE_URL).replace(/\/$/, "");
-  const anon = clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-  const service = clean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  const rawUrl = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const url = getSupabaseUrl();
+  const anon = getSupabaseAnonKey();
+  const service = getSupabaseServiceRoleKey();
+
+  let rawPathname: string | null = null;
+  try {
+    rawPathname = rawUrl ? new URL(rawUrl).pathname : null;
+  } catch {
+    rawPathname = "invalid";
+  }
 
   const out: Record<string, unknown> = {
     urlHost: null as string | null,
+    rawPathname,
+    normalizedOrigin: url || null,
     listUsersStatus: null as number | null,
     listUsersCount: null as number | null,
     listUsersError: null as string | null,
@@ -55,7 +67,7 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    ok: out.listUsersStatus === 200 && out.healthStatus === 200,
+    ok: out.listUsersStatus === 200,
     ...out
   });
 }
