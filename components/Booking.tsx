@@ -18,32 +18,68 @@ const TIME_SLOTS = {
 const AVAILABLE_TIMES = new Set(["15:00", "16:00", "17:00", "18:00"]);
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December"
+] as const;
 
-/* Fixed mock month: July 2026, "today" = 14 */
-const CAL_YEAR = 2026;
-const CAL_MONTH = 7; // 1-indexed
-const TODAY = 14;
+type Ymd = { year: number; month: number; day: number };
 
-type CalendarCell = { day: number; inMonth: boolean; selectable: boolean };
+function todayYmd(): Ymd {
+  const n = new Date();
+  return { year: n.getFullYear(), month: n.getMonth() + 1, day: n.getDate() };
+}
 
-function buildCalendar(): CalendarCell[] {
-  const first = new Date(CAL_YEAR, CAL_MONTH - 1, 1);
-  const daysInMonth = new Date(CAL_YEAR, CAL_MONTH, 0).getDate();
-  const prevDays = new Date(CAL_YEAR, CAL_MONTH - 1, 0).getDate();
+function compareYmd(a: Ymd, b: Ymd) {
+  if (a.year !== b.year) return a.year - b.year;
+  if (a.month !== b.month) return a.month - b.month;
+  return a.day - b.day;
+}
+
+function formatYmd(d: Ymd) {
+  return `${d.year}.${String(d.month).padStart(2, "0")}.${String(d.day).padStart(2, "0")}`;
+}
+
+function toIsoDate(d: Ymd) {
+  return `${d.year}-${String(d.month).padStart(2, "0")}-${String(d.day).padStart(2, "0")}`;
+}
+
+type CalendarCell = { day: number; inMonth: boolean; selectable: boolean; isToday: boolean };
+
+function buildCalendar(year: number, month: number, today: Ymd): CalendarCell[] {
+  const first = new Date(year, month - 1, 1);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const prevDays = new Date(year, month - 1, 0).getDate();
   // Monday-based leading blanks
   const jsDow = first.getDay(); // 0=Sun
   const lead = (jsDow + 6) % 7;
 
   const cells: CalendarCell[] = [];
   for (let i = lead - 1; i >= 0; i--) {
-    cells.push({ day: prevDays - i, inMonth: false, selectable: false });
+    cells.push({ day: prevDays - i, inMonth: false, selectable: false, isToday: false });
   }
   for (let d = 1; d <= daysInMonth; d++) {
-    cells.push({ day: d, inMonth: true, selectable: d >= TODAY });
+    const ymd = { year, month, day: d };
+    cells.push({
+      day: d,
+      inMonth: true,
+      selectable: compareYmd(ymd, today) >= 0,
+      isToday: compareYmd(ymd, today) === 0
+    });
   }
   let next = 1;
   while (cells.length % 7 !== 0) {
-    cells.push({ day: next++, inMonth: false, selectable: false });
+    cells.push({ day: next++, inMonth: false, selectable: false, isToday: false });
   }
   return cells;
 }
@@ -101,7 +137,10 @@ export default function Booking({
 
   const [openStep, setOpenStep] = useState<number>(1);
 
-  const [selectedDate, setSelectedDate] = useState<number | null>(null);
+  const today = useMemo(todayYmd, []);
+  const [viewYear, setViewYear] = useState(today.year);
+  const [viewMonth, setViewMonth] = useState(today.month);
+  const [selectedDate, setSelectedDate] = useState<Ymd | null>(null);
   const [selectedArtist, setSelectedArtist] = useState<string | null>(null);
   const [serviceTab, setServiceTab] = useState<ServiceTab>("Perm");
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
@@ -110,13 +149,27 @@ export default function Booking({
   const [name, setName] = useState("");
   const [gender, setGender] = useState<"W" | "M" | null>(null);
   const [phone, setPhone] = useState("");
+  const [requestNote, setRequestNote] = useState("");
   const [agree, setAgree] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
 
-  const calendar = useMemo(buildCalendar, []);
+  const calendar = useMemo(
+    () => buildCalendar(viewYear, viewMonth, today),
+    [viewYear, viewMonth, today]
+  );
+
+  const canGoPrevMonth =
+    viewYear > today.year || (viewYear === today.year && viewMonth > today.month);
+
+  const shiftMonth = (delta: number) => {
+    if (delta < 0 && !canGoPrevMonth) return;
+    const d = new Date(viewYear, viewMonth - 1 + delta, 1);
+    setViewYear(d.getFullYear());
+    setViewMonth(d.getMonth() + 1);
+  };
 
   const chips = selectedServices
     .map((id) => ALL_SERVICES.find((s) => s.id === id))
@@ -128,17 +181,13 @@ export default function Booking({
   const stepSummary = (stepId: number): string | null => {
     switch (stepId) {
       case 1:
-        return selectedDate
-          ? `${CAL_YEAR}.${String(CAL_MONTH).padStart(2, "0")}.${String(selectedDate).padStart(2, "0")}`
-          : null;
+        return selectedDate ? formatYmd(selectedDate) : null;
       case 2:
         return selectedArtistLabel
           ? `${selectedArtistLabel.nameKr} ${selectedArtistLabel.nameEn}`.trim()
           : null;
       case 3:
-        if (chips.length === 0) return null;
-        if (chips.length === 1) return chips[0].name;
-        return `${chips[0].name} 외 ${chips.length - 1}`;
+        return chips.length > 0 ? chips.map((c) => c.name).join(" / ") : null;
       case 4:
         return selectedTime;
       case 5:
@@ -194,7 +243,7 @@ export default function Booking({
       (sum, s) => sum + (s.depositAmount ?? 0),
       0
     );
-    const bookingDate = `${CAL_YEAR}-${String(CAL_MONTH).padStart(2, "0")}-${String(selectedDate).padStart(2, "0")}`;
+    const bookingDate = toIsoDate(selectedDate);
 
     setSubmitting(true);
     try {
@@ -211,6 +260,7 @@ export default function Booking({
           customerName: name.trim(),
           customerGender: gender,
           customerPhone: phone.trim(),
+          customerRequest: requestNote.trim() || null,
           privacyAgreed: true,
           totalAmount,
           depositAmount: depositAmount || null
@@ -272,7 +322,10 @@ export default function Booking({
                   type="button"
                   aria-expanded={open}
                   onClick={() => toggleStep(step.id)}
-                  className="flex h-[70px] w-full items-center justify-between gap-4 bg-hu-beige px-7 text-left transition-colors duration-200 hover:bg-hu-beige-hover"
+                  className={clsx(
+                    "flex w-full items-center justify-between gap-4 bg-hu-beige px-7 text-left transition-colors duration-200 hover:bg-hu-beige-hover",
+                    step.id === 3 && summary ? "min-h-[70px] py-3" : "h-[70px]"
+                  )}
                 >
                   <span className="flex min-w-0 shrink items-baseline gap-3">
                     <span className="font-serif text-[15px] font-medium tracking-[0.06em] text-hu-black">
@@ -280,9 +333,14 @@ export default function Booking({
                     </span>
                     <span className="font-sans-kr text-[12px] text-hu-body">{step.kr}</span>
                   </span>
-                  <span className="flex min-w-0 items-center justify-end gap-3">
+                  <span className="flex min-w-0 max-w-[48%] items-center justify-end gap-3">
                     {summary ? (
-                      <span className="truncate text-right font-sans-kr text-[13px] text-hu-black">
+                      <span
+                        className={clsx(
+                          "text-right font-sans-kr text-[13px] leading-snug text-hu-black",
+                          step.id === 3 ? "line-clamp-2" : "truncate"
+                        )}
+                      >
                         {summary}
                       </span>
                     ) : null}
@@ -295,8 +353,13 @@ export default function Booking({
                     {step.id === 1 && (
                       <StepDate
                         calendar={calendar}
+                        viewYear={viewYear}
+                        viewMonth={viewMonth}
                         selectedDate={selectedDate}
+                        canGoPrev={canGoPrevMonth}
                         onSelect={setSelectedDate}
+                        onPrevMonth={() => shiftMonth(-1)}
+                        onNextMonth={() => shiftMonth(1)}
                       />
                     )}
                     {step.id === 2 && (
@@ -327,6 +390,8 @@ export default function Booking({
                         setGender={setGender}
                         phone={phone}
                         setPhone={setPhone}
+                        requestNote={requestNote}
+                        setRequestNote={setRequestNote}
                         agree={agree}
                         setAgree={setAgree}
                         canSubmit={canSubmit}
@@ -351,21 +416,52 @@ export default function Booking({
 
 function StepDate({
   calendar,
+  viewYear,
+  viewMonth,
   selectedDate,
-  onSelect
+  canGoPrev,
+  onSelect,
+  onPrevMonth,
+  onNextMonth
 }: {
   calendar: CalendarCell[];
-  selectedDate: number | null;
-  onSelect: (d: number) => void;
+  viewYear: number;
+  viewMonth: number;
+  selectedDate: Ymd | null;
+  canGoPrev: boolean;
+  onSelect: (d: Ymd) => void;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
 }) {
   return (
     <div>
-      <button
-        type="button"
-        className="flex items-center gap-2 font-serif text-[20px] font-medium text-hu-black"
-      >
-        July 2026 <span className="text-[14px]">›</span>
-      </button>
+      <div className="flex items-center justify-between gap-4">
+        <button
+          type="button"
+          onClick={onPrevMonth}
+          disabled={!canGoPrev}
+          aria-label="이전 달"
+          className={clsx(
+            "flex h-9 w-9 items-center justify-center font-serif text-[18px] transition-colors",
+            canGoPrev
+              ? "text-hu-black hover:bg-hu-beige"
+              : "cursor-default text-[#cfcfcf]"
+          )}
+        >
+          ‹
+        </button>
+        <p className="font-serif text-[20px] font-medium text-hu-black">
+          {MONTH_NAMES[viewMonth - 1]} {viewYear}
+        </p>
+        <button
+          type="button"
+          onClick={onNextMonth}
+          aria-label="다음 달"
+          className="flex h-9 w-9 items-center justify-center font-serif text-[18px] text-hu-black transition-colors hover:bg-hu-beige"
+        >
+          ›
+        </button>
+      </div>
 
       <div className="mt-6 grid grid-cols-7 gap-y-4 text-center">
         {WEEKDAYS.map((d) => (
@@ -381,21 +477,27 @@ function StepDate({
         ))}
 
         {calendar.map((cell, i) => {
-          const isSelected = cell.inMonth && cell.selectable && selectedDate === cell.day;
-          const isToday = cell.inMonth && cell.day === TODAY;
+          const isSelected =
+            cell.inMonth &&
+            selectedDate != null &&
+            selectedDate.year === viewYear &&
+            selectedDate.month === viewMonth &&
+            selectedDate.day === cell.day;
           return (
             <div key={i} className="flex justify-center">
               <button
                 type="button"
                 disabled={!cell.selectable}
-                onClick={() => onSelect(cell.day)}
+                onClick={() => onSelect({ year: viewYear, month: viewMonth, day: cell.day })}
                 className={clsx(
                   "flex h-9 w-9 items-center justify-center font-serif text-[15px] transition-colors",
                   !cell.inMonth || !cell.selectable
                     ? "cursor-default text-[#cfcfcf]"
                     : "text-hu-black hover:bg-hu-beige",
-                  isSelected && "bg-hu-black text-hu-white hover:bg-hu-black",
-                  isToday && !isSelected && "bg-[#ebe4e0]"
+                  cell.isToday &&
+                    !isSelected &&
+                    "bg-[#d8cfc8] font-medium text-hu-black ring-1 ring-inset ring-hu-black/35",
+                  isSelected && "bg-hu-black font-medium text-hu-white hover:bg-hu-black"
                 )}
               >
                 {cell.day}
@@ -576,6 +678,8 @@ function StepGuest({
   setGender,
   phone,
   setPhone,
+  requestNote,
+  setRequestNote,
   agree,
   setAgree,
   canSubmit,
@@ -590,6 +694,8 @@ function StepGuest({
   setGender: (v: "W" | "M") => void;
   phone: string;
   setPhone: (v: string) => void;
+  requestNote: string;
+  setRequestNote: (v: string) => void;
   agree: boolean;
   setAgree: (v: boolean) => void;
   canSubmit: boolean;
@@ -632,6 +738,14 @@ function StepGuest({
         placeholder="전화번호"
         inputMode="tel"
         className="mt-7 w-full border-b border-hu-black/60 bg-transparent pb-2 font-sans-kr text-[15px] text-hu-black outline-none placeholder:text-hu-muted"
+      />
+
+      <textarea
+        value={requestNote}
+        onChange={(e) => setRequestNote(e.target.value.slice(0, 500))}
+        placeholder="요청사항 (선택)"
+        rows={2}
+        className="mt-7 w-full resize-none border-b border-hu-black/60 bg-transparent pb-2 font-sans-kr text-[15px] leading-relaxed text-hu-black outline-none placeholder:text-hu-muted"
       />
 
       <label className="mt-7 flex cursor-pointer items-center gap-2 font-sans-kr text-[13px] text-hu-body">

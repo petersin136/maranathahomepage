@@ -20,6 +20,7 @@ export type BookingRow = {
   customer_name: string;
   customer_gender: CustomerGender | null;
   customer_phone: string;
+  customer_request: string | null;
   privacy_agreed: boolean;
   status: BookingStatus;
   deposit_paid: boolean;
@@ -38,6 +39,7 @@ export type CreateBookingBody = {
   customerName: string;
   customerGender?: CustomerGender | null;
   customerPhone: string;
+  customerRequest?: string | null;
   privacyAgreed: boolean;
   totalAmount?: number | null;
   depositAmount?: number | null;

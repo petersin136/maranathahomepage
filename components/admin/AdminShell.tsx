@@ -1,11 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { clsx } from "clsx";
 
-const NAV: { href: "/admin" | "/admin/bookings" | "/admin/calendar" | "/admin/artists" | "/admin/services"; label: string; exact?: boolean }[] = [
+const NAV: {
+  href: "/admin" | "/admin/bookings" | "/admin/calendar" | "/admin/artists" | "/admin/services";
+  label: string;
+  exact?: boolean;
+}[] = [
   { href: "/admin", label: "대시보드", exact: true },
   { href: "/admin/bookings", label: "예약" },
   { href: "/admin/calendar", label: "캘린더" },
@@ -13,15 +17,8 @@ const NAV: { href: "/admin" | "/admin/bookings" | "/admin/calendar" | "/admin/ar
   { href: "/admin/services", label: "시술" }
 ];
 
-export default function AdminShell({
-  children,
-  email
-}: {
-  children: React.ReactNode;
-  email?: string | null;
-}) {
+export default function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
 
   useEffect(() => {
     const prev = document.documentElement.style.scrollbarGutter;
@@ -30,12 +27,6 @@ export default function AdminShell({
       document.documentElement.style.scrollbarGutter = prev;
     };
   }, []);
-
-  const logout = async () => {
-    await fetch("/api/admin/auth/logout", { method: "POST" });
-    router.replace("/admin/login");
-    router.refresh();
-  };
 
   return (
     <div className="min-h-screen bg-[#faf8f6] text-hu-black">
@@ -47,26 +38,12 @@ export default function AdminShell({
             </Link>
             <span className="font-sans-kr text-[12px] text-white/45">Admin</span>
           </div>
-          <div className="flex items-center gap-4">
-            {email ? (
-              <span className="hidden max-w-[220px] truncate font-sans-kr text-[12px] text-white/50 sm:inline">
-                {email}
-              </span>
-            ) : null}
-            <Link
-              href="/"
-              className="font-sans-kr text-[12px] tracking-[0.06em] text-white/70 transition hover:text-white"
-            >
-              홈으로
-            </Link>
-            <button
-              type="button"
-              onClick={logout}
-              className="font-sans-kr text-[12px] tracking-[0.06em] text-white/70 transition hover:text-white"
-            >
-              로그아웃
-            </button>
-          </div>
+          <Link
+            href="/"
+            className="font-sans-kr text-[12px] tracking-[0.06em] text-white/70 transition hover:text-white"
+          >
+            홈으로
+          </Link>
         </div>
         <nav className="mx-auto flex max-w-[1200px] gap-6 overflow-x-auto px-8 pb-4">
           {NAV.map((item) => {

@@ -87,6 +87,7 @@ export default function AdminBookingDetailPage() {
           value={booking.customer_gender === "W" ? "W" : booking.customer_gender === "M" ? "M" : "—"}
         />
         <Row label="전화" value={booking.customer_phone} />
+        <Row label="요청사항" value={booking.customer_request?.trim() || "—"} />
         <Row
           label="총 금액"
           value={

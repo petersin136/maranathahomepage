@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireAdminUser, getSupabaseAdmin } from "@/lib/admin/auth";
+import { getSupabaseAdmin } from "@/lib/admin/auth";
 
 const CATEGORIES = ["Cut", "Perm", "Color", "Clinic"] as const;
 
 export async function GET() {
-  const auth = await requireAdminUser();
-  if ("error" in auth) return auth.error;
 
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
@@ -21,8 +19,6 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAdminUser();
-  if ("error" in auth) return auth.error;
 
   let body: {
     id?: string;

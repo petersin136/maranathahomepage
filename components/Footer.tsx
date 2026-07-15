@@ -97,7 +97,7 @@ export default function Footer() {
             ))}
           </dl>
           <Link
-            href="/admin/login"
+            href="/admin"
             className="font-sans-en text-[10px] tracking-[0.14em] text-hu-white/25 transition-colors hover:text-hu-white/50"
           >
             ADMIN

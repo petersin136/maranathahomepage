@@ -55,6 +55,11 @@ export async function POST(request: Request) {
     return badRequest("성별 값이 올바르지 않습니다.");
   }
 
+  const customerRequest = body.customerRequest?.trim() || null;
+  if (customerRequest && customerRequest.length > 500) {
+    return badRequest("요청사항은 500자 이내로 입력해 주세요.");
+  }
+
   const totalAmount =
     body.totalAmount == null || Number.isNaN(Number(body.totalAmount))
       ? null
@@ -77,6 +82,7 @@ export async function POST(request: Request) {
     customer_name: customerName,
     customer_gender: gender ?? null,
     customer_phone: customerPhone,
+    customer_request: customerRequest,
     privacy_agreed: true,
     status: "pending" as const,
     deposit_paid: false,

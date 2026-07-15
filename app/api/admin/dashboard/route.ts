@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdminUser, getSupabaseAdmin } from "@/lib/admin/auth";
+import { getSupabaseAdmin } from "@/lib/admin/auth";
 
 function todayKst() {
   // Asia/Seoul YYYY-MM-DD
@@ -12,8 +12,6 @@ function todayKst() {
 }
 
 export async function GET() {
-  const auth = await requireAdminUser();
-  if ("error" in auth) return auth.error;
 
   const admin = getSupabaseAdmin();
   const today = todayKst();
