@@ -122,6 +122,32 @@ export default function Booking({
     .map((id) => ALL_SERVICES.find((s) => s.id === id))
     .filter((s): s is (typeof ALL_SERVICES)[number] => Boolean(s));
 
+  const selectedArtistLabel = artists.find((a) => a.id === selectedArtist);
+  const guestSummary = name.trim();
+
+  const stepSummary = (stepId: number): string | null => {
+    switch (stepId) {
+      case 1:
+        return selectedDate
+          ? `${CAL_YEAR}.${String(CAL_MONTH).padStart(2, "0")}.${String(selectedDate).padStart(2, "0")}`
+          : null;
+      case 2:
+        return selectedArtistLabel
+          ? `${selectedArtistLabel.nameKr} ${selectedArtistLabel.nameEn}`.trim()
+          : null;
+      case 3:
+        if (chips.length === 0) return null;
+        if (chips.length === 1) return chips[0].name;
+        return `${chips[0].name} 외 ${chips.length - 1}`;
+      case 4:
+        return selectedTime;
+      case 5:
+        return guestSummary || null;
+      default:
+        return null;
+    }
+  };
+
   const toggleStep = (id: number) => setOpenStep((cur) => (cur === id ? -1 : id));
 
   const toggleService = (id: string) =>
@@ -239,21 +265,29 @@ export default function Booking({
         <div className="flex flex-col gap-3">
           {STEPS.map((step) => {
             const open = openStep === step.id;
+            const summary = stepSummary(step.id);
             return (
               <div key={step.id}>
                 <button
                   type="button"
                   aria-expanded={open}
                   onClick={() => toggleStep(step.id)}
-                  className="flex h-[70px] w-full items-center justify-between bg-hu-beige px-7 text-left transition-colors duration-200 hover:bg-hu-beige-hover"
+                  className="flex h-[70px] w-full items-center justify-between gap-4 bg-hu-beige px-7 text-left transition-colors duration-200 hover:bg-hu-beige-hover"
                 >
-                  <span className="flex items-baseline gap-3">
+                  <span className="flex min-w-0 shrink items-baseline gap-3">
                     <span className="font-serif text-[15px] font-medium tracking-[0.06em] text-hu-black">
                       {String(step.id).padStart(2, "0")}. {step.en}
                     </span>
                     <span className="font-sans-kr text-[12px] text-hu-body">{step.kr}</span>
                   </span>
-                  <Chevron open={open} />
+                  <span className="flex min-w-0 items-center justify-end gap-3">
+                    {summary ? (
+                      <span className="truncate text-right font-sans-kr text-[13px] text-hu-black">
+                        {summary}
+                      </span>
+                    ) : null}
+                    <Chevron open={open} />
+                  </span>
                 </button>
 
                 {open && (
