@@ -88,6 +88,21 @@ function priceLabel(price: number) {
   return (price / 1000).toFixed(1);
 }
 
+/** 예약금 = 총액의 10% (천원 단위 반올림) */
+function depositFromTotal(total: number) {
+  if (total <= 0) return 0;
+  return Math.max(1000, Math.round((total * 0.1) / 1000) * 1000);
+}
+
+function formatDuration(minutes: number) {
+  if (minutes <= 0) return null;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h > 0 && m > 0) return `약 ${h}시간 ${m}분`;
+  if (h > 0) return `약 ${h}시간`;
+  return `약 ${m}분`;
+}
+
 /* ---------- icons ---------- */
 
 function Chevron({ open }: { open: boolean }) {
@@ -176,26 +191,25 @@ export default function Booking({
     .filter((s): s is (typeof ALL_SERVICES)[number] => Boolean(s));
 
   const selectedArtistLabel = artists.find((a) => a.id === selectedArtist);
-  const guestSummary = name.trim();
 
-  const stepSummary = (stepId: number): string | null => {
-    switch (stepId) {
-      case 1:
-        return selectedDate ? formatYmd(selectedDate) : null;
-      case 2:
-        return selectedArtistLabel
-          ? `${selectedArtistLabel.nameKr} ${selectedArtistLabel.nameEn}`.trim()
-          : null;
-      case 3:
-        return chips.length > 0 ? chips.map((c) => c.name).join(" / ") : null;
-      case 4:
-        return selectedTime;
-      case 5:
-        return guestSummary || null;
-      default:
-        return null;
-    }
+  const totalDurationMinutes = chips.reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
+  const durationLabel = formatDuration(totalDurationMinutes);
+
+  const receiptLine = {
+    date: selectedDate ? formatYmd(selectedDate) : null,
+    artist: selectedArtistLabel
+      ? `${selectedArtistLabel.nameKr} ${selectedArtistLabel.nameEn}`.trim()
+      : null,
+    services: chips.map((c) => ({
+      name: c.name,
+      price: c.price
+    })),
+    time: selectedTime,
+    durationLabel
   };
+  const hasReceipt =
+    Boolean(receiptLine.date || receiptLine.artist || receiptLine.time) ||
+    receiptLine.services.length > 0;
 
   const toggleStep = (id: number) => setOpenStep((cur) => (cur === id ? -1 : id));
 
@@ -203,8 +217,6 @@ export default function Booking({
     setSelectedServices((cur) =>
       cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]
     );
-
-  const canSubmit = Boolean(name && phone && agree) && !submitting;
 
   const handleSubmit = async () => {
     setSubmitError(null);
@@ -239,10 +251,7 @@ export default function Booking({
     const artist = artists.find((a) => a.id === selectedArtist);
     const services = chips;
     const totalAmount = services.reduce((sum, s) => sum + s.price, 0);
-    const depositAmount = services.reduce(
-      (sum, s) => sum + (s.depositAmount ?? 0),
-      0
-    );
+    const depositAmount = depositFromTotal(totalAmount);
     const bookingDate = toIsoDate(selectedDate);
 
     setSubmitting(true);
@@ -274,7 +283,9 @@ export default function Booking({
         return;
       }
 
-      setSubmitSuccess("예약이 접수되었습니다. 예약금 입금 안내를 기다려 주세요.");
+      setSubmitSuccess(
+        "예약이 접수되었습니다. 예약금(약 10%) 계좌 입금 안내를 곧 보내드릴게요."
+      );
     } catch {
       setSubmitError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
@@ -302,9 +313,10 @@ export default function Booking({
             <p>
               신중한 예약과 고객님의 소중한 시간 가치를 위해
               <br />
-              노쇼 방지를 위한 사전 예약금이 결제됩니다.
+              노쇼 방지를 위한 예약금(시술 금액의 약 10%)을 계좌로 받고 있습니다.
             </p>
             <ul className="mt-4 space-y-1">
+              <li>• 예약 접수 후 입금 계좌를 안내해 드립니다.</li>
               <li>• 예약금은 시술 완료 후 최종 금액에서 차감됩니다.</li>
               <li>• 직급 및 모량에 따라 수수료가 적용될 수 있습니다.</li>
             </ul>
@@ -315,37 +327,21 @@ export default function Booking({
         <div className="flex flex-col gap-3">
           {STEPS.map((step) => {
             const open = openStep === step.id;
-            const summary = stepSummary(step.id);
             return (
               <div key={step.id}>
                 <button
                   type="button"
                   aria-expanded={open}
                   onClick={() => toggleStep(step.id)}
-                  className={clsx(
-                    "flex w-full items-center justify-between gap-4 bg-hu-beige px-7 text-left transition-colors duration-200 hover:bg-hu-beige-hover",
-                    step.id === 3 && summary ? "min-h-[70px] py-3" : "h-[70px]"
-                  )}
+                  className="flex h-[70px] w-full items-center justify-between bg-hu-beige px-7 text-left transition-colors duration-200 hover:bg-hu-beige-hover"
                 >
-                  <span className="flex min-w-0 shrink items-baseline gap-3">
+                  <span className="flex items-baseline gap-3">
                     <span className="font-serif text-[15px] font-medium tracking-[0.06em] text-hu-black">
                       {String(step.id).padStart(2, "0")}. {step.en}
                     </span>
                     <span className="font-sans-kr text-[12px] text-hu-body">{step.kr}</span>
                   </span>
-                  <span className="flex min-w-0 max-w-[48%] items-center justify-end gap-3">
-                    {summary ? (
-                      <span
-                        className={clsx(
-                          "text-right font-sans-kr text-[13px] leading-snug text-hu-black",
-                          step.id === 3 ? "line-clamp-2" : "truncate"
-                        )}
-                      >
-                        {summary}
-                      </span>
-                    ) : null}
-                    <Chevron open={open} />
-                  </span>
+                  <Chevron open={open} />
                 </button>
 
                 {open && (
@@ -394,8 +390,13 @@ export default function Booking({
                         setRequestNote={setRequestNote}
                         agree={agree}
                         setAgree={setAgree}
+                        receipt={receiptLine}
+                        hasReceipt={hasReceipt}
                         totalAmount={chips.reduce((sum, s) => sum + s.price, 0)}
-                        canSubmit={canSubmit}
+                        depositAmount={depositFromTotal(
+                          chips.reduce((sum, s) => sum + s.price, 0)
+                        )}
+                        privacyAgreed={agree}
                         submitting={submitting}
                         submitError={submitError}
                         submitSuccess={submitSuccess}
@@ -685,8 +686,11 @@ function StepGuest({
   setRequestNote,
   agree,
   setAgree,
+  receipt,
+  hasReceipt,
   totalAmount,
-  canSubmit,
+  depositAmount,
+  privacyAgreed,
   submitting,
   submitError,
   submitSuccess,
@@ -702,14 +706,24 @@ function StepGuest({
   setRequestNote: (v: string) => void;
   agree: boolean;
   setAgree: (v: boolean) => void;
+  receipt: {
+    date: string | null;
+    artist: string | null;
+    services: { name: string; price: number }[];
+    time: string | null;
+    durationLabel: string | null;
+  };
+  hasReceipt: boolean;
   totalAmount: number;
-  canSubmit: boolean;
+  depositAmount: number;
+  privacyAgreed: boolean;
   submitting: boolean;
   submitError: string | null;
   submitSuccess: string | null;
   onSubmit: () => void;
 }) {
   const requestRef = useRef<HTMLTextAreaElement>(null);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
 
   useEffect(() => {
     const el = requestRef.current;
@@ -763,15 +777,52 @@ function StepGuest({
         className="mt-7 max-h-[160px] min-h-[28px] w-full resize-none overflow-y-auto border-b border-hu-black/60 bg-transparent pb-2 font-sans-kr text-[15px] leading-relaxed text-hu-black outline-none placeholder:text-hu-muted [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
       />
 
-      <label className="mt-7 flex cursor-pointer items-center gap-2 font-sans-kr text-[13px] text-hu-body">
-        <input
-          type="checkbox"
-          checked={agree}
-          onChange={(e) => setAgree(e.target.checked)}
-          className="h-4 w-4 accent-hu-black"
-        />
-        개인정보 수집 및 이용 동의 (필수)
-      </label>
+      <div className="mt-7">
+        <div className="flex items-center gap-2 font-sans-kr text-[13px] text-hu-body">
+          <input
+            id="privacy-agree"
+            type="checkbox"
+            checked={agree}
+            onChange={(e) => setAgree(e.target.checked)}
+            className="h-4 w-4 shrink-0 accent-hu-black"
+          />
+          <button
+            type="button"
+            onClick={() => setPrivacyOpen((v) => !v)}
+            className="flex min-w-0 flex-1 items-center justify-between gap-2 text-left"
+            aria-expanded={privacyOpen}
+          >
+            <span>
+              개인정보 수집 및 이용 동의{" "}
+              <span className="text-hu-muted">(필수)</span>
+              <span className="ml-1 text-[11px] text-hu-muted underline underline-offset-2">
+                내용 보기
+              </span>
+            </span>
+            <span
+              aria-hidden
+              className={clsx(
+                "shrink-0 text-[11px] text-hu-muted transition-transform",
+                privacyOpen && "rotate-180"
+              )}
+            >
+              ∨
+            </span>
+          </button>
+        </div>
+
+        {privacyOpen ? (
+          <div className="mt-3 max-h-[180px] overflow-y-auto bg-hu-beige/60 px-4 py-3 font-sans-kr text-[12px] leading-[1.7] text-hu-body">
+            <p className="font-medium text-hu-black">개인정보 수집 및 이용 안내</p>
+            <ul className="mt-2 space-y-1.5">
+              <li>1. 수집 항목: 이름, 연락처, 성별(선택), 예약 요청사항</li>
+              <li>2. 수집 목적: 예약 확인, 일정 안내, 고객 응대</li>
+              <li>3. 보유 기간: 예약 완료 후 1년 (관련 법령에 따라 보관이 필요한 경우 해당 기간)</li>
+              <li>4. 동의 거부 권리: 동의를 거부하실 수 있으나, 이 경우 예약 접수가 제한됩니다.</li>
+            </ul>
+          </div>
+        ) : null}
+      </div>
 
       {submitError ? (
         <p className="mt-4 font-sans-kr text-[13px] text-[#9b4a4a]" role="alert">
@@ -784,33 +835,112 @@ function StepGuest({
         </p>
       ) : null}
 
+      {hasReceipt ? (
+        <div className="mt-8 border-t border-dashed border-hu-black/20 pt-4">
+          <p className="font-serif text-[14px] font-medium tracking-[0.1em] text-hu-black">
+            예약현황
+          </p>
+          <div className="mt-2 font-sans-kr text-[12px] leading-relaxed text-hu-body">
+            <ReceiptText receipt={receipt} />
+          </div>
+          {totalAmount > 0 || receipt.durationLabel ? (
+            <p className="mt-3 font-sans-kr text-[12px] text-hu-muted">
+              {[
+                totalAmount > 0
+                  ? `총 ${totalAmount.toLocaleString("ko-KR")}원 · 예약금(10%) ${depositAmount.toLocaleString("ko-KR")}원 · 계좌 입금`
+                  : null,
+                receipt.durationLabel ? `소요시간 ${receipt.durationLabel}` : null
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       <button
         type="button"
-        disabled={!canSubmit || Boolean(submitSuccess)}
+        disabled={!privacyAgreed || submitting || Boolean(submitSuccess)}
         onClick={onSubmit}
         className={clsx(
-          "mt-8 flex h-[52px] w-full items-center justify-between gap-3 px-6 font-sans-kr text-hu-white transition-colors",
-          canSubmit && !submitSuccess
+          "mt-3 flex min-h-[56px] w-full items-center justify-between gap-3 px-6 py-2 font-sans-kr text-hu-white transition-colors",
+          !hasReceipt && "mt-8",
+          privacyAgreed && !submitting && !submitSuccess
             ? "bg-hu-cta hover:bg-[#222222]"
             : "cursor-not-allowed bg-[#bcbcbc]"
         )}
       >
-        {totalAmount > 0 ? (
-          <span className="shrink-0 text-[16px] font-medium tracking-[0.02em]">
-            총 {totalAmount.toLocaleString("ko-KR")}원
+        {depositAmount > 0 ? (
+          <span className="flex min-w-0 flex-col items-start leading-tight">
+            <span className="text-[16px] font-medium tracking-[0.02em]">
+              예약금 {depositAmount.toLocaleString("ko-KR")}원
+            </span>
+            <span className="text-[11px] font-normal text-white/65">
+              총 {totalAmount.toLocaleString("ko-KR")}원
+            </span>
           </span>
         ) : (
           <span />
         )}
         <span className="flex min-w-0 items-center gap-3">
           <span className="truncate text-[13px] font-medium">
-            {submitting ? "예약 접수 중..." : "예약 확정 및 결제하기"}
+            {submitting ? "예약 접수 중..." : "예약하기"}
           </span>
           <span aria-hidden className="shrink-0 text-[16px] leading-none">
             ›
           </span>
         </span>
       </button>
+    </div>
+  );
+}
+
+function ReceiptText({
+  receipt
+}: {
+  receipt: {
+    date: string | null;
+    artist: string | null;
+    services: { name: string; price: number }[];
+    time: string | null;
+    durationLabel?: string | null;
+  };
+}) {
+  const serviceRows: { name: string; price: number }[][] = [];
+  for (let i = 0; i < receipt.services.length; i += 2) {
+    serviceRows.push(receipt.services.slice(i, i + 2));
+  }
+
+  const dateTime =
+    receipt.date && receipt.time
+      ? `${receipt.date}  ·  ${receipt.time}`
+      : receipt.date || receipt.time;
+
+  return (
+    <div className="space-y-1">
+      {dateTime || receipt.artist ? (
+        <p className="flex items-baseline justify-between gap-3">
+          <span>{dateTime}</span>
+          {receipt.artist ? (
+            <span className="shrink-0 text-[calc(14px*1.3)] font-semibold text-hu-black">
+              {receipt.artist}
+            </span>
+          ) : null}
+        </p>
+      ) : null}
+      {serviceRows.map((row, rowIdx) => (
+        <p key={`svc-row-${rowIdx}`}>
+          {row.map((s, i) => (
+            <span key={`${s.name}-${i}`} className="whitespace-nowrap">
+              {i > 0 ? <span className="text-hu-muted"> · </span> : null}
+              {s.name}
+              <span className="text-[11px] text-hu-muted">
+                ({s.price.toLocaleString("ko-KR")}원)
+              </span>
+            </span>
+          ))}
+        </p>
+      ))}
     </div>
   );
 }
