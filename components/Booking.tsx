@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { clsx } from "clsx";
 import type { Artist } from "@/lib/artists/types";
 import type { ServiceItem } from "@/lib/services/types";
@@ -394,6 +394,7 @@ export default function Booking({
                         setRequestNote={setRequestNote}
                         agree={agree}
                         setAgree={setAgree}
+                        totalAmount={chips.reduce((sum, s) => sum + s.price, 0)}
                         canSubmit={canSubmit}
                         submitting={submitting}
                         submitError={submitError}
@@ -671,6 +672,8 @@ function StepTime({
 
 /* ---------- Step 05: Guest ---------- */
 
+/* ---------- Step 05: Guest ---------- */
+
 function StepGuest({
   name,
   setName,
@@ -682,6 +685,7 @@ function StepGuest({
   setRequestNote,
   agree,
   setAgree,
+  totalAmount,
   canSubmit,
   submitting,
   submitError,
@@ -698,12 +702,22 @@ function StepGuest({
   setRequestNote: (v: string) => void;
   agree: boolean;
   setAgree: (v: boolean) => void;
+  totalAmount: number;
   canSubmit: boolean;
   submitting: boolean;
   submitError: string | null;
   submitSuccess: string | null;
   onSubmit: () => void;
 }) {
+  const requestRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = requestRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [requestNote]);
+
   return (
     <div className="max-w-[420px]">
       <div className="flex items-center justify-between border-b border-hu-black/60 pb-2">
@@ -741,11 +755,12 @@ function StepGuest({
       />
 
       <textarea
+        ref={requestRef}
         value={requestNote}
         onChange={(e) => setRequestNote(e.target.value.slice(0, 500))}
-        placeholder="요청사항 (선택)"
-        rows={2}
-        className="mt-7 w-full resize-none border-b border-hu-black/60 bg-transparent pb-2 font-sans-kr text-[15px] leading-relaxed text-hu-black outline-none placeholder:text-hu-muted"
+        placeholder="디자이너님에게 하고싶은 말 (요청사항)"
+        rows={1}
+        className="mt-7 max-h-[160px] min-h-[28px] w-full resize-none overflow-y-auto border-b border-hu-black/60 bg-transparent pb-2 font-sans-kr text-[15px] leading-relaxed text-hu-black outline-none placeholder:text-hu-muted [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
       />
 
       <label className="mt-7 flex cursor-pointer items-center gap-2 font-sans-kr text-[13px] text-hu-body">
@@ -774,15 +789,26 @@ function StepGuest({
         disabled={!canSubmit || Boolean(submitSuccess)}
         onClick={onSubmit}
         className={clsx(
-          "mt-8 flex h-[52px] w-full items-center justify-between px-6 font-sans-kr text-[14px] font-medium text-hu-white transition-colors",
+          "mt-8 flex h-[52px] w-full items-center justify-between gap-3 px-6 font-sans-kr text-hu-white transition-colors",
           canSubmit && !submitSuccess
             ? "bg-hu-cta hover:bg-[#222222]"
             : "cursor-not-allowed bg-[#bcbcbc]"
         )}
       >
-        <span>{submitting ? "예약 접수 중..." : "예약 확정 및 결제하기"}</span>
-        <span aria-hidden className="text-[16px] leading-none">
-          ›
+        {totalAmount > 0 ? (
+          <span className="shrink-0 text-[16px] font-medium tracking-[0.02em]">
+            총 {totalAmount.toLocaleString("ko-KR")}원
+          </span>
+        ) : (
+          <span />
+        )}
+        <span className="flex min-w-0 items-center gap-3">
+          <span className="truncate text-[13px] font-medium">
+            {submitting ? "예약 접수 중..." : "예약 확정 및 결제하기"}
+          </span>
+          <span aria-hidden className="shrink-0 text-[16px] leading-none">
+            ›
+          </span>
         </span>
       </button>
     </div>
