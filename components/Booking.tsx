@@ -2,43 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { clsx } from "clsx";
+import type { Artist } from "@/lib/artists/types";
+import type { ServiceItem } from "@/lib/services/types";
 
 /* ---------- data ---------- */
 
-const ARTISTS = [
-  { id: "jay", nameKr: "재이", nameEn: "JAY", role: "Senior Stylist" },
-  { id: "seoa", nameKr: "서아", nameEn: "SEOA", role: "Stylist" },
-  { id: "kai", nameKr: "카이", nameEn: "KAI", role: "Stylist" },
-  { id: "yumi", nameKr: "유미", nameEn: "YUMI", role: "Stylist" }
-] as const;
-
 const SERVICE_TABS = ["Cut", "Perm", "Color", "Clinic"] as const;
 type ServiceTab = (typeof SERVICE_TABS)[number];
-
-const SERVICES: Record<ServiceTab, { id: string; name: string; price: number }[]> = {
-  Cut: [
-    { id: "cut-basic", name: "기본 컷", price: 25000 },
-    { id: "cut-signature", name: "시그니처 레이어드 / 디자인 컷", price: 35000 },
-    { id: "cut-mens", name: "맨즈 디자인 컷", price: 60000 }
-  ],
-  Perm: [
-    { id: "perm-design", name: "디자인 일반펌", price: 90000 },
-    { id: "perm-digital", name: "디지털 열펌", price: 160000 },
-    { id: "perm-volume", name: "시그니처 볼륨매직", price: 200000 }
-  ],
-  Color: [
-    { id: "color-basic", name: "베이직 전체 컬러", price: 100000 },
-    { id: "color-premium", name: "프리미엄 케어 컬러", price: 140000 },
-    { id: "color-bleach", name: "디자인 탈색 / 발레아쥬 1회 기준", price: 150000 }
-  ],
-  Clinic: [
-    { id: "clinic-protein", name: "수분 단백질 집중 케어", price: 80000 },
-    { id: "clinic-regen", name: "프리미엄 모발 재생 클리닉", price: 150000 },
-    { id: "clinic-scalp", name: "스칼프 두피 스파 케어", price: 70000 }
-  ]
-};
-
-const ALL_SERVICES = Object.values(SERVICES).flat();
 
 const TIME_SLOTS = {
   Morning: ["10:00", "10:30", "11:00", "11:30"],
@@ -108,7 +78,27 @@ const STEPS = [
   { id: 5, en: "GUEST DETAILS", kr: "예약자 정보 입력" }
 ] as const;
 
-export default function Booking() {
+export default function Booking({
+  artists,
+  services
+}: {
+  artists: Artist[];
+  services: ServiceItem[];
+}) {
+  const ALL_SERVICES = services;
+  const servicesByTab = useMemo(() => {
+    const map: Record<ServiceTab, ServiceItem[]> = {
+      Cut: [],
+      Perm: [],
+      Color: [],
+      Clinic: []
+    };
+    for (const s of services) {
+      if (s.category in map) map[s.category as ServiceTab].push(s);
+    }
+    return map;
+  }, [services]);
+
   const [openStep, setOpenStep] = useState<number>(1);
 
   const [selectedDate, setSelectedDate] = useState<number | null>(null);
@@ -121,6 +111,10 @@ export default function Booking() {
   const [gender, setGender] = useState<"W" | "M" | null>(null);
   const [phone, setPhone] = useState("");
   const [agree, setAgree] = useState(false);
+
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
 
   const calendar = useMemo(buildCalendar, []);
 
@@ -135,7 +129,82 @@ export default function Booking() {
       cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]
     );
 
-  const canSubmit = Boolean(name && phone && agree);
+  const canSubmit = Boolean(name && phone && agree) && !submitting;
+
+  const handleSubmit = async () => {
+    setSubmitError(null);
+    setSubmitSuccess(null);
+
+    if (!selectedDate) {
+      setSubmitError("예약 날짜를 선택해 주세요.");
+      setOpenStep(1);
+      return;
+    }
+    if (!selectedArtist) {
+      setSubmitError("디자이너를 선택해 주세요.");
+      setOpenStep(2);
+      return;
+    }
+    if (selectedServices.length < 1) {
+      setSubmitError("시술을 한 개 이상 선택해 주세요.");
+      setOpenStep(3);
+      return;
+    }
+    if (!selectedTime) {
+      setSubmitError("예약 시간을 선택해 주세요.");
+      setOpenStep(4);
+      return;
+    }
+    if (!name.trim() || !phone.trim() || !agree) {
+      setSubmitError("예약자 정보와 개인정보 동의를 확인해 주세요.");
+      setOpenStep(5);
+      return;
+    }
+
+    const artist = artists.find((a) => a.id === selectedArtist);
+    const services = chips;
+    const totalAmount = services.reduce((sum, s) => sum + s.price, 0);
+    const depositAmount = services.reduce(
+      (sum, s) => sum + (s.depositAmount ?? 0),
+      0
+    );
+    const bookingDate = `${CAL_YEAR}-${String(CAL_MONTH).padStart(2, "0")}-${String(selectedDate).padStart(2, "0")}`;
+
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookingDate,
+          bookingTime: selectedTime,
+          artistId: selectedArtist,
+          artistName: artist ? `${artist.nameKr} ${artist.nameEn}` : null,
+          serviceIds: services.map((s) => s.id),
+          serviceNames: services.map((s) => s.name),
+          customerName: name.trim(),
+          customerGender: gender,
+          customerPhone: phone.trim(),
+          privacyAgreed: true,
+          totalAmount,
+          depositAmount: depositAmount || null
+        })
+      });
+
+      const data = (await res.json()) as { ok?: boolean; error?: string; booking?: { id: string } };
+
+      if (!res.ok || !data.ok) {
+        setSubmitError(data.error || "예약 저장에 실패했습니다.");
+        return;
+      }
+
+      setSubmitSuccess("예약이 접수되었습니다. 예약금 입금 안내를 기다려 주세요.");
+    } catch {
+      setSubmitError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <section
@@ -197,7 +266,11 @@ export default function Booking() {
                       />
                     )}
                     {step.id === 2 && (
-                      <StepArtist selected={selectedArtist} onSelect={setSelectedArtist} />
+                      <StepArtist
+                        artists={artists}
+                        selected={selectedArtist}
+                        onSelect={setSelectedArtist}
+                      />
                     )}
                     {step.id === 3 && (
                       <StepService
@@ -206,6 +279,7 @@ export default function Booking() {
                         chips={chips}
                         selected={selectedServices}
                         onToggle={toggleService}
+                        servicesByTab={servicesByTab}
                       />
                     )}
                     {step.id === 4 && (
@@ -222,6 +296,10 @@ export default function Booking() {
                         agree={agree}
                         setAgree={setAgree}
                         canSubmit={canSubmit}
+                        submitting={submitting}
+                        submitError={submitError}
+                        submitSuccess={submitSuccess}
+                        onSubmit={handleSubmit}
                       />
                     )}
                   </div>
@@ -299,15 +377,17 @@ function StepDate({
 /* ---------- Step 02: Artist ---------- */
 
 function StepArtist({
+  artists,
   selected,
   onSelect
 }: {
+  artists: Artist[];
   selected: string | null;
   onSelect: (id: string) => void;
 }) {
   return (
     <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
-      {ARTISTS.map((artist) => {
+      {artists.map((artist) => {
         const active = selected === artist.id;
         return (
           <button
@@ -342,13 +422,15 @@ function StepService({
   onTab,
   chips,
   selected,
-  onToggle
+  onToggle,
+  servicesByTab
 }: {
   tab: ServiceTab;
   onTab: (t: ServiceTab) => void;
-  chips: { id: string; name: string; price: number }[];
+  chips: { id: string; name: string; price: number; depositAmount?: number | null }[];
   selected: string[];
   onToggle: (id: string) => void;
+  servicesByTab: Record<ServiceTab, ServiceItem[]>;
 }) {
   return (
     <div>
@@ -388,7 +470,7 @@ function StepService({
       </div>
 
       <div className="mt-6 flex flex-wrap gap-x-8 gap-y-3">
-        {SERVICES[tab].map((s) => {
+        {(servicesByTab[tab] || []).map((s) => {
           const active = selected.includes(s.id);
           return (
             <button
@@ -462,7 +544,11 @@ function StepGuest({
   setPhone,
   agree,
   setAgree,
-  canSubmit
+  canSubmit,
+  submitting,
+  submitError,
+  submitSuccess,
+  onSubmit
 }: {
   name: string;
   setName: (v: string) => void;
@@ -473,6 +559,10 @@ function StepGuest({
   agree: boolean;
   setAgree: (v: boolean) => void;
   canSubmit: boolean;
+  submitting: boolean;
+  submitError: string | null;
+  submitSuccess: string | null;
+  onSubmit: () => void;
 }) {
   return (
     <div className="max-w-[420px]">
@@ -520,15 +610,29 @@ function StepGuest({
         개인정보 수집 및 이용 동의 (필수)
       </label>
 
+      {submitError ? (
+        <p className="mt-4 font-sans-kr text-[13px] text-[#9b4a4a]" role="alert">
+          {submitError}
+        </p>
+      ) : null}
+      {submitSuccess ? (
+        <p className="mt-4 font-sans-kr text-[13px] text-hu-black" role="status">
+          {submitSuccess}
+        </p>
+      ) : null}
+
       <button
         type="button"
-        disabled={!canSubmit}
+        disabled={!canSubmit || Boolean(submitSuccess)}
+        onClick={onSubmit}
         className={clsx(
           "mt-8 flex h-[52px] w-full items-center justify-between px-6 font-sans-kr text-[14px] font-medium text-hu-white transition-colors",
-          canSubmit ? "bg-hu-cta hover:bg-[#222222]" : "cursor-not-allowed bg-[#bcbcbc]"
+          canSubmit && !submitSuccess
+            ? "bg-hu-cta hover:bg-[#222222]"
+            : "cursor-not-allowed bg-[#bcbcbc]"
         )}
       >
-        <span>예약 확정 및 결제하기</span>
+        <span>{submitting ? "예약 접수 중..." : "예약 확정 및 결제하기"}</span>
         <span aria-hidden className="text-[16px] leading-none">
           ›
         </span>

@@ -29,9 +29,14 @@ export default function Footer() {
           {/* Brand */}
           <div className="flex flex-col justify-between">
             <p className="font-serif text-[40px] tracking-[0.06em]">HAIR UP</p>
-            <p className="mt-12 font-sans-kr text-[11px] tracking-[0.08em] text-hu-white/40 lg:mt-auto">
-              © {year} COPYRIGHT BY HAIR UP
-            </p>
+            <div className="mt-12 space-y-1.5 lg:mt-auto">
+              <p className="font-sans-kr text-[11px] tracking-[0.08em] text-hu-white/40">
+                © {year} COPYRIGHT BY HAIR UP
+              </p>
+              <p className="font-sans-en text-[10px] tracking-[0.12em] text-hu-white/30">
+                DESIGNED BY MARANATHA · abi
+              </p>
+            </div>
           </div>
 
           {/* Opening hours */}
@@ -82,14 +87,22 @@ export default function Footer() {
         </div>
 
         {/* Business info (사업자 정보) */}
-        <dl className="mt-14 flex flex-wrap gap-x-8 gap-y-2 border-t border-white/10 pt-6 font-sans-kr text-[11px] text-hu-white/35">
-          {BUSINESS.map((row) => (
-            <div key={row.label} className="flex gap-1.5">
-              <dt>{row.label}</dt>
-              <dd className="text-hu-white/50">{row.value}</dd>
-            </div>
-          ))}
-        </dl>
+        <div className="mt-14 flex flex-wrap items-center justify-between gap-x-8 gap-y-3 border-t border-white/10 pt-6">
+          <dl className="flex flex-wrap gap-x-8 gap-y-2 font-sans-kr text-[11px] text-hu-white/35">
+            {BUSINESS.map((row) => (
+              <div key={row.label} className="flex gap-1.5">
+                <dt>{row.label}</dt>
+                <dd className="text-hu-white/50">{row.value}</dd>
+              </div>
+            ))}
+          </dl>
+          <Link
+            href="/admin/login"
+            className="font-sans-en text-[10px] tracking-[0.14em] text-hu-white/25 transition-colors hover:text-hu-white/50"
+          >
+            ADMIN
+          </Link>
+        </div>
       </div>
     </footer>
   );

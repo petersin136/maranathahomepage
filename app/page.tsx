@@ -13,9 +13,14 @@ import Instagram from "@/components/Instagram";
 import Footer from "@/components/Footer";
 import { getArtists } from "@/lib/artists/get-artists";
 import { getGalleryImages } from "@/lib/gallery/get-gallery-images";
+import { getServices } from "@/lib/services/get-services";
 
 export default async function Home() {
-  const [artists, galleryImages] = await Promise.all([getArtists(), getGalleryImages()]);
+  const [artists, galleryImages, services] = await Promise.all([
+    getArtists(),
+    getGalleryImages(),
+    getServices()
+  ]);
 
   return (
     <>
@@ -27,7 +32,7 @@ export default async function Home() {
         <PricingMenu />
         <Artists artists={artists} />
         <Gallery images={galleryImages} />
-        <Booking />
+        <Booking artists={artists} services={services} />
         <HoursLocation />
         <Marquee />
         <Review />

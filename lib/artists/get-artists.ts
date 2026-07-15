@@ -28,6 +28,15 @@ export const ARTISTS_FALLBACK: Artist[] = [
     imageUrl: null,
     instagramUrl: "https://instagram.com",
     sortOrder: 2
+  },
+  {
+    id: "yumi",
+    nameKr: "유미",
+    nameEn: "YUMI",
+    role: "Stylist",
+    imageUrl: null,
+    instagramUrl: "https://instagram.com",
+    sortOrder: 3
   }
 ];
 
