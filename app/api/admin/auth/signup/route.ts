@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { authErrorKo } from "@/lib/admin/auth-errors";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export async function POST(request: Request) {
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
 
     if (error) {
       return NextResponse.json(
-        { ok: false, error: error.message || "계정 생성에 실패했습니다." },
+        { ok: false, error: authErrorKo(error.message, "계정 생성에 실패했습니다.") },
         { status: 400 }
       );
     }
