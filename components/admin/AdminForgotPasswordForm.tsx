@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 function EyeIcon({ open }: { open: boolean }) {
@@ -29,37 +29,40 @@ function EyeIcon({ open }: { open: boolean }) {
   );
 }
 
-export default function AdminLoginForm() {
-  const search = useSearchParams();
-  const next = search.get("next") || "/admin";
-
+export default function AdminForgotPasswordForm() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [password2, setPassword2] = useState("");
+  const [resetCode, setResetCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (password !== password2) {
+      setError("새 비밀번호가 서로 일치하지 않습니다.");
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/auth/login", {
+      const res = await fetch("/api/admin/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: email.trim().toLowerCase(),
-          password
-        })
+        body: JSON.stringify({ email, password, resetCode })
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        setError(data.error || "이메일 또는 비밀번호가 올바르지 않습니다.");
+        setError(data.error || "비밀번호 변경에 실패했습니다.");
         return;
       }
-      // Full navigation so middleware reliably reads session cookies
-      const dest = next.startsWith("/admin") ? next : "/admin";
-      window.location.assign(dest);
+      setSuccess(true);
+      setTimeout(() => router.replace("/admin/login"), 1500);
     } catch {
       setError("네트워크 오류가 발생했습니다.");
     } finally {
@@ -67,10 +70,27 @@ export default function AdminLoginForm() {
     }
   };
 
+  if (success) {
+    return (
+      <div className="space-y-4 text-center">
+        <p className="font-sans-kr text-[14px] text-hu-black">비밀번호가 변경되었습니다.</p>
+        <p className="font-sans-kr text-[12px] text-hu-muted">로그인 화면으로 이동합니다…</p>
+        <Link href="/admin/login" className="inline-block font-sans-kr text-[13px] underline">
+          로그인하기
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={onSubmit} className="mx-auto w-full max-w-[400px] space-y-6">
+      <p className="font-sans-kr text-[12px] leading-relaxed text-hu-muted">
+        가입 시 사용한 이메일과,{" "}
+        <span className="text-hu-black">.env.local의 관리자 확인 코드</span>로 새 비밀번호를 설정합니다.
+      </p>
+
       <div>
-        <label className="font-sans-kr text-[12px] text-hu-muted">이메일</label>
+        <label className="font-sans-kr text-[12px] text-hu-muted">이메일 (로그인 아이디)</label>
         <input
           type="email"
           required
@@ -80,16 +100,18 @@ export default function AdminLoginForm() {
           autoComplete="email"
         />
       </div>
+
       <div>
-        <label className="font-sans-kr text-[12px] text-hu-muted">비밀번호</label>
+        <label className="font-sans-kr text-[12px] text-hu-muted">새 비밀번호 (8자 이상)</label>
         <div className="relative mt-2">
           <input
             type={showPassword ? "text" : "password"}
             required
+            minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full border-b border-hu-black/50 bg-transparent py-2 pr-10 font-sans-kr text-[15px] outline-none"
-            autoComplete="current-password"
+            autoComplete="new-password"
           />
           <button
             type="button"
@@ -101,23 +123,45 @@ export default function AdminLoginForm() {
           </button>
         </div>
       </div>
+
+      <div>
+        <label className="font-sans-kr text-[12px] text-hu-muted">새 비밀번호 확인</label>
+        <input
+          type={showPassword ? "text" : "password"}
+          required
+          minLength={8}
+          value={password2}
+          onChange={(e) => setPassword2(e.target.value)}
+          className="mt-2 w-full border-b border-hu-black/50 bg-transparent py-2 font-sans-kr text-[15px] outline-none"
+          autoComplete="new-password"
+        />
+      </div>
+
+      <div>
+        <label className="font-sans-kr text-[12px] text-hu-muted">관리자 확인 코드</label>
+        <input
+          type="password"
+          required
+          value={resetCode}
+          onChange={(e) => setResetCode(e.target.value)}
+          className="mt-2 w-full border-b border-hu-black/50 bg-transparent py-2 font-sans-kr text-[15px] outline-none"
+          autoComplete="off"
+        />
+      </div>
+
       {error ? <p className="font-sans-kr text-[13px] text-[#9b4a4a]">{error}</p> : null}
+
       <button
         type="submit"
         disabled={loading}
         className="flex h-[48px] w-full items-center justify-center bg-hu-black font-sans-kr text-[14px] text-white disabled:bg-[#bcbcbc]"
       >
-        {loading ? "로그인 중..." : "로그인"}
+        {loading ? "변경 중..." : "비밀번호 변경"}
       </button>
+
       <p className="text-center font-sans-kr text-[12px] text-hu-muted">
-        <Link href="/admin/forgot-password" className="text-hu-black underline">
-          비밀번호를 잊으셨나요?
-        </Link>
-      </p>
-      <p className="text-center font-sans-kr text-[12px] text-hu-muted">
-        계정이 없나요?{" "}
-        <Link href="/admin/signup" className="text-hu-black underline">
-          가입하기
+        <Link href="/admin/login" className="text-hu-black underline">
+          로그인으로 돌아가기
         </Link>
       </p>
     </form>

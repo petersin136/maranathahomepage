@@ -7,7 +7,9 @@ export async function middleware(request: NextRequest) {
 
   const isAdmin = pathname.startsWith("/admin");
   const isPublicAdmin =
-    pathname === "/admin/login" || pathname === "/admin/signup";
+    pathname === "/admin/login" ||
+    pathname === "/admin/signup" ||
+    pathname === "/admin/forgot-password";
 
   if (!isAdmin) return supabaseResponse;
 
