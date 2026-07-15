@@ -93,11 +93,30 @@ export async function POST(request: Request) {
 
   try {
     const supabase = getSupabaseAdmin();
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("bookings")
       .insert(row)
       .select("id, created_at, status, deposit_paid")
       .single();
+
+    // customer_request 컬럼이 아직 없으면 admin_memo로 임시 저장
+    if (
+      error &&
+      (error.message?.includes("customer_request") ||
+        error.code === "PGRST204" ||
+        error.code === "42703")
+    ) {
+      const { customer_request: requestText, ...rest } = row;
+      const fallback = {
+        ...rest,
+        admin_memo: requestText ? `[고객요청] ${requestText}` : null
+      };
+      ({ data, error } = await supabase
+        .from("bookings")
+        .insert(fallback)
+        .select("id, created_at, status, deposit_paid")
+        .single());
+    }
 
     if (error) {
       console.error("[POST /api/bookings]", error);
