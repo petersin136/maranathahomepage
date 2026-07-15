@@ -2,11 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export async function POST(request: Request) {
-  let body: {
-    email?: string;
-    password?: string;
-    resetCode?: string;
-  };
+  let body: { email?: string; password?: string };
 
   try {
     body = await request.json();
@@ -16,26 +12,6 @@ export async function POST(request: Request) {
 
   const email = body.email?.trim().toLowerCase();
   const password = body.password ?? "";
-  const resetCode = body.resetCode?.trim() ?? "";
-  const expected =
-    process.env.ADMIN_RESET_CODE?.trim() || process.env.ADMIN_SIGNUP_CODE?.trim();
-
-  if (!expected) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: "서버에 ADMIN_RESET_CODE(또는 ADMIN_SIGNUP_CODE)가 설정되지 않았습니다."
-      },
-      { status: 500 }
-    );
-  }
-
-  if (!resetCode || resetCode !== expected) {
-    return NextResponse.json(
-      { ok: false, error: "관리자 확인 코드가 올바르지 않습니다." },
-      { status: 403 }
-    );
-  }
 
   if (!email || !email.includes("@")) {
     return NextResponse.json({ ok: false, error: "이메일을 확인해 주세요." }, { status: 400 });
@@ -54,7 +30,7 @@ export async function POST(request: Request) {
     if (error) {
       console.error("[admin reset]", error);
       return NextResponse.json(
-        { ok: false, error: "계정 조회에 실패했습니다." },
+        { ok: false, error: "계정 조회에 실패했습니다. 서버 Supabase 설정을 확인해 주세요." },
         { status: 500 }
       );
     }
@@ -83,7 +59,13 @@ export async function POST(request: Request) {
   } catch (err) {
     console.error("[admin reset]", err);
     return NextResponse.json(
-      { ok: false, error: "비밀번호 변경 중 오류가 발생했습니다." },
+      {
+        ok: false,
+        error:
+          err instanceof Error && err.message.includes("SUPABASE")
+            ? "서버에 Supabase 키가 설정되지 않았습니다. 배포 환경변수를 확인해 주세요."
+            : "비밀번호 변경 중 오류가 발생했습니다."
+      },
       { status: 500 }
     );
   }

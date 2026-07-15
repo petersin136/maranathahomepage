@@ -34,7 +34,6 @@ export default function AdminForgotPasswordForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
-  const [resetCode, setResetCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -54,7 +53,7 @@ export default function AdminForgotPasswordForm() {
       const res = await fetch("/api/admin/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, resetCode })
+        body: JSON.stringify({ email, password })
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -85,8 +84,7 @@ export default function AdminForgotPasswordForm() {
   return (
     <form onSubmit={onSubmit} className="mx-auto w-full max-w-[400px] space-y-6">
       <p className="font-sans-kr text-[12px] leading-relaxed text-hu-muted">
-        가입 시 사용한 이메일과,{" "}
-        <span className="text-hu-black">.env.local의 관리자 확인 코드</span>로 새 비밀번호를 설정합니다.
+        가입 시 사용한 이메일로 새 비밀번호를 설정합니다.
       </p>
 
       <div>
@@ -134,18 +132,6 @@ export default function AdminForgotPasswordForm() {
           onChange={(e) => setPassword2(e.target.value)}
           className="mt-2 w-full border-b border-hu-black/50 bg-transparent py-2 font-sans-kr text-[15px] outline-none"
           autoComplete="new-password"
-        />
-      </div>
-
-      <div>
-        <label className="font-sans-kr text-[12px] text-hu-muted">관리자 확인 코드</label>
-        <input
-          type="password"
-          required
-          value={resetCode}
-          onChange={(e) => setResetCode(e.target.value)}
-          className="mt-2 w-full border-b border-hu-black/50 bg-transparent py-2 font-sans-kr text-[15px] outline-none"
-          autoComplete="off"
         />
       </div>
 
