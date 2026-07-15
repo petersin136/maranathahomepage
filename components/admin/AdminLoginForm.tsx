@@ -47,6 +47,7 @@ export default function AdminLoginForm() {
       const res = await fetch("/api/admin/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({
           email: email.trim().toLowerCase(),
           password
@@ -57,9 +58,10 @@ export default function AdminLoginForm() {
         setError(data.error || "이메일 또는 비밀번호가 올바르지 않습니다.");
         return;
       }
-      // Full navigation so middleware reliably reads session cookies
+      // Full page load so middleware reads session cookies
       const dest = next.startsWith("/admin") ? next : "/admin";
-      window.location.assign(dest);
+      window.location.href = dest;
+      return;
     } catch {
       setError("네트워크 오류가 발생했습니다.");
     } finally {
