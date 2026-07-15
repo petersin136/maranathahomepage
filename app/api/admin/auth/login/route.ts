@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const url = clean(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const url = clean(process.env.NEXT_PUBLIC_SUPABASE_URL).replace(/\/$/, "");
   const anon = clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   if (!url || !anon) {
     return NextResponse.json(
@@ -37,11 +37,11 @@ export async function POST(request: Request) {
     );
   }
 
-  // Direct password grant — avoids some SSR client edge cases
-  const tokenRes = await fetch(`${url.replace(/\/$/, "")}/auth/v1/token?grant_type=password`, {
+  const tokenRes = await fetch(`${url}/auth/v1/token?grant_type=password`, {
     method: "POST",
     headers: {
       apikey: anon,
+      Authorization: `Bearer ${anon}`,
       "Content-Type": "application/json"
     },
     body: JSON.stringify({ email, password }),
@@ -58,14 +58,13 @@ export async function POST(request: Request) {
   };
 
   if (!tokenRes.ok || !tokenJson.access_token || !tokenJson.refresh_token) {
+    const raw =
+      tokenJson.error_description || tokenJson.msg || tokenJson.error || `login ${tokenRes.status}`;
     console.error("[admin login]", tokenRes.status, tokenJson);
     return NextResponse.json(
       {
         ok: false,
-        error: authErrorKo(
-          tokenJson.error_description || tokenJson.msg || tokenJson.error,
-          "이메일 또는 비밀번호가 올바르지 않습니다."
-        )
+        error: authErrorKo(raw, `로그인 실패: ${raw}`)
       },
       { status: 401 }
     );
@@ -86,7 +85,7 @@ export async function POST(request: Request) {
           try {
             cookieStore.set(name, value, options);
           } catch {
-            // attach on response below
+            // response.cookies 에 부착
           }
         });
       }
@@ -101,7 +100,7 @@ export async function POST(request: Request) {
   if (sessionError) {
     console.error("[admin login] setSession", sessionError);
     return NextResponse.json(
-      { ok: false, error: "로그인 세션 저장에 실패했습니다. 다시 시도해 주세요." },
+      { ok: false, error: `세션 저장 실패: ${sessionError.message}` },
       { status: 500 }
     );
   }
