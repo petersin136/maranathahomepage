@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 function EyeIcon({ open }: { open: boolean }) {
@@ -30,7 +30,6 @@ function EyeIcon({ open }: { open: boolean }) {
 }
 
 export default function AdminLoginForm() {
-  const router = useRouter();
   const search = useSearchParams();
   const next = search.get("next") || "/admin";
 
@@ -58,8 +57,9 @@ export default function AdminLoginForm() {
         setError(data.error || "이메일 또는 비밀번호가 올바르지 않습니다.");
         return;
       }
-      router.replace((next.startsWith("/admin") ? next : "/admin") as "/admin");
-      router.refresh();
+      // Full navigation so middleware reliably reads session cookies
+      const dest = next.startsWith("/admin") ? next : "/admin";
+      window.location.assign(dest);
     } catch {
       setError("네트워크 오류가 발생했습니다.");
     } finally {
