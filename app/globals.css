@@ -13,6 +13,8 @@
   --hu-beige-hover: #e8e2de;
   --hu-muted: #898989;
   --hu-body: #5c5c5c;
+  --hu-accent: #a8a09c;
+  --hu-leader: #d8d8d8;
   --hu-cta: #191919;
   --hu-dot-inactive: #464646;
 
@@ -72,4 +74,19 @@ body {
   width: 100%;
   max-width: var(--hu-content);
   margin-inline: auto;
+}
+
+@keyframes hu-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.hu-marquee-track {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: hu-marquee 28s linear infinite;
 }

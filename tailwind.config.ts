@@ -16,6 +16,8 @@ const config: Config = {
           "beige-hover": "#e8e2de",
           muted: "#898989",
           body: "#5c5c5c",
+          accent: "#a8a09c",
+          leader: "#d8d8d8",
           cta: "#191919",
           "dot-inactive": "#464646"
         }
