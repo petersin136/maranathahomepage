@@ -1,13 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import type { Route } from "next";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+
+function safeAdminPath(raw: string | null): Route {
+  if (!raw || !raw.startsWith("/admin") || raw.startsWith("//") || raw.includes("://")) {
+    return "/admin";
+  }
+  return raw as Route;
+}
 
 export default function AdminLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/admin";
+  const next = safeAdminPath(searchParams.get("next"));
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,7 +37,7 @@ export default function AdminLoginForm() {
         setError(data.error || "로그인에 실패했습니다.");
         return;
       }
-      router.replace(next.startsWith("/admin") ? next : "/admin");
+      router.replace(next);
       router.refresh();
     } catch {
       setError("네트워크 오류가 발생했습니다.");
