@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { clsx } from "clsx";
 import type { Artist } from "@/lib/artists/types";
 import type { ServiceItem } from "@/lib/services/types";
+import { priceForArtist } from "@/lib/services/types";
 
 /* ---------- data ---------- */
 
@@ -137,19 +138,6 @@ export default function Booking({
   services: ServiceItem[];
 }) {
   const ALL_SERVICES = services;
-  const servicesByTab = useMemo(() => {
-    const map: Record<ServiceTab, ServiceItem[]> = {
-      Cut: [],
-      Perm: [],
-      Color: [],
-      Clinic: []
-    };
-    for (const s of services) {
-      if (s.category in map) map[s.category as ServiceTab].push(s);
-    }
-    return map;
-  }, [services]);
-
   const [openStep, setOpenStep] = useState<number>(1);
 
   const today = useMemo(todayYmd, []);
@@ -160,6 +148,24 @@ export default function Booking({
   const [serviceTab, setServiceTab] = useState<ServiceTab>("Perm");
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+
+  const servicesByTab = useMemo(() => {
+    const map: Record<ServiceTab, ServiceItem[]> = {
+      Cut: [],
+      Perm: [],
+      Color: [],
+      Clinic: []
+    };
+    for (const s of services) {
+      if (s.category in map) {
+        map[s.category as ServiceTab].push({
+          ...s,
+          price: priceForArtist(s, selectedArtist)
+        });
+      }
+    }
+    return map;
+  }, [services, selectedArtist]);
 
   const [name, setName] = useState("");
   const [gender, setGender] = useState<"W" | "M" | null>(null);
@@ -190,6 +196,11 @@ export default function Booking({
     .map((id) => ALL_SERVICES.find((s) => s.id === id))
     .filter((s): s is (typeof ALL_SERVICES)[number] => Boolean(s));
 
+  const pricedChips = chips.map((c) => ({
+    ...c,
+    price: priceForArtist(c, selectedArtist)
+  }));
+
   const selectedArtistLabel = artists.find((a) => a.id === selectedArtist);
 
   const totalDurationMinutes = chips.reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
@@ -200,7 +211,7 @@ export default function Booking({
     artist: selectedArtistLabel
       ? `${selectedArtistLabel.nameKr} ${selectedArtistLabel.nameEn}`.trim()
       : null,
-    services: chips.map((c) => ({
+    services: pricedChips.map((c) => ({
       name: c.name,
       price: c.price
     })),
@@ -249,7 +260,7 @@ export default function Booking({
     }
 
     const artist = artists.find((a) => a.id === selectedArtist);
-    const services = chips;
+    const services = pricedChips;
     const totalAmount = services.reduce((sum, s) => sum + s.price, 0);
     const depositAmount = depositFromTotal(totalAmount);
     const bookingDate = toIsoDate(selectedDate);
@@ -369,7 +380,7 @@ export default function Booking({
                       <StepService
                         tab={serviceTab}
                         onTab={setServiceTab}
-                        chips={chips}
+                        chips={pricedChips}
                         selected={selectedServices}
                         onToggle={toggleService}
                         servicesByTab={servicesByTab}
@@ -392,9 +403,9 @@ export default function Booking({
                         setAgree={setAgree}
                         receipt={receiptLine}
                         hasReceipt={hasReceipt}
-                        totalAmount={chips.reduce((sum, s) => sum + s.price, 0)}
+                        totalAmount={pricedChips.reduce((sum, s) => sum + s.price, 0)}
                         depositAmount={depositFromTotal(
-                          chips.reduce((sum, s) => sum + s.price, 0)
+                          pricedChips.reduce((sum, s) => sum + s.price, 0)
                         )}
                         privacyAgreed={agree}
                         submitting={submitting}

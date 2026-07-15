@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { requireAdminUser, getSupabaseAdmin } from "@/lib/admin/auth";
 
 const BOOKING_FIELDS =
   "id, booking_date, booking_time, customer_name, artist_name, status, deposit_paid, service_names";
@@ -39,6 +39,9 @@ function weekStartMonday(ymd: string) {
 }
 
 export async function GET() {
+  const auth = await requireAdminUser();
+  if (!auth.ok) return auth.response;
+
   const admin = getSupabaseAdmin();
   const today = todayKst();
   const weekStart = weekStartMonday(today);

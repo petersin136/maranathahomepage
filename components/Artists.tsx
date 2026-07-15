@@ -8,7 +8,7 @@ const PAGE_SIZE = 3;
 
 function InstagramIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
       <rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" strokeWidth="1.4" />
       <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.4" />
       <circle cx="17.5" cy="6.5" r="1" fill="currentColor" />
@@ -85,23 +85,21 @@ export default function Artists({ artists }: { artists: Artist[] }) {
                 ) : null}
               </div>
               <div className="mt-3 flex items-center justify-between gap-3">
-                <p className="min-w-0 truncate font-serif text-[13px] leading-none tracking-[0.02em]">
+                <p className="min-w-0 truncate font-serif text-[16px] leading-none tracking-[0.02em]">
                   <span className="font-medium text-hu-white">
                     {artist.nameKr} {artist.nameEn}
                   </span>{" "}
-                  <span className="font-normal text-[#766f69]">{artist.role}</span>
+                  <span className="text-[14px] font-normal text-[#766f69]">{artist.role}</span>
                 </p>
-                {artist.instagramUrl ? (
-                  <a
-                    href={artist.instagramUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label={`${artist.nameEn} Instagram`}
-                    className="shrink-0 text-hu-white transition-opacity hover:opacity-70"
-                  >
-                    <InstagramIcon />
-                  </a>
-                ) : null}
+                <a
+                  href={artist.instagramUrl || "https://instagram.com/hairup.official"}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={`${artist.nameEn} Instagram`}
+                  className="shrink-0 text-hu-white transition-opacity hover:opacity-70"
+                >
+                  <InstagramIcon />
+                </a>
               </div>
             </li>
           ))}

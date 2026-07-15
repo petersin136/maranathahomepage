@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/admin/auth";
+import { requireAdminUser, getSupabaseAdmin } from "@/lib/admin/auth";
 import type { BookingStatus } from "@/lib/bookings/types";
 
 const STATUSES: BookingStatus[] = [
@@ -14,6 +14,9 @@ export async function GET(
   _request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdminUser();
+  if (!auth.ok) return auth.response;
+
 
   const { id } = await context.params;
   const admin = getSupabaseAdmin();
@@ -29,6 +32,9 @@ export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdminUser();
+  if (!auth.ok) return auth.response;
+
 
   const { id } = await context.params;
   let body: {

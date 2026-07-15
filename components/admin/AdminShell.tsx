@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { clsx } from "clsx";
 
@@ -17,8 +17,15 @@ const NAV: {
   { href: "/admin/services", label: "시술" }
 ];
 
-export default function AdminShell({ children }: { children: React.ReactNode }) {
+export default function AdminShell({
+  children,
+  email
+}: {
+  children: React.ReactNode;
+  email?: string | null;
+}) {
   const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
     const prev = document.documentElement.style.scrollbarGutter;
@@ -28,24 +35,44 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
+  const logout = async () => {
+    await fetch("/api/admin/auth/logout", { method: "POST" });
+    router.replace("/admin/login");
+    router.refresh();
+  };
+
   return (
     <div className="min-h-screen bg-[#faf8f6] text-hu-black">
-      <header className="border-b border-hu-black/10 bg-hu-black text-hu-white">
-        <div className="mx-auto flex max-w-[1200px] items-center justify-between px-8 py-5">
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-hu-black text-hu-white">
+        <div className="mx-auto flex max-w-[1200px] items-center justify-between px-8 py-2.5">
           <div className="flex items-baseline gap-3">
-            <Link href="/admin" className="font-serif text-[22px] tracking-[0.08em]">
+            <Link href="/admin" className="font-serif text-[18px] tracking-[0.08em]">
               HAIR UP
             </Link>
-            <span className="font-sans-kr text-[12px] text-white/45">Admin</span>
+            <span className="font-sans-kr text-[11px] text-white/50">Admin</span>
           </div>
-          <Link
-            href="/"
-            className="font-sans-kr text-[12px] tracking-[0.06em] text-white/70 transition hover:text-white"
-          >
-            홈으로
-          </Link>
+          <div className="flex items-center gap-4">
+            {email ? (
+              <span className="hidden max-w-[220px] truncate font-sans-kr text-[12px] text-white/50 sm:inline">
+                {email}
+              </span>
+            ) : null}
+            <Link
+              href="/"
+              className="font-sans-kr text-[12px] tracking-[0.06em] text-white/75 transition hover:text-white"
+            >
+              홈으로
+            </Link>
+            <button
+              type="button"
+              onClick={logout}
+              className="font-sans-kr text-[12px] tracking-[0.06em] text-white/75 transition hover:text-white"
+            >
+              로그아웃
+            </button>
+          </div>
         </div>
-        <nav className="mx-auto flex max-w-[1200px] gap-6 overflow-x-auto px-8 pb-4">
+        <nav className="mx-auto flex max-w-[1200px] gap-7 overflow-x-auto px-8 pb-2.5">
           {NAV.map((item) => {
             const active = item.exact
               ? pathname === item.href
@@ -55,8 +82,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                 key={item.href}
                 href={item.href}
                 className={clsx(
-                  "whitespace-nowrap font-serif text-[13px] tracking-[0.1em] transition",
-                  active ? "text-white" : "text-white/45 hover:text-white/80"
+                  "whitespace-nowrap font-sans-kr text-[15px] font-medium tracking-[0.02em] transition",
+                  active ? "text-white" : "text-white/70 hover:text-white"
                 )}
               >
                 {item.label}
@@ -65,7 +92,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           })}
         </nav>
       </header>
-      <main className="mx-auto min-h-[calc(100vh-140px)] max-w-[1200px] px-8 py-10">{children}</main>
+      <main className="mx-auto min-h-[calc(100vh-96px)] max-w-[1200px] px-8 py-8">{children}</main>
     </div>
   );
 }

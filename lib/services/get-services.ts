@@ -30,11 +30,22 @@ export async function getServices(): Promise<ServiceItem[]> {
 
     if (error || !data?.length) return SERVICES_FALLBACK;
 
+    const { data: priceRows } = await supabase
+      .from("service_prices")
+      .select("service_id, artist_id, price");
+
+    const pricesMap: Record<string, Record<string, number>> = {};
+    for (const row of priceRows || []) {
+      if (!pricesMap[row.service_id]) pricesMap[row.service_id] = {};
+      pricesMap[row.service_id][row.artist_id] = row.price;
+    }
+
     return data.map((row) => ({
       id: row.id,
       category: row.category,
       name: row.name,
       price: row.price,
+      pricesByArtist: pricesMap[row.id] || undefined,
       durationMinutes: row.duration_minutes ?? 60,
       depositAmount: row.deposit_amount,
       sortOrder: row.sort_order ?? 0

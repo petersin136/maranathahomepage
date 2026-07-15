@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/admin/auth";
+import { requireAdminUser, getSupabaseAdmin } from "@/lib/admin/auth";
 
 export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdminUser();
+  if (!auth.ok) return auth.response;
+
 
   const { id } = await context.params;
   let body: Record<string, unknown>;
@@ -46,6 +49,9 @@ export async function DELETE(
   _request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdminUser();
+  if (!auth.ok) return auth.response;
+
 
   const { id } = await context.params;
   const admin = getSupabaseAdmin();

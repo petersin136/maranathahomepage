@@ -3,6 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { clsx } from "clsx";
 
+type Artist = {
+  id: string;
+  name_kr: string;
+  name_en: string;
+};
+
 type Service = {
   id: string;
   category: string;
@@ -12,11 +18,24 @@ type Service = {
   deposit_amount: number | null;
   sort_order: number;
   is_published: boolean;
+  artist_prices?: Record<string, number>;
 };
 
 const CATEGORIES = ["Cut", "Perm", "Color", "Clinic"] as const;
 
-const emptyForm = {
+type FormState = {
+  id: string;
+  category: string;
+  name: string;
+  price: number;
+  duration_minutes: number;
+  deposit_amount: number;
+  sort_order: number;
+  is_published: boolean;
+  artistPrices: Record<string, number>;
+};
+
+const emptyForm = (): FormState => ({
   id: "",
   category: "Cut",
   name: "",
@@ -24,15 +43,43 @@ const emptyForm = {
   duration_minutes: 60,
   deposit_amount: 0,
   sort_order: 0,
-  is_published: true
-};
+  is_published: true,
+  artistPrices: {}
+});
+
+function priceSummary(s: Service, artists: Artist[]) {
+  const prices = artists
+    .map((a) => s.artist_prices?.[a.id] ?? s.price)
+    .filter((n) => Number.isFinite(n));
+  if (!prices.length) return `${s.price.toLocaleString("ko-KR")}원`;
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  if (min === max) return `${min.toLocaleString("ko-KR")}원`;
+  return `${min.toLocaleString("ko-KR")}~${max.toLocaleString("ko-KR")}원`;
+}
 
 export default function AdminServicesPage() {
   const [services, setServices] = useState<Service[]>([]);
-  const [form, setForm] = useState(emptyForm);
+  const [artists, setArtists] = useState<Artist[]>([]);
+  const [form, setForm] = useState<FormState>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("all");
   const [error, setError] = useState<string | null>(null);
+
+  const loadArtists = () =>
+    fetch("/api/admin/artists")
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || "디자이너 로드 실패");
+        setArtists(
+          (data.artists || []).map((a: Artist & { name_kr: string }) => ({
+            id: a.id,
+            name_kr: a.name_kr,
+            name_en: a.name_en
+          }))
+        );
+      })
+      .catch((e) => setError(e.message));
 
   const load = () =>
     fetch("/api/admin/services")
@@ -44,8 +91,21 @@ export default function AdminServicesPage() {
       .catch((e) => setError(e.message));
 
   useEffect(() => {
+    loadArtists();
     load();
   }, []);
+
+  useEffect(() => {
+    if (!editingId && artists.length) {
+      setForm((f) => {
+        const artistPrices = { ...f.artistPrices };
+        for (const a of artists) {
+          if (artistPrices[a.id] == null) artistPrices[a.id] = f.price || 0;
+        }
+        return { ...f, artistPrices };
+      });
+    }
+  }, [artists, editingId]);
 
   const filtered = useMemo(
     () => (filter === "all" ? services : services.filter((s) => s.category === filter)),
@@ -54,20 +114,41 @@ export default function AdminServicesPage() {
 
   const reset = () => {
     setEditingId(null);
-    setForm(emptyForm);
+    const base = emptyForm();
+    const artistPrices: Record<string, number> = {};
+    for (const a of artists) artistPrices[a.id] = 0;
+    setForm({ ...base, artistPrices });
+  };
+
+  const fillArtistPrices = (base: number, existing?: Record<string, number>) => {
+    const artistPrices: Record<string, number> = {};
+    for (const a of artists) {
+      artistPrices[a.id] = existing?.[a.id] ?? base;
+    }
+    return artistPrices;
   };
 
   const save = async () => {
     setError(null);
+    const artist_prices = artists.map((a) => ({
+      artist_id: a.id,
+      price: Number(form.artistPrices[a.id] ?? form.price) || 0
+    }));
+
+    // 기본가 = 디자이너 단가 중 최소 (목록/폴백용)
+    const prices = artist_prices.map((p) => p.price);
+    const basePrice = prices.length ? Math.min(...prices) : Number(form.price) || 0;
+
     const payload = {
-      ...form,
-      price: Number(form.price) || 0,
+      id: form.id,
+      category: form.category,
+      name: form.name,
+      price: basePrice,
       duration_minutes: Number(form.duration_minutes) || 60,
-      deposit_amount:
-        form.deposit_amount === null || form.deposit_amount === ("" as unknown as number)
-          ? null
-          : Number(form.deposit_amount),
-      sort_order: Number(form.sort_order) || 0
+      deposit_amount: Number(form.deposit_amount) || 0,
+      sort_order: Number(form.sort_order) || 0,
+      is_published: form.is_published,
+      artist_prices
     };
 
     const res = await fetch(
@@ -101,7 +182,9 @@ export default function AdminServicesPage() {
   return (
     <div>
       <h1 className="font-serif text-[32px] tracking-[0.06em]">SERVICES</h1>
-      <p className="mt-2 font-sans-kr text-[13px] text-hu-muted">시술 메뉴 관리</p>
+      <p className="mt-2 font-sans-kr text-[13px] text-hu-muted">
+        시술 메뉴 관리 · 디자이너별 단가
+      </p>
       <p className="mt-4 min-h-[20px] font-sans-kr text-[13px] text-[#9b4a4a]">
         {error || "\u00a0"}
       </p>
@@ -143,7 +226,7 @@ export default function AdminServicesPage() {
                   <p className="font-serif text-[14px] text-hu-accent">{s.category}</p>
                   <p className="mt-1 truncate font-sans-kr text-[14px]">{s.name}</p>
                   <p className="mt-1 font-sans-kr text-[12px] text-hu-muted">
-                    {s.price.toLocaleString("ko-KR")}원 · {s.duration_minutes}분 · 예약금{" "}
+                    {priceSummary(s, artists)} · {s.duration_minutes}분 · 예약금{" "}
                     {s.deposit_amount != null
                       ? `${s.deposit_amount.toLocaleString("ko-KR")}원`
                       : "—"}{" "}
@@ -163,7 +246,8 @@ export default function AdminServicesPage() {
                         duration_minutes: s.duration_minutes,
                         deposit_amount: s.deposit_amount ?? 0,
                         sort_order: s.sort_order,
-                        is_published: s.is_published
+                        is_published: s.is_published,
+                        artistPrices: fillArtistPrices(s.price, s.artist_prices)
                       });
                     }}
                     className="px-3 py-1 font-sans-kr text-[12px] underline"
@@ -213,11 +297,43 @@ export default function AdminServicesPage() {
               value={form.name}
               onChange={(v) => setForm((f) => ({ ...f, name: v }))}
             />
-            <Field
-              label="가격"
-              value={String(form.price)}
-              onChange={(v) => setForm((f) => ({ ...f, price: Number(v) || 0 }))}
-            />
+
+            <div>
+              <p className="font-sans-kr text-[11px] text-hu-muted">디자이너별 가격 (원)</p>
+              <div className="mt-2 space-y-3 border border-hu-black/10 px-3 py-3">
+                {artists.length === 0 ? (
+                  <p className="font-sans-kr text-[12px] text-hu-muted">
+                    등록된 디자이너가 없습니다.
+                  </p>
+                ) : (
+                  artists.map((a) => (
+                    <div key={a.id} className="flex items-center justify-between gap-3">
+                      <span className="shrink-0 font-serif text-[13px]">
+                        {a.name_kr}{" "}
+                        <span className="text-hu-muted">{a.name_en}</span>
+                      </span>
+                      <input
+                        type="number"
+                        min={0}
+                        step={5000}
+                        value={form.artistPrices[a.id] ?? 0}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            artistPrices: {
+                              ...f.artistPrices,
+                              [a.id]: Number(e.target.value) || 0
+                            }
+                          }))
+                        }
+                        className="w-[120px] border-b border-hu-black/30 bg-transparent py-1 text-right font-sans-kr text-[14px] outline-none"
+                      />
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
             <Field
               label="소요시간(분)"
               value={String(form.duration_minutes)}

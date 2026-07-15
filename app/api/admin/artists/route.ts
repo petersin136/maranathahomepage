@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/admin/auth";
+import { requireAdminUser, getSupabaseAdmin } from "@/lib/admin/auth";
 
 export async function GET() {
+  const auth = await requireAdminUser();
+  if (!auth.ok) return auth.response;
+
 
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
@@ -16,6 +19,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireAdminUser();
+  if (!auth.ok) return auth.response;
+
 
   let body: {
     id?: string;
@@ -61,5 +67,19 @@ export async function POST(request: Request) {
   if (error) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
   }
+
+  // 기존 시술에 새 디자이너 단가 시드 (시술 기본가)
+  const { data: services } = await admin.from("services").select("id, price");
+  if (services?.length) {
+    await admin.from("service_prices").upsert(
+      services.map((s) => ({
+        service_id: s.id,
+        artist_id: id,
+        price: s.price
+      })),
+      { onConflict: "service_id,artist_id" }
+    );
+  }
+
   return NextResponse.json({ ok: true, artist: data });
 }
