@@ -2,76 +2,74 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =========================================================
+   HAIR UP design tokens
+   Design frame: 1440px (scaled from 1024px mock PNGs × 1.40625)
+   ========================================================= */
 :root {
-  --font-sans: "Pretendard Variable", "Pretendard", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --hu-black: #000000;
+  --hu-white: #ffffff;
+  --hu-beige: #f4f0ed;
+  --hu-beige-hover: #e8e2de;
+  --hu-muted: #898989;
+  --hu-body: #5c5c5c;
+  --hu-cta: #191919;
+  --hu-dot-inactive: #464646;
+
+  --hu-frame: 1440px;
+  --hu-content: 1178px;
+  --hu-side: 131px;
+
+  --font-serif: var(--font-bodoni), "Times New Roman", serif;
+  --font-sans-en: var(--font-montserrat), system-ui, sans-serif;
+  --font-sans-kr: "Pretendard Variable", "Pretendard", system-ui, sans-serif;
+}
+
+@font-face {
+  font-family: "Pretendard Variable";
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  src: url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable.woff2")
+    format("woff2-variations");
 }
 
 html {
-  font-family: var(--font-sans);
   scroll-behavior: smooth;
 }
 
 body {
   min-height: 100vh;
-  background: radial-gradient(circle at top left, rgba(226, 232, 240, 0.4), transparent 50%),
-    radial-gradient(circle at bottom right, rgba(15, 23, 42, 0.35), transparent 55%);
+  background: var(--hu-white);
+  color: var(--hu-black);
+  font-family: var(--font-sans-kr);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
-}
 
-/* Pretendard font import */
-@font-face {
-  font-family: "Pretendard Variable";
-  font-weight: 100 900;
-  src: url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable.woff2") format("woff2-variations");
-  font-display: swap;
-}
-
-/* Tooltip animation */
-@keyframes tooltipFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
-.tooltip-animate {
-  animation: tooltipFadeIn 0.2s ease-in-out;
+.hu-container {
+  width: 100%;
+  max-width: var(--hu-frame);
+  margin-inline: auto;
+  padding-inline: var(--hu-side);
 }
 
-/* Modal animation */
-@keyframes modalFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes modalZoomIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.modal-backdrop {
-  animation: modalFadeIn 0.2s ease-in-out;
-}
-
-.modal-content {
-  animation: modalZoomIn 0.2s ease-in-out;
+.hu-content {
+  width: 100%;
+  max-width: var(--hu-content);
+  margin-inline: auto;
 }

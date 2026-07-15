@@ -1,12 +1,7 @@
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
-import Section1 from "@/components/Section1";
-import Section2 from "@/components/Section2";
-import Section5 from "@/components/Section5";
-import Section3 from "@/components/Section3";
+import WhyChooseUs from "@/components/WhyChooseUs";
 import Footer from "@/components/Footer";
-import Section4 from "@/components/Section4";
-import PriceList from "@/components/PriceList";
 
 export default function Home() {
   return (
@@ -14,12 +9,13 @@ export default function Home() {
       <Header />
       <main>
         <Hero />
-        <Section1 />
-        <Section2 />
-        <Section5 />
-        <Section3 />
-        <Section4 />
-        <PriceList />
+        <WhyChooseUs />
+        {/* 이후 섹션 시안 수신 후 이어서 추가 */}
+        <div id="pricing" />
+        <div id="artists" />
+        <div id="gallery" />
+        <div id="location" />
+        <div id="booking" />
       </main>
       <Footer />
     </>

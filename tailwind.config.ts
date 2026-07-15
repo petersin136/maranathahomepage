@@ -1,7 +1,6 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  darkMode: ["class", "[data-theme='dark']"],
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -9,14 +8,29 @@ const config: Config = {
   ],
   theme: {
     extend: {
-      fontFamily: {
-        sans: ["var(--font-sans)", "system-ui", "sans-serif"]
-      },
       colors: {
-        surface: {
-          DEFAULT: "#f5f5f5",
-          dark: "#1f1f1f"
+        hu: {
+          black: "#000000",
+          white: "#ffffff",
+          beige: "#f4f0ed",
+          "beige-hover": "#e8e2de",
+          muted: "#898989",
+          body: "#5c5c5c",
+          cta: "#191919",
+          "dot-inactive": "#464646"
         }
+      },
+      fontFamily: {
+        serif: ["var(--font-serif)"],
+        "sans-en": ["var(--font-sans-en)"],
+        "sans-kr": ["var(--font-sans-kr)"]
+      },
+      maxWidth: {
+        frame: "1440px",
+        content: "1178px"
+      },
+      spacing: {
+        side: "131px"
       }
     }
   },

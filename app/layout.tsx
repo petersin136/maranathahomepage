@@ -1,22 +1,30 @@
 import type { Metadata } from "next";
+import { Bodoni_Moda, Montserrat } from "next/font/google";
 import "./globals.css";
 
+const bodoni = Bodoni_Moda({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-bodoni",
+  display: "swap"
+});
+
+const montserrat = Montserrat({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600"],
+  variable: "--font-montserrat",
+  display: "swap"
+});
+
 export const metadata: Metadata = {
-  title: "헤어업 Hair Up",
-  description:
-    "헤어 디자이너와 샵을 위한 카톡·n8n 상담 예약 자동화와 랜딩페이지 마케팅 솔루션"
+  title: "HAIR UP",
+  description: "Discover your new favorite salon."
 };
 
-export default function RootLayout({
-  children
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko" suppressHydrationWarning>
-      <body className="bg-white text-neutral-900 antialiased transition-colors duration-200 dark:bg-neutral-950 dark:text-neutral-100">
-        {children}
-      </body>
+    <html lang="ko" className={`${bodoni.variable} ${montserrat.variable}`}>
+      <body>{children}</body>
     </html>
   );
 }
