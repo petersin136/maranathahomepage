@@ -13,10 +13,34 @@ type ServiceTab = (typeof SERVICE_TABS)[number];
 
 const TIME_SLOTS = {
   Morning: ["10:00", "10:30", "11:00", "11:30"],
-  Afternoon: ["13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"]
+  Afternoon: [
+    "13:00",
+    "13:30",
+    "14:00",
+    "14:30",
+    "15:00",
+    "15:30",
+    "16:00",
+    "16:30",
+    "17:00",
+    "17:30",
+    "18:00",
+    "18:30",
+    "19:00",
+    "19:30",
+    "20:00"
+  ]
 } as const;
 
-const AVAILABLE_TIMES = new Set(["15:00", "16:00", "17:00", "18:00"]);
+const AVAILABLE_TIMES = new Set([
+  "15:00",
+  "15:30",
+  "16:00",
+  "16:30",
+  "17:00",
+  "17:30",
+  "18:00"
+]);
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 const MONTH_NAMES = [
