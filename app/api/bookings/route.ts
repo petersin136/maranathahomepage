@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { CreateBookingBody } from "@/lib/bookings/types";
+import {
+  isStartTimeAvailable,
+  resolveDurationMinutes
+} from "@/lib/booking/overlap";
+import {
+  loadOccupiedIntervals,
+  resolveServiceDurations
+} from "@/lib/booking/occupied";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^\d{1,2}:\d{2}$/;
@@ -93,12 +101,50 @@ export async function POST(request: Request) {
 
   try {
     const supabase = getSupabaseAdmin();
+
+    // 가능 시간 조회와 동일한 겹침 판정 (create_booking)
+    const { durations, error: durError } = await resolveServiceDurations(
+      supabase,
+      serviceIds
+    );
+    if (durError) {
+      console.error("[POST /api/bookings] services", durError);
+      return NextResponse.json(
+        { ok: false, error: "시술 정보를 불러오지 못했습니다." },
+        { status: 500 }
+      );
+    }
+
+    const durationMinutes = resolveDurationMinutes(null, durations);
+    const { intervals, error: occError } = await loadOccupiedIntervals({
+      supabase,
+      artistId,
+      bookingDate
+    });
+    if (occError) {
+      console.error("[POST /api/bookings] occupied", occError);
+      return NextResponse.json(
+        { ok: false, error: "예약 가능 여부를 확인하지 못했습니다." },
+        { status: 500 }
+      );
+    }
+
+    if (!isStartTimeAvailable(bookingTime, durationMinutes, intervals)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "선택하신 시간은 이미 예약되었거나 마감 시간(20:00)을 넘깁니다. 다른 시간을 골라 주세요."
+        },
+        { status: 409 }
+      );
+    }
+
     let { data, error } = await supabase
       .from("bookings")
       .insert(row)
       .select("id, created_at, status, deposit_paid")
       .single();
-
     // customer_request 컬럼이 아직 없으면 admin_memo로 임시 저장
     if (
       error &&

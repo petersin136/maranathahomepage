@@ -5,42 +5,14 @@ import { clsx } from "clsx";
 import type { Artist } from "@/lib/artists/types";
 import type { ServiceItem } from "@/lib/services/types";
 import { priceForArtist } from "@/lib/services/types";
+import { TIME_SLOT_GROUPS } from "@/lib/booking/slots";
 
 /* ---------- data ---------- */
 
 const SERVICE_TABS = ["Cut", "Perm", "Color", "Clinic"] as const;
 type ServiceTab = (typeof SERVICE_TABS)[number];
 
-const TIME_SLOTS = {
-  Morning: ["10:00", "10:30", "11:00", "11:30"],
-  Afternoon: [
-    "13:00",
-    "13:30",
-    "14:00",
-    "14:30",
-    "15:00",
-    "15:30",
-    "16:00",
-    "16:30",
-    "17:00",
-    "17:30",
-    "18:00",
-    "18:30",
-    "19:00",
-    "19:30",
-    "20:00"
-  ]
-} as const;
-
-const AVAILABLE_TIMES = new Set([
-  "15:00",
-  "15:30",
-  "16:00",
-  "16:30",
-  "17:00",
-  "17:30",
-  "18:00"
-]);
+const TIME_SLOTS = TIME_SLOT_GROUPS;
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 const MONTH_NAMES = [
@@ -172,6 +144,8 @@ export default function Booking({
   const [serviceTab, setServiceTab] = useState<ServiceTab>("Perm");
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [availableTimes, setAvailableTimes] = useState<Set<string>>(new Set());
+  const [availableTimesLoading, setAvailableTimesLoading] = useState(false);
 
   const servicesByTab = useMemo(() => {
     const map: Record<ServiceTab, ServiceItem[]> = {
@@ -205,6 +179,50 @@ export default function Booking({
     () => buildCalendar(viewYear, viewMonth, today),
     [viewYear, viewMonth, today]
   );
+
+  // 날짜·디자이너·시술 변경 시 서버와 동일한 겹침 판정으로 가능 시간 조회
+  useEffect(() => {
+    if (!selectedDate || !selectedArtist || selectedServices.length < 1) {
+      setAvailableTimes(new Set());
+      setAvailableTimesLoading(false);
+      return;
+    }
+
+    const bookingDate = toIsoDate(selectedDate);
+    const serviceIds = selectedServices.join(",");
+    const controller = new AbortController();
+    setAvailableTimesLoading(true);
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/bookings/available-times?date=${encodeURIComponent(bookingDate)}&artistId=${encodeURIComponent(selectedArtist)}&serviceIds=${encodeURIComponent(serviceIds)}`,
+          { signal: controller.signal }
+        );
+        const data = (await res.json()) as {
+          ok?: boolean;
+          times?: string[];
+        };
+        if (!res.ok || !data.ok || !Array.isArray(data.times)) {
+          setAvailableTimes(new Set());
+          return;
+        }
+        const next = new Set(data.times);
+        setAvailableTimes(next);
+        setSelectedTime((cur) => (cur && next.has(cur) ? cur : null));
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        setAvailableTimes(new Set());
+      } finally {
+        if (!controller.signal.aborted) setAvailableTimesLoading(false);
+      }
+    }, 150);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [selectedDate, selectedArtist, selectedServices]);
 
   const canGoPrevMonth =
     viewYear > today.year || (viewYear === today.year && viewMonth > today.month);
@@ -411,7 +429,12 @@ export default function Booking({
                       />
                     )}
                     {step.id === 4 && (
-                      <StepTime selected={selectedTime} onSelect={setSelectedTime} />
+                      <StepTime
+                        selected={selectedTime}
+                        onSelect={setSelectedTime}
+                        availableTimes={availableTimes}
+                        loading={availableTimesLoading}
+                      />
                     )}
                     {step.id === 5 && (
                       <StepGuest
@@ -668,19 +691,26 @@ function StepService({
 
 function StepTime({
   selected,
-  onSelect
+  onSelect,
+  availableTimes,
+  loading
 }: {
   selected: string | null;
   onSelect: (t: string) => void;
+  availableTimes: Set<string>;
+  loading: boolean;
 }) {
   return (
     <div className="space-y-8">
+      {loading && (
+        <p className="font-sans-kr text-[13px] text-hu-muted">가능 시간을 확인하는 중…</p>
+      )}
       {(Object.keys(TIME_SLOTS) as (keyof typeof TIME_SLOTS)[]).map((period) => (
         <div key={period}>
           <p className="font-serif text-[16px] text-hu-black">{period}</p>
           <div className="mt-4 grid grid-cols-4 gap-x-8 gap-y-3">
             {TIME_SLOTS[period].map((time) => {
-              const available = AVAILABLE_TIMES.has(time);
+              const available = availableTimes.has(time);
               const active = selected === time;
               return (
                 <button
