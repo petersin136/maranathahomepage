@@ -1,8 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { clsx } from "clsx";
+import BookingActionButtons from "@/components/admin/BookingActionButtons";
+import BookingConfirmModal from "@/components/admin/BookingConfirmModal";
+import { cancelReasonLabel } from "@/lib/admin/booking-labels";
+import { useBookingActions } from "@/lib/admin/useBookingActions";
 
 type CalBooking = {
   id: string;
@@ -13,6 +17,7 @@ type CalBooking = {
   customer_name: string;
   status: string;
   service_names: string[] | null;
+  cancel_reason: string | null;
 };
 
 type Artist = { id: string; name_kr: string; name_en: string };
@@ -43,9 +48,16 @@ function buildMonthCells(year: number, monthIndex: number) {
     const date = `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     cells.push({ date, day: d });
   }
-  // Always 6 weeks so month navigation never changes panel height
   while (cells.length < 42) cells.push({ date: null, day: null });
   return cells;
+}
+
+function isInactiveStatus(status: string) {
+  return status === "cancelled" || status === "noshow";
+}
+
+function activeCount(list: CalBooking[] | undefined) {
+  return (list || []).filter((b) => !isInactiveStatus(b.status)).length;
 }
 
 export default function AdminCalendarPage() {
@@ -57,7 +69,7 @@ export default function AdminCalendarPage() {
   const [artists, setArtists] = useState<Artist[]>([]);
   const [bookings, setBookings] = useState<CalBooking[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(toYmd(now));
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const cells = useMemo(() => buildMonthCells(year, month), [year, month]);
   const weekStart = useMemo(() => {
@@ -78,6 +90,21 @@ export default function AdminCalendarPage() {
     return map;
   }, [bookings]);
 
+  const loadBookings = useCallback(async () => {
+    const { from, to } = monthRange(year, month);
+    const qs = new URLSearchParams({ from, to });
+    if (artistId) qs.set("artistId", artistId);
+    setLoadError(null);
+    const res = await fetch(`/api/admin/calendar?${qs}`);
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || "로드 실패");
+    setBookings(data.bookings);
+  }, [year, month, artistId]);
+
+  const actions = useBookingActions({
+    onSuccess: () => loadBookings()
+  });
+
   useEffect(() => {
     fetch("/api/admin/artists")
       .then((r) => r.json())
@@ -88,20 +115,14 @@ export default function AdminCalendarPage() {
   }, []);
 
   useEffect(() => {
-    const { from, to } = monthRange(year, month);
-    const qs = new URLSearchParams({ from, to });
-    if (artistId) qs.set("artistId", artistId);
-    setError(null);
-    fetch(`/api/admin/calendar?${qs}`)
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok || !data.ok) throw new Error(data.error || "로드 실패");
-        setBookings(data.bookings);
-      })
-      .catch((e) => setError(e.message));
-  }, [year, month, artistId]);
+    loadBookings().catch((e) => {
+      console.error("[calendar] load", e);
+      setLoadError(e instanceof Error ? e.message : "로드 실패");
+    });
+  }, [loadBookings]);
 
   const selectedList = selectedDate ? byDate.get(selectedDate) || [] : [];
+  const error = actions.error || loadError;
 
   const shiftMonth = (delta: number) => {
     const d = new Date(year, month + delta, 1);
@@ -182,7 +203,7 @@ export default function AdminCalendarPage() {
               </div>
             ))}
             {cells.map((cell, i) => {
-              const count = cell.date ? byDate.get(cell.date)?.length || 0 : 0;
+              const count = cell.date ? activeCount(byDate.get(cell.date)) : 0;
               const selected = cell.date && cell.date === selectedDate;
               const inWeek = i >= weekStart && i < weekStart + 7;
               const dimmed = view === "week" && !inWeek;
@@ -225,26 +246,57 @@ export default function AdminCalendarPage() {
             {selectedList.length === 0 ? (
               <li className="font-sans-kr text-[13px] text-hu-muted">예약 없음</li>
             ) : (
-              selectedList.map((b) => (
-                <li key={b.id}>
-                  <Link
-                    href={`/admin/bookings/${b.id}`}
-                    className="block border border-hu-black/10 px-4 py-3 transition hover:bg-hu-beige/50"
+              selectedList.map((b) => {
+                const cancelled = b.status === "cancelled";
+                const reason = cancelReasonLabel(b.cancel_reason);
+                return (
+                  <li
+                    key={b.id}
+                    className={clsx(
+                      "flex items-start justify-between gap-3 border border-hu-black/10 px-4 py-3",
+                      cancelled && "opacity-40"
+                    )}
                   >
-                    <p className="font-serif text-[14px]">
-                      {b.booking_time} · {b.customer_name}
-                    </p>
-                    <p className="mt-1 font-sans-kr text-[12px] text-hu-muted">
-                      {b.artist_name || "—"} · {(b.service_names || []).join(", ") || "—"} ·{" "}
-                      {b.status}
-                    </p>
-                  </Link>
-                </li>
-              ))
+                    <div className="min-w-0 flex-1">
+                      <p className="font-serif text-[14px]">
+                        <Link
+                          href={`/admin/bookings/${b.id}`}
+                          className="underline-offset-2 hover:underline"
+                        >
+                          {b.booking_time} · {b.customer_name}
+                        </Link>
+                      </p>
+                      <p className="mt-1 font-sans-kr text-[12px] text-hu-muted">
+                        {b.artist_name || "—"} · {(b.service_names || []).join(", ") || "—"} ·{" "}
+                        {b.status}
+                      </p>
+                      {cancelled && reason ? (
+                        <p className="mt-1 font-sans-kr text-[11px] text-hu-muted">{reason}</p>
+                      ) : null}
+                    </div>
+                    <BookingActionButtons
+                      booking={b}
+                      busy={actions.busyId === b.id}
+                      onCancel={actions.openCancel}
+                      onDelete={actions.openDelete}
+                    />
+                  </li>
+                );
+              })
             )}
           </ul>
         </div>
       </div>
+
+      {actions.confirm ? (
+        <BookingConfirmModal
+          action={actions.confirm.action}
+          booking={actions.confirm.booking}
+          busy={!!actions.busyId}
+          onClose={actions.closeConfirm}
+          onConfirm={actions.runConfirm}
+        />
+      ) : null}
     </div>
   );
 }

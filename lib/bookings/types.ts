@@ -23,6 +23,8 @@ export type BookingRow = {
   customer_request: string | null;
   privacy_agreed: boolean;
   status: BookingStatus;
+  cancel_reason: string | null;
+  duration_minutes: number | null;
   deposit_paid: boolean;
   admin_memo: string | null;
   total_amount: number | null;

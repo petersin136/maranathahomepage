@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
-import { requireAdminUser, getSupabaseAdmin } from "@/lib/admin/auth";
+import { requireAdminUser, requireSupabaseAdmin } from "@/lib/admin/auth";
 
 export async function GET(request: Request) {
   const auth = await requireAdminUser();
   if (!auth.ok) return auth.response;
 
+  const db = requireSupabaseAdmin();
+  if (!db.ok) return db.response;
 
   const { searchParams } = new URL(request.url);
   const from = searchParams.get("from");
@@ -18,11 +20,10 @@ export async function GET(request: Request) {
     );
   }
 
-  const admin = getSupabaseAdmin();
-  let query = admin
+  let query = db.admin
     .from("bookings")
     .select(
-      "id, booking_date, booking_time, artist_id, artist_name, customer_name, status, service_names"
+      "id, booking_date, booking_time, artist_id, artist_name, customer_name, status, service_names, cancel_reason"
     )
     .gte("booking_date", from)
     .lte("booking_date", to)
@@ -33,6 +34,7 @@ export async function GET(request: Request) {
 
   const { data, error } = await query;
   if (error) {
+    console.error("[GET /api/admin/calendar]", error);
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
   return NextResponse.json({ ok: true, bookings: data ?? [] });

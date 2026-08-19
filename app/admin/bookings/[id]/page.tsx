@@ -2,27 +2,23 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { clsx } from "clsx";
+import BookingActionButtons from "@/components/admin/BookingActionButtons";
+import BookingConfirmModal from "@/components/admin/BookingConfirmModal";
+import { BOOKING_STATUS_OPTIONS, cancelReasonLabel } from "@/lib/admin/booking-labels";
+import { useBookingActions } from "@/lib/admin/useBookingActions";
 import type { BookingRow, BookingStatus } from "@/lib/bookings/types";
-
-const STATUS_OPTIONS: { value: BookingStatus; label: string }[] = [
-  { value: "pending", label: "대기" },
-  { value: "confirmed", label: "확정" },
-  { value: "completed", label: "완료" },
-  { value: "cancelled", label: "취소" },
-  { value: "noshow", label: "노쇼" }
-];
 
 export default function AdminBookingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [booking, setBooking] = useState<BookingRow | null>(null);
   const [memo, setMemo] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const load = () => {
+  const load = useCallback(() => {
     fetch(`/api/admin/bookings/${id}`)
       .then(async (res) => {
         const data = await res.json();
@@ -30,17 +26,33 @@ export default function AdminBookingDetailPage() {
         setBooking(data.booking);
         setMemo(data.booking.admin_memo || "");
       })
-      .catch((e) => setError(e.message));
-  };
+      .catch((e) => {
+        console.error("[booking detail] load", e);
+        setLoadError(e instanceof Error ? e.message : "로드 실패");
+      });
+  }, [id]);
+
+  const actions = useBookingActions({
+    onSuccess: async (result) => {
+      if (result.action === "delete") {
+        router.push("/admin/bookings");
+        return;
+      }
+      if (result.booking) {
+        setBooking(result.booking);
+        setMemo(result.booking.admin_memo || "");
+      }
+    }
+  });
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [load]);
 
   const patch = async (body: Record<string, unknown>) => {
     setSaving(true);
-    setError(null);
+    actions.setError(null);
+    setLoadError(null);
     try {
       const res = await fetch(`/api/admin/bookings/${id}`, {
         method: "PATCH",
@@ -53,11 +65,15 @@ export default function AdminBookingDetailPage() {
       setMemo(data.booking.admin_memo || "");
       router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "저장 실패");
+      console.error("[booking detail] patch", e);
+      setLoadError(e instanceof Error ? e.message : "저장 실패");
     } finally {
       setSaving(false);
     }
   };
+
+  const error = actions.error || loadError;
+  const busy = saving || !!actions.busyId;
 
   if (!booking && !error) {
     return <p className="font-sans-kr text-[13px] text-hu-muted">불러오는 중…</p>;
@@ -66,6 +82,8 @@ export default function AdminBookingDetailPage() {
   if (!booking) {
     return <p className="font-sans-kr text-[13px] text-[#9b4a4a]">{error}</p>;
   }
+
+  const reason = cancelReasonLabel(booking.cancel_reason);
 
   return (
     <div className="max-w-[720px]">
@@ -76,7 +94,7 @@ export default function AdminBookingDetailPage() {
 
       {error ? <p className="mt-4 font-sans-kr text-[13px] text-[#9b4a4a]">{error}</p> : null}
 
-      <div className="mt-8 space-y-6 bg-hu-white px-8 py-8">
+      <div className={clsx("mt-8 space-y-6 bg-hu-white px-8 py-8", booking.status === "cancelled" && "opacity-70")}>
         <Row label="날짜" value={booking.booking_date} />
         <Row label="시간" value={booking.booking_time} />
         <Row label="디자이너" value={booking.artist_name || booking.artist_id} />
@@ -113,16 +131,26 @@ export default function AdminBookingDetailPage() {
               : "—"
           }
         />
+        {booking.status === "cancelled" ? (
+          <Row label="취소 사유" value={reason || "—"} />
+        ) : null}
 
         <div>
           <p className="font-serif text-[12px] tracking-[0.1em] text-hu-accent">STATUS</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {STATUS_OPTIONS.map((opt) => (
+            {BOOKING_STATUS_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
-                disabled={saving}
-                onClick={() => patch({ status: opt.value })}
+                disabled={busy}
+                onClick={() => {
+                  if (opt.value === booking.status) return;
+                  if (opt.value === "cancelled") {
+                    actions.openCancel(booking);
+                    return;
+                  }
+                  void actions.updateStatus(booking, opt.value as BookingStatus);
+                }}
                 className={clsx(
                   "px-4 py-2 font-sans-kr text-[12px]",
                   booking.status === opt.value
@@ -143,7 +171,7 @@ export default function AdminBookingDetailPage() {
           </div>
           <button
             type="button"
-            disabled={saving}
+            disabled={busy}
             onClick={() => patch({ deposit_paid: !booking.deposit_paid })}
             className={clsx(
               "px-5 py-2 font-sans-kr text-[13px]",
@@ -164,14 +192,34 @@ export default function AdminBookingDetailPage() {
           />
           <button
             type="button"
-            disabled={saving}
+            disabled={busy}
             onClick={() => patch({ admin_memo: memo })}
             className="mt-3 bg-hu-black px-5 py-2 font-sans-kr text-[13px] text-white disabled:bg-[#bcbcbc]"
           >
             {saving ? "저장 중..." : "메모 저장"}
           </button>
         </div>
+
+        <div className="flex items-center justify-end border-t border-hu-black/10 pt-6">
+          <BookingActionButtons
+            booking={booking}
+            busy={busy}
+            layout="row"
+            onCancel={actions.openCancel}
+            onDelete={actions.openDelete}
+          />
+        </div>
       </div>
+
+      {actions.confirm ? (
+        <BookingConfirmModal
+          action={actions.confirm.action}
+          booking={actions.confirm.booking}
+          busy={!!actions.busyId}
+          onClose={actions.closeConfirm}
+          onConfirm={actions.runConfirm}
+        />
+      ) : null}
     </div>
   );
 }

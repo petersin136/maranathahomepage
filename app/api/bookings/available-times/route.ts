@@ -86,9 +86,11 @@ export async function GET(request: Request) {
       {
         ok: false,
         error:
-          err instanceof Error && err.message.includes("not set")
-            ? "서버에 Supabase 환경 변수가 설정되지 않았습니다."
-            : "가능 시간 조회 중 오류가 발생했습니다."
+          err instanceof Error && err.message === "SUPABASE_SERVICE_ROLE_KEY missing"
+            ? "SUPABASE_SERVICE_ROLE_KEY missing"
+            : err instanceof Error && err.message.includes("not set")
+              ? "서버에 Supabase 환경 변수가 설정되지 않았습니다."
+              : "가능 시간 조회 중 오류가 발생했습니다."
       },
       { status: 500 }
     );
