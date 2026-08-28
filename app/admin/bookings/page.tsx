@@ -1,10 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { clsx } from "clsx";
 import BookingActionButtons from "@/components/admin/BookingActionButtons";
 import BookingConfirmModal from "@/components/admin/BookingConfirmModal";
+import {
+  parseRequestLanguage,
+  resolveCustomerRequestText,
+  splitIntlPhone
+} from "@/lib/admin/booking-display";
 import { BOOKING_STATUS_OPTIONS, cancelReasonLabel } from "@/lib/admin/booking-labels";
 import { useBookingActions } from "@/lib/admin/useBookingActions";
 import type { BookingRow, BookingStatus } from "@/lib/bookings/types";
@@ -17,6 +23,7 @@ const TABS = [
 ] as const;
 
 export default function AdminBookingsPage() {
+  const router = useRouter();
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("pending");
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -94,25 +101,75 @@ export default function AdminBookingsPage() {
               bookings.map((b) => {
                 const cancelled = b.status === "cancelled";
                 const reason = cancelReasonLabel(b.cancel_reason);
+                const requestText = resolveCustomerRequestText(
+                  b.customer_request,
+                  b.admin_memo
+                );
+                const { lang, body: requestBody } = parseRequestLanguage(requestText);
+                const phoneParts = splitIntlPhone(b.customer_phone);
                 return (
                   <tr
                     key={b.id}
+                    role="link"
+                    tabIndex={0}
+                    onClick={() => router.push(`/admin/bookings/${b.id}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        router.push(`/admin/bookings/${b.id}`);
+                      }
+                    }}
                     className={clsx(
-                      "border-b border-hu-black/5 hover:bg-hu-beige/40",
+                      "cursor-pointer border-b border-hu-black/5 hover:bg-hu-beige/40",
                       cancelled && "opacity-40"
                     )}
                   >
                     <td className="px-4 py-3">
-                      <Link href={`/admin/bookings/${b.id}`} className="underline-offset-2 hover:underline">
+                      <Link
+                        href={`/admin/bookings/${b.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="underline-offset-2 hover:underline"
+                      >
                         {b.booking_date}
                       </Link>
                     </td>
                     <td className="px-4 py-3">{b.booking_time}</td>
-                    <td className="px-4 py-3">{b.customer_name}</td>
-                    <td className="px-4 py-3">{b.customer_phone}</td>
+                    <td className="max-w-[200px] px-4 py-3">
+                      <div className="flex min-w-0 items-baseline gap-1.5">
+                        <span className="truncate">{b.customer_name}</span>
+                        {lang ? (
+                          <span className="shrink-0 font-serif text-[10px] tracking-[0.08em] text-hu-muted">
+                            {lang}
+                          </span>
+                        ) : null}
+                      </div>
+                      {requestBody ? (
+                        <p
+                          className="mt-1 truncate text-[12px] text-hu-muted"
+                          title={requestBody}
+                        >
+                          {requestBody}
+                        </p>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {phoneParts.countryCode ? (
+                        <>
+                          <span className="text-hu-muted">{phoneParts.countryCode}</span>
+                          {phoneParts.national ? (
+                            <>
+                              {" "}
+                              <span>{phoneParts.national}</span>
+                            </>
+                          ) : null}
+                        </>
+                      ) : (
+                        b.customer_phone
+                      )}
+                    </td>
                     <td className="px-4 py-3">{b.artist_name || b.artist_id}</td>
                     <td className="px-4 py-3">{(b.service_names || []).join(", ") || "—"}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <select
                         value={b.status}
                         disabled={actions.busyId === b.id}
@@ -133,7 +190,7 @@ export default function AdminBookingsPage() {
                       {cancelled ? reason || "—" : "—"}
                     </td>
                     <td className="px-4 py-3">{b.deposit_paid ? "Y" : "N"}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <BookingActionButtons
                         booking={b}
                         busy={actions.busyId === b.id}
