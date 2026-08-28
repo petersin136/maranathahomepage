@@ -29,6 +29,9 @@ export type DashboardData = {
 const BOOKING_FIELDS =
   "id, booking_date, booking_time, customer_name, artist_name, status, deposit_paid, service_names";
 
+/** Exclude cancelled / noshow from schedule lists & TODAY count (DB value is `noshow`). */
+const EXCLUDED_STATUSES = "(cancelled,noshow)";
+
 export function todayKst() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",
@@ -81,6 +84,7 @@ export async function fetchDashboardData(): Promise<DashboardData> {
       .from("bookings")
       .select(BOOKING_FIELDS)
       .eq("booking_date", today)
+      .not("status", "in", EXCLUDED_STATUSES)
       .order("booking_time", { ascending: true }),
     admin
       .from("bookings")
@@ -88,6 +92,7 @@ export async function fetchDashboardData(): Promise<DashboardData> {
       .gte("booking_date", weekStart)
       .lte("booking_date", weekEnd)
       .neq("booking_date", today)
+      .not("status", "in", EXCLUDED_STATUSES)
       .order("booking_date", { ascending: true })
       .order("booking_time", { ascending: true }),
     admin
@@ -96,6 +101,7 @@ export async function fetchDashboardData(): Promise<DashboardData> {
       .gte("booking_date", monthStart)
       .lte("booking_date", monthEnd)
       .or(`booking_date.lt.${weekStart},booking_date.gt.${weekEnd}`)
+      .not("status", "in", EXCLUDED_STATUSES)
       .order("booking_date", { ascending: true })
       .order("booking_time", { ascending: true }),
     admin
