@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useMemo, useState } from "react";
 import type { Artist } from "@/lib/artists/types";
 
@@ -75,12 +74,11 @@ export default function Artists({ artists }: { artists: Artist[] }) {
             <li key={artist.id} className="group">
               <div className="relative aspect-[360/408] overflow-hidden bg-[#191919]">
                 {artist.imageUrl ? (
-                  <Image
+                  <img
                     src={artist.imageUrl}
                     alt={`${artist.nameKr} ${artist.nameEn}`}
-                    fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                    sizes="(max-width: 768px) 100vw, 360px"
+                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                    decoding="async"
                   />
                 ) : null}
               </div>

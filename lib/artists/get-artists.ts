@@ -1,13 +1,20 @@
 import { getSupabase } from "@/lib/supabase/client";
 import type { Artist } from "@/lib/artists/types";
 
+export const ARTIST_IMAGES: Record<string, string> = {
+  jay: "/artists/jay.png",
+  seoa: "/artists/seoa.jpg",
+  kai: "/artists/kai.jpg",
+  yumi: "/artists/yumi.jpg"
+};
+
 export const ARTISTS_FALLBACK: Artist[] = [
   {
     id: "jay",
     nameKr: "재이",
     nameEn: "JAY",
     role: "Owner & Senior Stylist",
-    imageUrl: null,
+    imageUrl: ARTIST_IMAGES.jay,
     instagramUrl: "https://instagram.com",
     sortOrder: 0
   },
@@ -16,7 +23,7 @@ export const ARTISTS_FALLBACK: Artist[] = [
     nameKr: "서아",
     nameEn: "SEOA",
     role: "Stylist",
-    imageUrl: null,
+    imageUrl: ARTIST_IMAGES.seoa,
     instagramUrl: "https://instagram.com",
     sortOrder: 1
   },
@@ -25,7 +32,7 @@ export const ARTISTS_FALLBACK: Artist[] = [
     nameKr: "카이",
     nameEn: "KAI",
     role: "Stylist",
-    imageUrl: null,
+    imageUrl: ARTIST_IMAGES.kai,
     instagramUrl: "https://instagram.com",
     sortOrder: 2
   },
@@ -34,11 +41,15 @@ export const ARTISTS_FALLBACK: Artist[] = [
     nameKr: "유미",
     nameEn: "YUMI",
     role: "Stylist",
-    imageUrl: null,
+    imageUrl: ARTIST_IMAGES.yumi,
     instagramUrl: "https://instagram.com",
     sortOrder: 3
   }
 ];
+
+function resolveArtistImage(id: string, imageUrl: string | null): string | null {
+  return imageUrl || ARTIST_IMAGES[id] || null;
+}
 
 export async function getArtists(): Promise<Artist[]> {
   const supabase = getSupabase();
@@ -58,7 +69,7 @@ export async function getArtists(): Promise<Artist[]> {
       nameKr: row.name_kr,
       nameEn: row.name_en,
       role: row.role,
-      imageUrl: row.image_url,
+      imageUrl: resolveArtistImage(row.id, row.image_url),
       instagramUrl: row.instagram_url,
       sortOrder: row.sort_order ?? 0
     }));

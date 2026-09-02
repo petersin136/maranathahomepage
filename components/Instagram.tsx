@@ -1,18 +1,18 @@
-import Image from "next/image";
-
 /**
  * Instagram feed — 2×4 portrait grid.
- * posts: 이미지 URL 배열을 나중에 API/Supabase로 교체 가능.
- * 지금은 8개 플레이스홀더(검정).
+ * 이미지: public/instagram/01–08.jpg (원본, 압축 없음)
  */
-type InstaPost = { id: string; src: string | null; href: string; alt: string };
+type InstaPost = { id: string; src: string; href: string; alt: string };
 
-const POSTS: InstaPost[] = Array.from({ length: 8 }).map((_, i) => ({
-  id: `insta-${i + 1}`,
-  src: null,
-  href: "https://instagram.com/hairup.official",
-  alt: `Instagram post ${i + 1}`
-}));
+const POSTS: InstaPost[] = Array.from({ length: 8 }).map((_, i) => {
+  const n = String(i + 1).padStart(2, "0");
+  return {
+    id: `insta-${n}`,
+    src: `/instagram/${n}.jpg`,
+    href: "https://instagram.com/hairup.official",
+    alt: `Instagram post ${i + 1}`
+  };
+});
 
 export default function Instagram() {
   return (
@@ -45,15 +45,12 @@ export default function Instagram() {
               className="group relative block aspect-[4/5] overflow-hidden bg-hu-black"
               aria-label={post.alt}
             >
-              {post.src ? (
-                <Image
-                  src={post.src}
-                  alt={post.alt}
-                  fill
-                  className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                  sizes="(max-width: 640px) 50vw, 25vw"
-                />
-              ) : null}
+              <img
+                src={post.src}
+                alt={post.alt}
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                decoding="async"
+              />
             </a>
           ))}
         </div>

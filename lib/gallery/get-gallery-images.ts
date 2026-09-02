@@ -9,11 +9,19 @@ const SLOTS: GallerySlot[] = [
   "bottom-right"
 ];
 
-/** 시안 레이아웃용 기본 슬롯 (이미지 없으면 어두운 플레이스홀더) */
+export const GALLERY_IMAGES: Record<GallerySlot, string> = {
+  "top-left": "/gallery/top-left.jpg",
+  "top-right": "/gallery/top-right.png",
+  center: "/gallery/center.jpg",
+  "bottom-left": "/gallery/bottom-left.jpg",
+  "bottom-right": "/gallery/bottom-right.png"
+};
+
+/** 시안 레이아웃용 기본 슬롯 */
 export const GALLERY_FALLBACK: GalleryImage[] = SLOTS.map((slot, index) => ({
   id: `fallback-${slot}`,
   slot,
-  src: null,
+  src: GALLERY_IMAGES[slot],
   alt: `Selected look ${index + 1}`,
   sortOrder: index
 }));
@@ -26,10 +34,11 @@ function normalizeRow(row: {
   sort_order: number | null;
 }): GalleryImage | null {
   if (!SLOTS.includes(row.slot as GallerySlot)) return null;
+  const slot = row.slot as GallerySlot;
   return {
     id: row.id,
-    slot: row.slot as GallerySlot,
-    src: row.src,
+    slot,
+    src: row.src || GALLERY_IMAGES[slot],
     alt: row.alt ?? "",
     sortOrder: row.sort_order ?? 0
   };
@@ -38,7 +47,7 @@ function normalizeRow(row: {
 /**
  * 갤러리 이미지 조회.
  * - Supabase 설정 + gallery_images 데이터가 있으면 로드
- * - 아니면 5슬롯 플레이스홀더 유지 (레이아웃 고정)
+ * - 아니면 5슬롯 로컬 원본 유지 (레이아웃 고정)
  */
 export async function getGalleryImages(): Promise<GalleryImage[]> {
   const supabase = getSupabase();
@@ -65,7 +74,7 @@ export async function getGalleryImages(): Promise<GalleryImage[]> {
         bySlot.get(slot) ?? {
           id: `fallback-${slot}`,
           slot,
-          src: null,
+          src: GALLERY_IMAGES[slot],
           alt: `Selected look ${index + 1}`,
           sortOrder: index
         }

@@ -1,4 +1,3 @@
-import Image from "next/image";
 import type { GalleryImage, GallerySlot } from "@/lib/gallery/types";
 
 /**
@@ -14,12 +13,11 @@ function SlotMedia({ image }: { image?: GalleryImage }) {
   return (
     <div className="relative h-full w-full overflow-hidden bg-[#191919]">
       {image?.src ? (
-        <Image
+        <img
           src={image.src}
           alt={image.alt || "Gallery look"}
-          fill
-          className="object-cover transition-transform duration-500 hover:scale-[1.03]"
-          sizes="(max-width: 1024px) 50vw, 40vw"
+          className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 hover:scale-[1.03]"
+          decoding="async"
         />
       ) : null}
     </div>
