@@ -1,0 +1,25 @@
+/* MobileHome 전용 — PC 트리에는 import 되지 않음 */
+
+.m-artboard #booking {
+  padding-left: 20px !important;
+  padding-right: 20px !important;
+  padding-top: 64px !important;
+  padding-bottom: 64px !important;
+}
+
+.m-artboard #booking > div {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 350px;
+  max-width: 100%;
+  margin-inline: auto;
+  gap: 40px !important;
+}
+
+.m-artboard #booking h2 {
+  font-size: 32px !important;
+}
+
+.m-artboard #booking .grid-cols-4 {
+  column-gap: 8px !important;
+}

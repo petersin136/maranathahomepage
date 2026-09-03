@@ -9,7 +9,7 @@ const POSTS: InstaPost[] = Array.from({ length: 8 }).map((_, i) => {
   return {
     id: `insta-${n}`,
     src: `/instagram/${n}.jpg`,
-    href: "https://instagram.com/hairup.official",
+    href: "https://www.instagram.com/hairup_official/",
     alt: `Instagram post ${i + 1}`
   };
 });
@@ -26,7 +26,7 @@ export default function Instagram() {
             INSTAGRAM
           </h2>
           <a
-            href="https://instagram.com/hairup.official"
+            href="https://www.instagram.com/hairup_official/"
             target="_blank"
             rel="noreferrer"
             className="font-serif text-[15px] tracking-[0.04em] text-hu-black transition-opacity hover:opacity-70"

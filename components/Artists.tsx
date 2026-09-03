@@ -90,7 +90,7 @@ export default function Artists({ artists }: { artists: Artist[] }) {
                   <span className="text-[14px] font-normal text-[#766f69]">{artist.role}</span>
                 </p>
                 <a
-                  href={artist.instagramUrl || "https://instagram.com/hairup.official"}
+                  href={artist.instagramUrl || "https://www.instagram.com/hairup_official/"}
                   target="_blank"
                   rel="noreferrer"
                   aria-label={`${artist.nameEn} Instagram`}

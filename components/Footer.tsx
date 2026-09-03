@@ -7,7 +7,7 @@ const HOURS = [
 ] as const;
 
 const SOCIAL = [
-  { label: "INSTAGRAM", href: "https://instagram.com/hairup.official" },
+  { label: "INSTAGRAM", href: "https://www.instagram.com/hairup_official/" },
   { label: "FACEBOOK", href: "https://facebook.com" },
   { label: "YOUTUBE", href: "https://youtube.com" }
 ] as const;

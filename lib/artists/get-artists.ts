@@ -15,7 +15,7 @@ export const ARTISTS_FALLBACK: Artist[] = [
     nameEn: "JAY",
     role: "Owner & Senior Stylist",
     imageUrl: ARTIST_IMAGES.jay,
-    instagramUrl: "https://instagram.com",
+    instagramUrl: "https://www.instagram.com/hairup_official/",
     sortOrder: 0
   },
   {
@@ -24,7 +24,7 @@ export const ARTISTS_FALLBACK: Artist[] = [
     nameEn: "SEOA",
     role: "Stylist",
     imageUrl: ARTIST_IMAGES.seoa,
-    instagramUrl: "https://instagram.com",
+    instagramUrl: "https://www.instagram.com/hairup_official/",
     sortOrder: 1
   },
   {
@@ -33,7 +33,7 @@ export const ARTISTS_FALLBACK: Artist[] = [
     nameEn: "KAI",
     role: "Stylist",
     imageUrl: ARTIST_IMAGES.kai,
-    instagramUrl: "https://instagram.com",
+    instagramUrl: "https://www.instagram.com/hairup_official/",
     sortOrder: 2
   },
   {
@@ -42,7 +42,7 @@ export const ARTISTS_FALLBACK: Artist[] = [
     nameEn: "YUMI",
     role: "Stylist",
     imageUrl: ARTIST_IMAGES.yumi,
-    instagramUrl: "https://instagram.com",
+    instagramUrl: "https://www.instagram.com/hairup_official/",
     sortOrder: 3
   }
 ];
