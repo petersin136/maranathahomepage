@@ -85,12 +85,6 @@ function priceLabel(price: number) {
   return (price / 1000).toFixed(1);
 }
 
-/** 예약금 = 총액의 10% (천원 단위 반올림) */
-function depositFromTotal(total: number) {
-  if (total <= 0) return 0;
-  return Math.max(1000, Math.round((total * 0.1) / 1000) * 1000);
-}
-
 function formatDuration(minutes: number) {
   if (minutes <= 0) return null;
   const h = Math.floor(minutes / 60);
@@ -247,6 +241,11 @@ export default function Booking({
 
   const totalDurationMinutes = chips.reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
   const durationLabel = formatDuration(totalDurationMinutes);
+  const totalAmount = pricedChips.reduce((sum, s) => sum + s.price, 0);
+  const depositAmount = pricedChips.reduce(
+    (sum, s) => sum + (s.depositAmount ?? 0),
+    0
+  );
 
   const receiptLine = {
     date: selectedDate ? formatYmd(selectedDate) : null,
@@ -303,8 +302,6 @@ export default function Booking({
 
     const artist = artists.find((a) => a.id === selectedArtist);
     const services = pricedChips;
-    const totalAmount = services.reduce((sum, s) => sum + s.price, 0);
-    const depositAmount = depositFromTotal(totalAmount);
     const bookingDate = toIsoDate(selectedDate);
 
     setSubmitting(true);
@@ -450,10 +447,8 @@ export default function Booking({
                         setAgree={setAgree}
                         receipt={receiptLine}
                         hasReceipt={hasReceipt}
-                        totalAmount={pricedChips.reduce((sum, s) => sum + s.price, 0)}
-                        depositAmount={depositFromTotal(
-                          pricedChips.reduce((sum, s) => sum + s.price, 0)
-                        )}
+                        totalAmount={totalAmount}
+                        depositAmount={depositAmount}
                         privacyAgreed={agree}
                         submitting={submitting}
                         submitError={submitError}
@@ -912,7 +907,7 @@ function StepGuest({
             <p className="mt-3 font-sans-kr text-[12px] text-hu-muted">
               {[
                 totalAmount > 0
-                  ? `총 ${totalAmount.toLocaleString("ko-KR")}원 · 예약금(10%) ${depositAmount.toLocaleString("ko-KR")}원 · 계좌 입금`
+                  ? `총 ${totalAmount.toLocaleString("ko-KR")}원 · 예약금 ${depositAmount.toLocaleString("ko-KR")}원 · 계좌 입금`
                   : null,
                 receipt.durationLabel ? `소요시간 ${receipt.durationLabel}` : null
               ]

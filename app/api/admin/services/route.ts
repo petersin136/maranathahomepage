@@ -77,6 +77,7 @@ export async function POST(request: Request) {
     duration_minutes?: number;
     deposit_amount?: number | null;
     sort_order?: number;
+    revisit_days?: number | null;
     is_published?: boolean;
     artist_prices?: ArtistPriceInput[];
   };
@@ -113,6 +114,9 @@ export async function POST(request: Request) {
             ? null
             : Math.max(0, Math.round(Number(body.deposit_amount))),
         sort_order: body.sort_order ?? 0,
+        revisit_days: Number.isFinite(Number(body.revisit_days))
+          ? Math.round(Number(body.revisit_days))
+          : null,
         is_published: body.is_published ?? true
       })
       .select("*")

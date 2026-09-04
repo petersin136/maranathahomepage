@@ -17,6 +17,7 @@ type Service = {
   duration_minutes: number;
   deposit_amount: number | null;
   sort_order: number;
+  revisit_days: number | null;
   is_published: boolean;
   artist_prices?: Record<string, number>;
 };
@@ -31,6 +32,7 @@ type FormState = {
   duration_minutes: number;
   deposit_amount: number;
   sort_order: number;
+  revisit_days: number | null;
   is_published: boolean;
   artistPrices: Record<string, number>;
 };
@@ -43,6 +45,7 @@ const emptyForm = (): FormState => ({
   duration_minutes: 60,
   deposit_amount: 0,
   sort_order: 0,
+  revisit_days: null,
   is_published: true,
   artistPrices: {}
 });
@@ -147,6 +150,10 @@ export default function AdminServicesPage() {
       duration_minutes: Number(form.duration_minutes) || 60,
       deposit_amount: Number(form.deposit_amount) || 0,
       sort_order: Number(form.sort_order) || 0,
+      revisit_days:
+        form.revisit_days == null || !Number.isFinite(Number(form.revisit_days))
+          ? null
+          : Math.round(Number(form.revisit_days)),
       is_published: form.is_published,
       artist_prices
     };
@@ -231,6 +238,7 @@ export default function AdminServicesPage() {
                       ? `${s.deposit_amount.toLocaleString("ko-KR")}원`
                       : "—"}{" "}
                     · {s.is_published ? "게시" : "숨김"}
+                    {s.revisit_days != null ? ` · 주기 ${s.revisit_days}일` : ""}
                   </p>
                 </div>
                 <div className="flex shrink-0 gap-2">
@@ -246,6 +254,7 @@ export default function AdminServicesPage() {
                         duration_minutes: s.duration_minutes,
                         deposit_amount: s.deposit_amount ?? 0,
                         sort_order: s.sort_order,
+                        revisit_days: s.revisit_days ?? null,
                         is_published: s.is_published,
                         artistPrices: fillArtistPrices(s.price, s.artist_prices)
                       });
@@ -349,6 +358,17 @@ export default function AdminServicesPage() {
               value={String(form.sort_order)}
               onChange={(v) => setForm((f) => ({ ...f, sort_order: Number(v) || 0 }))}
             />
+            <Field
+              label="재방문 주기 (일)"
+              type="number"
+              value={form.revisit_days == null || Number.isNaN(form.revisit_days) ? "" : String(form.revisit_days)}
+              onChange={(v) =>
+                setForm((f) => ({
+                  ...f,
+                  revisit_days: v.trim() === "" ? null : Number(v)
+                }))
+              }
+            />
             <label className="flex items-center gap-2 font-sans-kr text-[13px]">
               <input
                 type="checkbox"
@@ -387,17 +407,20 @@ function Field({
   label,
   value,
   onChange,
-  readOnly
+  readOnly,
+  type
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   readOnly?: boolean;
+  type?: string;
 }) {
   return (
     <div>
       <label className="font-sans-kr text-[11px] text-hu-muted">{label}</label>
       <input
+        type={type}
         value={value}
         readOnly={readOnly}
         onChange={(e) => onChange(e.target.value)}

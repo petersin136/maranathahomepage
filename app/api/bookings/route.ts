@@ -72,35 +72,53 @@ export async function POST(request: Request) {
     body.totalAmount == null || Number.isNaN(Number(body.totalAmount))
       ? null
       : Math.max(0, Math.round(Number(body.totalAmount)));
-  const depositAmount =
-    body.depositAmount == null || Number.isNaN(Number(body.depositAmount))
-      ? null
-      : Math.max(0, Math.round(Number(body.depositAmount)));
-
-  const row = {
-    booking_date: bookingDate,
-    booking_time: bookingTime,
-    artist_id: artistId,
-    artist_name: body.artistName?.trim() || null,
-    service_ids: serviceIds,
-    service_names:
-      Array.isArray(body.serviceNames) && body.serviceNames.length > 0
-        ? body.serviceNames.map((n) => String(n))
-        : null,
-    customer_name: customerName,
-    customer_gender: gender ?? null,
-    customer_phone: customerPhone,
-    customer_request: customerRequest,
-    privacy_agreed: true,
-    status: "pending" as const,
-    deposit_paid: false,
-    admin_memo: null,
-    total_amount: totalAmount,
-    deposit_amount: depositAmount
-  };
 
   try {
     const supabase = getSupabaseAdmin();
+
+    const { data: depositRows, error: depositError } = await supabase
+      .from("services")
+      .select("id, deposit_amount")
+      .in("id", serviceIds);
+
+    if (depositError) {
+      console.error("[POST /api/bookings] deposit", depositError);
+      return NextResponse.json(
+        { ok: false, error: "시술 정보를 불러오지 못했습니다." },
+        { status: 500 }
+      );
+    }
+
+    const depositById = new Map(
+      (depositRows || []).map((s) => [String(s.id), s.deposit_amount])
+    );
+    const depositAmount = serviceIds.reduce((sum, id) => {
+      const value = depositById.get(id);
+      if (value == null || Number.isNaN(Number(value))) return sum;
+      return sum + Math.max(0, Math.round(Number(value)));
+    }, 0);
+
+    const row = {
+      booking_date: bookingDate,
+      booking_time: bookingTime,
+      artist_id: artistId,
+      artist_name: body.artistName?.trim() || null,
+      service_ids: serviceIds,
+      service_names:
+        Array.isArray(body.serviceNames) && body.serviceNames.length > 0
+          ? body.serviceNames.map((n) => String(n))
+          : null,
+      customer_name: customerName,
+      customer_gender: gender ?? null,
+      customer_phone: customerPhone,
+      customer_request: customerRequest,
+      privacy_agreed: true,
+      status: "pending" as const,
+      deposit_paid: false,
+      admin_memo: null,
+      total_amount: totalAmount,
+      deposit_amount: depositAmount
+    };
 
     // 가능 시간 조회와 동일한 겹침 판정 (create_booking)
     const { durations, error: durError } = await resolveServiceDurations(

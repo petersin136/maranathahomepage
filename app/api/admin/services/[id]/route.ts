@@ -25,11 +25,21 @@ export async function PATCH(
     "duration_minutes",
     "deposit_amount",
     "sort_order",
+    "revisit_days",
     "is_published"
   ];
   const patch: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) patch[key] = body[key];
+  }
+  if ("revisit_days" in patch) {
+    const value = patch.revisit_days;
+    patch.revisit_days =
+      value == null || value === ""
+        ? null
+        : Number.isFinite(Number(value))
+          ? Math.round(Number(value))
+          : null;
   }
 
   const admin = getSupabaseAdmin();
