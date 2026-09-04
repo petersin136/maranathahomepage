@@ -88,14 +88,14 @@ export default function AdminArtistsPage() {
 
   return (
     <div>
-      <h1 className="font-serif text-[32px] tracking-[0.06em]">ARTISTS</h1>
+      <h1 className="font-serif text-[28px] tracking-[0.06em] lg:text-[32px]">ARTISTS</h1>
       <p className="mt-2 font-sans-kr text-[13px] text-hu-muted">디자이너 관리</p>
       <p className="mt-4 min-h-[20px] font-sans-kr text-[13px] text-[#9b4a4a]">
         {error || "\u00a0"}
       </p>
 
       <div className="mt-4 grid grid-cols-1 items-start gap-8 lg:grid-cols-[1fr_0.9fr]">
-        <ul className="min-h-[520px] divide-y divide-hu-black/10 bg-hu-white">
+        <ul className="min-h-0 divide-y divide-hu-black/10 bg-hu-white lg:min-h-[520px]">
           {artists.length === 0 ? (
             <li className="px-5 py-8 font-sans-kr text-[13px] text-hu-muted">
               디자이너가 없습니다.
@@ -144,7 +144,7 @@ export default function AdminArtistsPage() {
           )}
         </ul>
 
-        <div className="min-h-[520px] bg-hu-white p-6 lg:sticky lg:top-6">
+        <div className="min-h-0 bg-hu-white p-5 lg:sticky lg:top-6 lg:min-h-[520px] lg:p-6">
           <p className="font-serif text-[14px] tracking-[0.08em]">
             {editingId ? "EDIT ARTIST" : "NEW ARTIST"}
           </p>

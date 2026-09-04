@@ -188,7 +188,7 @@ export default function AdminServicesPage() {
 
   return (
     <div>
-      <h1 className="font-serif text-[32px] tracking-[0.06em]">SERVICES</h1>
+      <h1 className="font-serif text-[28px] tracking-[0.06em] lg:text-[32px]">SERVICES</h1>
       <p className="mt-2 font-sans-kr text-[13px] text-hu-muted">
         시술 메뉴 관리 · 디자이너별 단가
       </p>
@@ -223,7 +223,7 @@ export default function AdminServicesPage() {
       </div>
 
       <div className="mt-8 grid grid-cols-1 items-start gap-8 lg:grid-cols-[1.2fr_0.9fr]">
-        <ul className="min-h-[560px] divide-y divide-hu-black/10 bg-hu-white">
+        <ul className="min-h-0 divide-y divide-hu-black/10 bg-hu-white lg:min-h-[560px]">
           {filtered.length === 0 ? (
             <li className="px-5 py-8 font-sans-kr text-[13px] text-hu-muted">시술이 없습니다.</li>
           ) : (
@@ -276,7 +276,7 @@ export default function AdminServicesPage() {
           )}
         </ul>
 
-        <div className="min-h-[560px] bg-hu-white p-6 lg:sticky lg:top-6">
+        <div className="min-h-0 bg-hu-white p-5 lg:sticky lg:top-6 lg:min-h-[560px] lg:p-6">
           <p className="font-serif text-[14px] tracking-[0.08em]">
             {editingId ? "EDIT SERVICE" : "NEW SERVICE"}
           </p>

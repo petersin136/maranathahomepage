@@ -22,7 +22,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div>
-      <h1 className="font-serif text-[32px] tracking-[0.06em]">DASHBOARD</h1>
+      <h1 className="font-serif text-[28px] tracking-[0.06em] lg:text-[32px]">DASHBOARD</h1>
       <p className="mt-2 font-sans-kr text-[13px] text-hu-muted">오늘 · {today}</p>
 
       <Suspense fallback={<StatsSkeleton />}>
@@ -81,7 +81,7 @@ async function DashboardStats() {
     <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
       <a
         href="#dash-today"
-        className="block cursor-pointer bg-hu-white px-8 py-7 text-left shadow-[0_1px_0_rgba(0,0,0,0.04)] transition hover:bg-hu-beige/40"
+        className="block cursor-pointer bg-hu-white px-5 py-6 text-left shadow-[0_1px_0_rgba(0,0,0,0.04)] transition hover:bg-hu-beige/40 lg:px-8 lg:py-7"
       >
         <p className="font-serif text-[12px] tracking-[0.14em] text-hu-accent">TODAY</p>
         <p className="mt-3 font-serif text-[40px] underline decoration-hu-black/20 underline-offset-8">
@@ -91,7 +91,7 @@ async function DashboardStats() {
       </a>
       <a
         href="#dash-pending"
-        className="block cursor-pointer bg-hu-white px-8 py-7 text-left transition hover:bg-hu-beige/40"
+        className="block cursor-pointer bg-hu-white px-5 py-6 text-left transition hover:bg-hu-beige/40 lg:px-8 lg:py-7"
       >
         <p className="font-serif text-[12px] tracking-[0.14em] text-hu-accent">PENDING</p>
         <p className="mt-3 font-serif text-[40px] underline decoration-hu-black/20 underline-offset-8">
@@ -170,14 +170,14 @@ async function MonthSection() {
 function StatsSkeleton() {
   return (
     <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2" aria-hidden>
-      <div className="bg-hu-white px-8 py-7 shadow-[0_1px_0_rgba(0,0,0,0.04)]">
+      <div className="bg-hu-white px-5 py-6 shadow-[0_1px_0_rgba(0,0,0,0.04)] lg:px-8 lg:py-7">
         <p className="font-serif text-[12px] tracking-[0.14em] text-hu-accent">TODAY</p>
         <p className="mt-3 font-serif text-[40px] underline decoration-hu-black/20 underline-offset-8">
           <span className="inline-block w-10 animate-pulse bg-hu-black/10 text-transparent">0</span>
         </p>
         <p className="mt-1 font-sans-kr text-[13px] text-hu-muted">오늘 예약 · 클릭하면 아래로</p>
       </div>
-      <div className="bg-hu-white px-8 py-7">
+      <div className="bg-hu-white px-5 py-6 lg:px-8 lg:py-7">
         <p className="font-serif text-[12px] tracking-[0.14em] text-hu-accent">PENDING</p>
         <p className="mt-3 font-serif text-[40px] underline decoration-hu-black/20 underline-offset-8">
           <span className="inline-block w-10 animate-pulse bg-hu-black/10 text-transparent">0</span>
@@ -261,7 +261,7 @@ function BookingSection({
             <li key={b.id}>
               <Link
                 href={`/admin/bookings/${b.id}`}
-                className="flex items-center justify-between gap-4 px-6 py-4 transition hover:bg-hu-beige/50"
+                className="flex items-center justify-between gap-3 px-5 py-4 transition hover:bg-hu-beige/50 lg:gap-4 lg:px-6"
               >
                 <div>
                   <p className="font-serif text-[15px]">

@@ -55,10 +55,10 @@ export default function AdminBookingsPage() {
 
   return (
     <div>
-      <h1 className="font-serif text-[32px] tracking-[0.06em]">BOOKINGS</h1>
+      <h1 className="font-serif text-[28px] tracking-[0.06em] lg:text-[32px]">BOOKINGS</h1>
       <p className="mt-2 font-sans-kr text-[13px] text-hu-muted">예약 관리</p>
 
-      <div className="mt-8 flex gap-6 border-b border-hu-black/10">
+      <div className="mt-6 flex gap-5 overflow-x-auto border-b border-hu-black/10 [scrollbar-width:none] lg:mt-8 lg:gap-6 [&::-webkit-scrollbar]:hidden">
         {TABS.map((t) => (
           <button
             key={t.key}
@@ -128,11 +128,11 @@ export default function AdminBookingsPage() {
                   }
                 }}
                 className={clsx(
-                  "flex cursor-pointer items-center gap-5 px-6 py-5 hover:bg-hu-beige/40",
+                  "flex cursor-pointer flex-col gap-3 px-5 py-4 hover:bg-hu-beige/40 lg:flex-row lg:items-center lg:gap-5 lg:px-6 lg:py-5",
                   cancelled && "opacity-40"
                 )}
               >
-                <div className="flex w-[200px] shrink-0 items-center">
+                <div className="flex w-full shrink-0 items-center lg:w-[200px]">
                   <Link
                     href={`/admin/bookings/${b.id}`}
                     onClick={(e) => e.stopPropagation()}
@@ -150,7 +150,7 @@ export default function AdminBookingsPage() {
                   </Link>
                 </div>
 
-                <div className="min-w-0 flex-1 font-sans-kr text-[14px] leading-snug">
+                <div className="min-w-0 w-full flex-1 font-sans-kr text-[14px] leading-snug">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-hu-body">
                     <span>{b.booking_time}</span>
                     <span className="text-hu-black/25">·</span>
@@ -164,7 +164,7 @@ export default function AdminBookingsPage() {
                   </div>
                   {hasSecondLine ? (
                     <p
-                      className="mt-1.5 flex min-w-0 items-baseline gap-2 truncate text-[13px] leading-snug"
+                      className="mt-1.5 flex min-w-0 items-baseline gap-2 text-[13px] leading-snug lg:truncate"
                       title={secondLineTitle}
                     >
                       {requestBody ? (
@@ -172,50 +172,52 @@ export default function AdminBookingsPage() {
                           <span className="shrink-0 text-[11px] tracking-[0.08em] text-hu-black/40">
                             메모
                           </span>
-                          <span className="min-w-0 truncate text-hu-muted">{requestBody}</span>
+                          <span className="min-w-0 lg:truncate text-hu-muted">{requestBody}</span>
                         </>
                       ) : null}
                       {cancelled && reason ? (
                         <>
                           {requestBody ? <span className="text-hu-black/25">·</span> : null}
-                          <span className="min-w-0 truncate text-hu-muted">{reason}</span>
+                          <span className="min-w-0 lg:truncate text-hu-muted">{reason}</span>
                         </>
                       ) : null}
                     </p>
                   ) : null}
                 </div>
 
-                <div
-                  className="flex w-[120px] shrink-0 items-center"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <select
-                    value={b.status}
-                    disabled={actions.busyId === b.id}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      void actions.updateStatus(b, e.target.value as BookingStatus);
-                    }}
-                    className="h-9 w-full border border-hu-black/20 bg-hu-white px-2.5 font-sans-kr text-[13px] outline-none disabled:opacity-40"
+                <div className="flex items-center justify-between gap-3 lg:contents">
+                  <div
+                    className="flex w-[140px] shrink-0 items-center lg:w-[120px]"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    {BOOKING_STATUS_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                    <select
+                      value={b.status}
+                      disabled={actions.busyId === b.id}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        void actions.updateStatus(b, e.target.value as BookingStatus);
+                      }}
+                      className="h-9 w-full border border-hu-black/20 bg-hu-white px-2.5 font-sans-kr text-[13px] outline-none disabled:opacity-40"
+                    >
+                      {BOOKING_STATUS_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div
-                  className="flex w-[72px] shrink-0 items-center justify-end"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <BookingActionButtons
-                    booking={b}
-                    busy={actions.busyId === b.id}
-                    onCancel={actions.openCancel}
-                    onDelete={actions.openDelete}
-                  />
+                  <div
+                    className="flex shrink-0 items-center justify-end lg:w-[72px]"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <BookingActionButtons
+                      booking={b}
+                      busy={actions.busyId === b.id}
+                      onCancel={actions.openCancel}
+                      onDelete={actions.openDelete}
+                    />
+                  </div>
                 </div>
               </li>
             );

@@ -23,7 +23,7 @@ type CalBooking = {
 type Artist = { id: string; name_kr: string; name_en: string };
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
-const PANEL_H = "min-h-[420px] h-[420px]";
+const PANEL_H = "min-h-[360px] h-auto lg:min-h-[420px] lg:h-[420px]";
 
 function toYmd(d: Date) {
   const y = d.getFullYear();
@@ -134,7 +134,7 @@ export default function AdminCalendarPage() {
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-serif text-[32px] tracking-[0.06em]">CALENDAR</h1>
+          <h1 className="font-serif text-[28px] tracking-[0.06em] lg:text-[32px]">CALENDAR</h1>
           <p className="mt-2 font-sans-kr text-[13px] text-hu-muted">예약 캘린더</p>
         </div>
         <div className="flex flex-shrink-0 flex-wrap items-center gap-3">
@@ -189,7 +189,7 @@ export default function AdminCalendarPage() {
       </p>
 
       <div className="mt-4 grid grid-cols-1 gap-8 lg:grid-cols-[1.4fr_0.9fr]">
-        <div className={clsx("bg-hu-white p-6", PANEL_H)}>
+        <div className={clsx("bg-hu-white p-4 lg:p-6", PANEL_H)}>
           <div className="grid h-full grid-cols-7 grid-rows-[auto_repeat(6,1fr)] gap-y-1 text-center">
             {WEEKDAYS.map((d) => (
               <div
@@ -214,7 +214,7 @@ export default function AdminCalendarPage() {
                   disabled={!cell.date || dimmed}
                   onClick={() => cell.date && setSelectedDate(cell.date)}
                   className={clsx(
-                    "mx-auto flex h-11 w-11 flex-col items-center justify-center font-serif text-[14px] transition-opacity",
+                    "mx-auto flex h-9 w-9 flex-col items-center justify-center font-serif text-[13px] transition-opacity lg:h-11 lg:w-11 lg:text-[14px]",
                     !cell.date && "invisible",
                     dimmed && "pointer-events-none opacity-20",
                     selected && "bg-hu-black text-white",
@@ -238,7 +238,7 @@ export default function AdminCalendarPage() {
           </div>
         </div>
 
-        <div className={clsx("flex flex-col bg-hu-white p-6", PANEL_H)}>
+        <div className={clsx("flex flex-col bg-hu-white p-4 lg:p-6", PANEL_H)}>
           <p className="shrink-0 font-serif text-[14px] tracking-[0.08em]">
             {selectedDate || "날짜 선택"}
           </p>

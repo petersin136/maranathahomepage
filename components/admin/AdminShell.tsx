@@ -49,16 +49,16 @@ export default function AdminShell({
   };
 
   return (
-    <div className="min-h-screen bg-[#faf8f6] text-hu-black">
+    <div className="min-h-screen overflow-x-hidden bg-[#faf8f6] text-hu-black">
       <header className="sticky top-0 z-50 border-b border-white/10 bg-hu-black text-hu-white">
-        <div className="mx-auto flex max-w-[1200px] items-center justify-between px-8 py-2.5">
-          <div className="flex items-baseline gap-3">
-            <Link href="/" className="font-serif text-[18px] tracking-[0.08em]">
+        <div className="mx-auto flex max-w-[1200px] items-center justify-between px-5 py-2.5 lg:px-8">
+          <div className="flex items-baseline gap-2 lg:gap-3">
+            <Link href="/" className="font-serif text-[17px] tracking-[0.08em] lg:text-[18px]">
               HAIR UP
             </Link>
             <span className="font-sans-kr text-[11px] text-white/50">Admin</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 lg:gap-4">
             {email ? (
               <span className="hidden max-w-[220px] truncate font-sans-kr text-[12px] text-white/50 sm:inline">
                 {email}
@@ -79,7 +79,7 @@ export default function AdminShell({
             </button>
           </div>
         </div>
-        <nav className="mx-auto flex max-w-[1200px] gap-7 overflow-x-auto px-8 pb-2.5">
+        <nav className="mx-auto flex max-w-[1200px] gap-5 overflow-x-auto px-5 pb-2.5 [scrollbar-width:none] lg:gap-7 lg:px-8 [&::-webkit-scrollbar]:hidden">
           {NAV.map((item) => {
             const active = item.exact
               ? pathname === item.href
@@ -99,7 +99,9 @@ export default function AdminShell({
           })}
         </nav>
       </header>
-      <main className="mx-auto min-h-[calc(100vh-96px)] max-w-[1200px] px-8 py-8">{children}</main>
+      <main className="mx-auto min-h-[calc(100vh-96px)] max-w-[1200px] px-5 py-6 lg:px-8 lg:py-8">
+        {children}
+      </main>
     </div>
   );
 }

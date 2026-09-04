@@ -91,7 +91,7 @@ export default function AdminRemindersPage() {
 
   return (
     <div>
-      <h1 className="font-serif text-[32px] tracking-[0.06em]">REMINDERS</h1>
+      <h1 className="font-serif text-[28px] tracking-[0.06em] lg:text-[32px]">REMINDERS</h1>
       <p className="mt-2 font-sans-kr text-[13px] text-hu-muted">재방문 알림 관리</p>
       <p className="mt-4 min-h-[20px] font-sans-kr text-[13px] text-[#9b4a4a]">
         {error || "\u00a0"}
@@ -106,7 +106,53 @@ export default function AdminRemindersPage() {
         발송 완료 포함
       </label>
 
-      <div className="mt-8 overflow-x-auto bg-hu-white">
+      <ul className="mt-6 divide-y divide-hu-black/10 bg-hu-white lg:hidden">
+        {reminders.length === 0 ? (
+          <li className="px-5 py-8 font-sans-kr text-[13px] text-hu-muted">알림이 없습니다.</li>
+        ) : (
+          reminders.map((r) => {
+            const date = dateValue(r.remind_date);
+            const overdue = !r.sent && date && date < today;
+            return (
+              <li
+                key={r.id}
+                className={clsx("flex flex-col gap-2 px-5 py-4", overdue && "bg-[#f8eeee] text-[#9b4a4a]")}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => updateDate(r.id, e.target.value)}
+                    className={clsx(
+                      "border-b bg-transparent py-1 font-sans-kr text-[13px] outline-none",
+                      overdue ? "border-[#9b4a4a]/40" : "border-hu-black/30"
+                    )}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => remove(r.id)}
+                    className="shrink-0 font-sans-kr text-[12px] text-[#9b4a4a]"
+                  >
+                    삭제
+                  </button>
+                </div>
+                <p className="font-sans-kr text-[15px]">
+                  {r.customer_name || "—"}{" "}
+                  <span className={clsx("text-[13px]", overdue ? "text-[#9b4a4a]/70" : "text-hu-muted")}>
+                    {r.customer_phone || ""}
+                  </span>
+                </p>
+                {r.reason ? <p className="font-sans-kr text-[13px]">{r.reason}</p> : null}
+                <p className={clsx("font-sans-kr text-[12px]", overdue ? "text-[#9b4a4a]/70" : "text-hu-muted")}>
+                  {sourceLabel(r.source)} · {r.sent ? "발송" : "미발송"}
+                </p>
+              </li>
+            );
+          })
+        )}
+      </ul>
+
+      <div className="mt-8 hidden overflow-x-auto bg-hu-white lg:block">
         <table className="min-w-full text-left font-sans-kr text-[13px]">
           <thead className="border-b border-hu-black/10 text-[11px] tracking-[0.08em] text-hu-muted">
             <tr>

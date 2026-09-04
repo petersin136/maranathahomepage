@@ -94,7 +94,7 @@ export default function AdminBookingDetailPage() {
 
       {error ? <p className="mt-4 font-sans-kr text-[13px] text-[#9b4a4a]">{error}</p> : null}
 
-      <div className={clsx("mt-8 space-y-6 bg-hu-white px-8 py-8", booking.status === "cancelled" && "opacity-70")}>
+      <div className={clsx("mt-8 space-y-6 bg-hu-white px-5 py-6 lg:px-8 lg:py-8", booking.status === "cancelled" && "opacity-70")}>
         <Row label="날짜" value={booking.booking_date} />
         <Row label="시간" value={booking.booking_time} />
         <Row label="디자이너" value={booking.artist_name || booking.artist_id} />
