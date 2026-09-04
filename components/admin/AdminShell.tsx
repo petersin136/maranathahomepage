@@ -6,7 +6,13 @@ import { useEffect } from "react";
 import { clsx } from "clsx";
 
 const NAV: {
-  href: "/admin" | "/admin/bookings" | "/admin/calendar" | "/admin/artists" | "/admin/services";
+  href:
+    | "/admin"
+    | "/admin/bookings"
+    | "/admin/calendar"
+    | "/admin/artists"
+    | "/admin/services"
+    | "/admin/reminders";
   label: string;
   exact?: boolean;
 }[] = [
@@ -14,7 +20,8 @@ const NAV: {
   { href: "/admin/bookings", label: "예약" },
   { href: "/admin/calendar", label: "캘린더" },
   { href: "/admin/artists", label: "디자이너" },
-  { href: "/admin/services", label: "시술" }
+  { href: "/admin/services", label: "시술" },
+  { href: "/admin/reminders", label: "알림" }
 ];
 
 export default function AdminShell({
@@ -46,7 +53,7 @@ export default function AdminShell({
       <header className="sticky top-0 z-50 border-b border-white/10 bg-hu-black text-hu-white">
         <div className="mx-auto flex max-w-[1200px] items-center justify-between px-8 py-2.5">
           <div className="flex items-baseline gap-3">
-            <Link href="/admin" className="font-serif text-[18px] tracking-[0.08em]">
+            <Link href="/" className="font-serif text-[18px] tracking-[0.08em]">
               HAIR UP
             </Link>
             <span className="font-sans-kr text-[11px] text-white/50">Admin</span>

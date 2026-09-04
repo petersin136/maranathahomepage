@@ -22,6 +22,10 @@ const TABS = [
   { key: "cancelled_noshow", label: "취소·노쇼" }
 ] as const;
 
+function shortDate(ymd: string) {
+  return ymd.length >= 10 ? ymd.slice(2) : ymd;
+}
+
 export default function AdminBookingsPage() {
   const router = useRouter();
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("pending");
@@ -74,137 +78,150 @@ export default function AdminBookingsPage() {
 
       {error ? <p className="mt-6 font-sans-kr text-[13px] text-[#9b4a4a]">{error}</p> : null}
 
-      <div className="mt-4 overflow-x-auto bg-hu-white">
-        <table className="min-w-full text-left font-sans-kr text-[13px]">
-          <thead className="border-b border-hu-black/10 text-[11px] tracking-[0.08em] text-hu-muted">
-            <tr>
-              <th className="px-4 py-3 font-medium">날짜</th>
-              <th className="px-4 py-3 font-medium">시간</th>
-              <th className="px-4 py-3 font-medium">고객</th>
-              <th className="px-4 py-3 font-medium">전화</th>
-              <th className="px-4 py-3 font-medium">디자이너</th>
-              <th className="px-4 py-3 font-medium">시술</th>
-              <th className="px-4 py-3 font-medium">상태</th>
-              <th className="px-4 py-3 font-medium">사유</th>
-              <th className="px-4 py-3 font-medium">입금</th>
-              <th className="px-4 py-3 font-medium">관리</th>
-            </tr>
-          </thead>
-          <tbody>
-            {bookings.length === 0 ? (
-              <tr>
-                <td colSpan={10} className="px-4 py-10 text-hu-muted">
-                  해당 상태의 예약이 없습니다.
-                </td>
-              </tr>
+      <ul className="mt-4 divide-y divide-hu-black/10 bg-hu-white">
+        {bookings.length === 0 ? (
+          <li className="px-5 py-10 font-sans-kr text-[13px] text-hu-muted">
+            해당 상태의 예약이 없습니다.
+          </li>
+        ) : (
+          bookings.map((b) => {
+            const cancelled = b.status === "cancelled";
+            const reason = cancelReasonLabel(b.cancel_reason);
+            const requestText = resolveCustomerRequestText(
+              b.customer_request,
+              b.admin_memo
+            );
+            const { lang, body: requestBody } = parseRequestLanguage(requestText);
+            const phoneParts = splitIntlPhone(b.customer_phone);
+            const phoneDisplay = phoneParts.countryCode ? (
+              <>
+                <span className="text-hu-muted">{phoneParts.countryCode}</span>
+                {phoneParts.national ? (
+                  <>
+                    {" "}
+                    <span>{phoneParts.national}</span>
+                  </>
+                ) : null}
+              </>
             ) : (
-              bookings.map((b) => {
-                const cancelled = b.status === "cancelled";
-                const reason = cancelReasonLabel(b.cancel_reason);
-                const requestText = resolveCustomerRequestText(
-                  b.customer_request,
-                  b.admin_memo
-                );
-                const { lang, body: requestBody } = parseRequestLanguage(requestText);
-                const phoneParts = splitIntlPhone(b.customer_phone);
-                return (
-                  <tr
-                    key={b.id}
-                    role="link"
-                    tabIndex={0}
-                    onClick={() => router.push(`/admin/bookings/${b.id}`)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        router.push(`/admin/bookings/${b.id}`);
-                      }
-                    }}
-                    className={clsx(
-                      "cursor-pointer border-b border-hu-black/5 hover:bg-hu-beige/40",
-                      cancelled && "opacity-40"
-                    )}
+              b.customer_phone
+            );
+            const services = (b.service_names || []).join(", ") || "—";
+            const secondLineTitle = [
+              requestBody || null,
+              cancelled && reason ? reason : null
+            ]
+              .filter(Boolean)
+              .join(" · ");
+            const hasSecondLine = Boolean(requestBody) || (cancelled && Boolean(reason));
+
+            return (
+              <li
+                key={b.id}
+                role="link"
+                tabIndex={0}
+                onClick={() => router.push(`/admin/bookings/${b.id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    router.push(`/admin/bookings/${b.id}`);
+                  }
+                }}
+                className={clsx(
+                  "flex cursor-pointer items-center gap-5 px-6 py-5 hover:bg-hu-beige/40",
+                  cancelled && "opacity-40"
+                )}
+              >
+                <div className="flex w-[200px] shrink-0 items-center">
+                  <Link
+                    href={`/admin/bookings/${b.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-baseline gap-3.5 font-sans-kr text-[15px] leading-snug text-hu-black underline-offset-2 hover:underline"
                   >
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/admin/bookings/${b.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="underline-offset-2 hover:underline"
-                      >
-                        {b.booking_date}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3">{b.booking_time}</td>
-                    <td className="max-w-[200px] px-4 py-3">
-                      <div className="flex min-w-0 items-baseline gap-1.5">
-                        <span className="truncate">{b.customer_name}</span>
-                        {lang ? (
-                          <span className="shrink-0 font-serif text-[10px] tracking-[0.08em] text-hu-muted">
-                            {lang}
-                          </span>
-                        ) : null}
-                      </div>
-                      {requestBody ? (
-                        <p
-                          className="mt-1 truncate text-[12px] text-hu-muted"
-                          title={requestBody}
-                        >
-                          {requestBody}
-                        </p>
+                    <span className="tabular-nums text-hu-muted">{shortDate(b.booking_date)}</span>
+                    <span className="font-medium">
+                      {b.customer_name}
+                      {lang ? (
+                        <span className="ml-1.5 font-serif text-[10px] font-normal tracking-[0.08em] text-hu-muted">
+                          {lang}
+                        </span>
                       ) : null}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {phoneParts.countryCode ? (
+                    </span>
+                  </Link>
+                </div>
+
+                <div className="min-w-0 flex-1 font-sans-kr text-[14px] leading-snug">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-hu-body">
+                    <span>{b.booking_time}</span>
+                    <span className="text-hu-black/25">·</span>
+                    <span className="whitespace-nowrap">{phoneDisplay}</span>
+                    <span className="text-hu-black/25">·</span>
+                    <span>{b.artist_name || b.artist_id}</span>
+                    <span className="text-hu-black/25">·</span>
+                    <span className="min-w-0 truncate">{services}</span>
+                    <span className="text-hu-black/25">·</span>
+                    <span>입금 {b.deposit_paid ? "Y" : "N"}</span>
+                  </div>
+                  {hasSecondLine ? (
+                    <p
+                      className="mt-1.5 flex min-w-0 items-baseline gap-2 truncate text-[13px] leading-snug"
+                      title={secondLineTitle}
+                    >
+                      {requestBody ? (
                         <>
-                          <span className="text-hu-muted">{phoneParts.countryCode}</span>
-                          {phoneParts.national ? (
-                            <>
-                              {" "}
-                              <span>{phoneParts.national}</span>
-                            </>
-                          ) : null}
+                          <span className="shrink-0 text-[11px] tracking-[0.08em] text-hu-black/40">
+                            메모
+                          </span>
+                          <span className="min-w-0 truncate text-hu-muted">{requestBody}</span>
                         </>
-                      ) : (
-                        b.customer_phone
-                      )}
-                    </td>
-                    <td className="px-4 py-3">{b.artist_name || b.artist_id}</td>
-                    <td className="px-4 py-3">{(b.service_names || []).join(", ") || "—"}</td>
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <select
-                        value={b.status}
-                        disabled={actions.busyId === b.id}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          void actions.updateStatus(b, e.target.value as BookingStatus);
-                        }}
-                        className="border border-hu-black/15 bg-hu-white px-2 py-1 font-sans-kr text-[12px] disabled:opacity-40"
-                      >
-                        {BOOKING_STATUS_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-4 py-3 text-[12px] text-hu-muted">
-                      {cancelled ? reason || "—" : "—"}
-                    </td>
-                    <td className="px-4 py-3">{b.deposit_paid ? "Y" : "N"}</td>
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <BookingActionButtons
-                        booking={b}
-                        busy={actions.busyId === b.id}
-                        onCancel={actions.openCancel}
-                        onDelete={actions.openDelete}
-                      />
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+                      ) : null}
+                      {cancelled && reason ? (
+                        <>
+                          {requestBody ? <span className="text-hu-black/25">·</span> : null}
+                          <span className="min-w-0 truncate text-hu-muted">{reason}</span>
+                        </>
+                      ) : null}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div
+                  className="flex w-[120px] shrink-0 items-center"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <select
+                    value={b.status}
+                    disabled={actions.busyId === b.id}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      void actions.updateStatus(b, e.target.value as BookingStatus);
+                    }}
+                    className="h-9 w-full border border-hu-black/20 bg-hu-white px-2.5 font-sans-kr text-[13px] outline-none disabled:opacity-40"
+                  >
+                    {BOOKING_STATUS_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div
+                  className="flex w-[72px] shrink-0 items-center justify-end"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <BookingActionButtons
+                    booking={b}
+                    busy={actions.busyId === b.id}
+                    onCancel={actions.openCancel}
+                    onDelete={actions.openDelete}
+                  />
+                </div>
+              </li>
+            );
+          })
+        )}
+      </ul>
 
       {actions.confirm ? (
         <BookingConfirmModal

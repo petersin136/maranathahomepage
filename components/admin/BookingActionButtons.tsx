@@ -35,7 +35,7 @@ export default function BookingActionButtons({
             e.stopPropagation();
             onCancel(booking);
           }}
-          className="font-sans-kr text-[12px] text-hu-black underline-offset-2 hover:underline disabled:opacity-40"
+          className="font-sans-kr text-[13px] text-hu-black underline-offset-2 hover:underline disabled:opacity-40"
         >
           취소
         </button>
@@ -47,7 +47,7 @@ export default function BookingActionButtons({
           e.stopPropagation();
           onDelete(booking);
         }}
-        className="font-sans-kr text-[11px] text-hu-muted disabled:opacity-40"
+        className="font-sans-kr text-[12px] text-hu-muted disabled:opacity-40"
       >
         삭제
       </button>
