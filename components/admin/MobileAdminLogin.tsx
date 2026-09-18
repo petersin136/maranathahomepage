@@ -18,7 +18,11 @@ function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
-export default function MobileAdminLogin() {
+export default function MobileAdminLogin({
+  layout = "mobile"
+}: {
+  layout?: "mobile" | "desktop";
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = safeAdminPath(searchParams.get("next"));
@@ -35,11 +39,12 @@ export default function MobileAdminLogin() {
 
   const emailLineClass = emailFormatError
     ? "INPUT-LINE-ERROR"
-    : emailFocused
+    : emailFocused || email
       ? "INPUT-LINE-ACTIVE"
       : "INPUT-LINE-INACTIVE";
 
-  const passwordLineClass = passwordFocused ? "INPUT-LINE-ACTIVE" : "INPUT-LINE-INACTIVE";
+  const passwordLineClass =
+    passwordFocused || password ? "INPUT-LINE-ACTIVE" : "INPUT-LINE-INACTIVE";
 
   const emailTextClass = emailFormatError
     ? "INPUT-TEXT-ERROR"
@@ -97,9 +102,11 @@ export default function MobileAdminLogin() {
     }
   };
 
+  const isDesktop = layout === "desktop";
+
   return (
-    <div className="m-admin-login">
-      <div className="m-admin-login-artboard" data-top={topState}>
+    <div className="m-admin-login" data-layout={layout}>
+      <div className="m-admin-login-artboard" data-top={isDesktop ? "default" : topState}>
         <img
           className="LOGIN-LOGO"
           src="/hair-up-logo.png"
@@ -212,8 +219,13 @@ export default function MobileAdminLogin() {
           </div>
         </form>
 
-        <p className="FOOTER-COPYRIGHT">© hair up. All rights reserved.</p>
+        {isDesktop ? null : (
+          <p className="FOOTER-COPYRIGHT">© hair up. All rights reserved.</p>
+        )}
       </div>
+      {isDesktop ? (
+        <p className="FOOTER-COPYRIGHT">© hair up. All rights reserved.</p>
+      ) : null}
     </div>
   );
 }

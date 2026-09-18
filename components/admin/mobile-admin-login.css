@@ -393,3 +393,81 @@
   text-box-trim: trim-both;
   text-box-edge: text alphabetic;
 }
+
+/* ===== PC 1440: 1024 mock × 1.40625 ===== */
+.m-admin-login[data-layout="desktop"] {
+  min-height: 100dvh;
+  background: #f9f8f4;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+}
+
+.m-admin-login[data-layout="desktop"] .m-admin-login-artboard {
+  width: 500px;
+  max-width: 100%;
+  flex: none;
+  margin-inline: auto;
+  padding: 70px 45px 48px;
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(28, 26, 25, 0.08); /* 임의값: 시안 소프트 섀도 */
+}
+
+.m-admin-login[data-layout="desktop"] .m-admin-login-artboard[data-top="default"],
+.m-admin-login[data-layout="desktop"] .m-admin-login-artboard[data-top="email-error"],
+.m-admin-login[data-layout="desktop"] .m-admin-login-artboard[data-top="login-error"] {
+  padding-top: 70px;
+}
+
+.m-admin-login[data-layout="desktop"] .m-admin-login-form,
+.m-admin-login[data-layout="desktop"] .m-admin-login-field-email,
+.m-admin-login[data-layout="desktop"] .m-admin-login-field-password,
+.m-admin-login[data-layout="desktop"] .INPUT-LINE,
+.m-admin-login[data-layout="desktop"] .INPUT-LINE-INACTIVE,
+.m-admin-login[data-layout="desktop"] .INPUT-LINE-ACTIVE,
+.m-admin-login[data-layout="desktop"] .INPUT-LINE-ERROR,
+.m-admin-login[data-layout="desktop"] .BTN-LOGIN,
+.m-admin-login[data-layout="desktop"] .m-admin-login-links {
+  width: 100%;
+}
+
+.m-admin-login[data-layout="desktop"] .FOOTER-COPYRIGHT {
+  margin: 32px 0 0; /* 임의값: 카드 ↔ 카피라이트 */
+}
+
+.BTN-LOGIN.is-disabled {
+  background-color: #eeeeee;
+  cursor: not-allowed;
+}
+
+.BTN-LOGIN.is-disabled .BTN-LOGIN-TEXT {
+  color: #a3a3a3;
+}
+
+.FIND-SUCCESS-MSG {
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  text-align: left;
+  color: rgb(102, 102, 102);
+  line-height: 1.667;
+  margin: 8px 0 0;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+.LINK-BACK-LOGIN {
+  display: block;
+  margin-top: 20px;
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  text-align: center;
+  color: rgb(28, 26, 25);
+  text-decoration: none;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
