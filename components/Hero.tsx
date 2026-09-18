@@ -1,5 +1,3 @@
-const HERO_SLIDES = 4;
-
 export default function Hero() {
   return (
     <section
@@ -7,14 +5,19 @@ export default function Hero() {
       className="relative min-h-[799px] overflow-hidden text-hu-white"
       aria-labelledby="hero-heading"
     >
-      {/* 사진만 포함된 PNG — next/image 미사용, 텍스트는 HTML로만 렌더 */}
       <img
-        src="/hero-bg.png"
+        src="/hero-bg.jpg"
         alt=""
         aria-hidden
-        className="absolute inset-0 h-full w-full object-cover object-center"
+        className="absolute inset-0 h-full w-full object-cover object-[center_28%]"
         decoding="async"
         fetchPriority="high"
+      />
+
+      {/* 밝은 하단에서도 타이틀이 읽히도록 */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-black/55 via-black/20 to-transparent"
       />
 
       <div className="absolute inset-x-0 bottom-[72px] z-10 flex flex-col items-center px-6 text-center">
@@ -29,22 +32,6 @@ export default function Hero() {
           <span className="block">DISCOVER YOUR</span>
           <span className="block">NEW FAVORITE SALON</span>
         </h1>
-      </div>
-
-      <div
-        className="absolute inset-x-0 bottom-10 z-10 flex justify-center gap-2.5"
-        aria-hidden
-      >
-        {Array.from({ length: HERO_SLIDES }, (_, i) => (
-          <span
-            key={i}
-            className={
-              i === 0
-                ? "h-2 w-2 rounded-full bg-hu-white"
-                : "h-2 w-2 rounded-full bg-hu-dot-inactive"
-            }
-          />
-        ))}
       </div>
     </section>
   );

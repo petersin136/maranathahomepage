@@ -61,52 +61,54 @@ export function MobileHome({
         className="m-artboard mx-auto w-full overflow-x-hidden"
         style={{ maxWidth: MOBILE_ARTBOARD_PX }}
       >
-        <header className="sticky top-0 z-50 bg-hu-black text-hu-white">
-          <div className="mx-auto flex h-[64px] w-[350px] max-w-full items-center justify-between">
-            <Link
-              href="#hero"
-              className="font-serif text-[18px] font-medium tracking-[0.08em]"
-              onClick={() => setMenuOpen(false)}
-            >
-              HAIR UP
-            </Link>
-            <div className="flex items-center gap-4">
-              <a
-                href="#booking"
-                className="font-sans-kr text-[12px] tracking-[0.04em] text-hu-white/80"
+        <div className="relative">
+          <header className="absolute inset-x-0 top-0 z-50 text-hu-white">
+            <div className="flex h-[64px] w-full items-center justify-between px-5">
+              <Link
+                href="#hero"
+                className="font-serif text-[18px] font-medium tracking-[0.08em]"
                 onClick={() => setMenuOpen(false)}
               >
-                예약
-              </a>
-              <button
-                type="button"
-                className="flex h-8 w-8 items-center justify-center"
-                aria-label={menuOpen ? "메뉴 닫기" : "메뉴 열기"}
-                aria-expanded={menuOpen}
-                onClick={() => setMenuOpen((v) => !v)}
-              >
-                <svg viewBox="0 0 37 10" width="28" height="8" fill="currentColor" aria-hidden>
-                  <rect x="0" y="0" width="37" height="1.5" />
-                  <rect x="12.33" y="8.5" width="24.67" height="1.5" />
-                </svg>
-              </button>
+                HAIR UP
+              </Link>
+              <div className="flex items-center gap-4">
+                <a
+                  href="#booking"
+                  className="font-sans-kr text-[12px] tracking-[0.04em] text-hu-white/90"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  예약
+                </a>
+                <button
+                  type="button"
+                  className="flex h-8 w-8 items-center justify-center"
+                  aria-label={menuOpen ? "메뉴 닫기" : "메뉴 열기"}
+                  aria-expanded={menuOpen}
+                  onClick={() => setMenuOpen((v) => !v)}
+                >
+                  <svg viewBox="0 0 37 10" width="28" height="8" fill="currentColor" aria-hidden>
+                    <rect x="0" y="0" width="37" height="1.5" />
+                    <rect x="12.33" y="8.5" width="24.67" height="1.5" />
+                  </svg>
+                </button>
+              </div>
             </div>
-          </div>
-        </header>
+          </header>
 
-        <main>
-          <MobileHero />
-          <MobileWhyChooseUs />
-          <section aria-hidden className="w-full bg-hu-black" style={{ height: 80 }} />
-          <MobilePricingMenu />
-          <MobileArtists artists={artists} />
-          <MobileGallery images={galleryImages} />
-          <Booking artists={artists} services={services} />
-          <MobileHoursLocation />
-          <Marquee />
-          <MobileReview />
-          <MobileInstagram />
-        </main>
+          <main>
+            <MobileHero />
+            <MobileWhyChooseUs />
+            <section aria-hidden className="w-full bg-hu-black" style={{ height: 80 }} />
+            <MobilePricingMenu />
+            <MobileArtists artists={artists} />
+            <MobileGallery images={galleryImages} />
+            <Booking artists={artists} services={services} />
+            <MobileHoursLocation />
+            <Marquee />
+            <MobileReview />
+            <MobileInstagram />
+          </main>
+        </div>
 
         <MobileFooter />
       </div>

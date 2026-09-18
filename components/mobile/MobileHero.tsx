@@ -1,23 +1,26 @@
-const HERO_SLIDES = 4;
-
-/** 2x 소스(hero-bg.png)를 1x 350 폭으로 표시 */
+/** 원본 세로 사진을 모바일 전폭으로 표시 (헤더 포함 겉 테두리 없음) */
 export function MobileHero() {
   return (
-    <section id="hero" className="bg-hu-black text-hu-white" aria-labelledby="hero-heading">
-      <div className="mx-auto w-[350px] max-w-full">
-        <div className="relative overflow-hidden">
-          <img
-            src="/hero-bg.png"
-            alt=""
-            aria-hidden
-            width={350}
-            height={143}
-            className="block h-auto w-[350px] max-w-full object-cover"
-            decoding="async"
-          />
-        </div>
+    <section id="hero" className="w-full text-hu-white" aria-labelledby="hero-heading">
+      <div className="relative h-[min(100dvh,640px)] min-h-[520px] w-full overflow-hidden">
+        <img
+          src="/hero-bg.jpg"
+          alt=""
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-cover object-[center_26%]"
+          decoding="async"
+        />
+        {/* 상단 헤더 가독성 */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/35 to-transparent"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[48%] bg-gradient-to-t from-black/60 via-black/25 to-transparent"
+        />
 
-        <div className="px-0 pb-10 pt-8 text-center">
+        <div className="absolute inset-x-0 bottom-8 z-10 px-4 text-center">
           <p className="font-sans-en text-[10px] font-medium tracking-[0.32em] text-hu-white">
             WELCOME TO HAIR UP
           </p>
@@ -28,19 +31,6 @@ export function MobileHero() {
             <span className="block">DISCOVER YOUR</span>
             <span className="block">NEW FAVORITE SALON</span>
           </h1>
-
-          <div className="mt-8 flex justify-center gap-2" aria-hidden>
-            {Array.from({ length: HERO_SLIDES }, (_, i) => (
-              <span
-                key={i}
-                className={
-                  i === 0
-                    ? "h-1.5 w-1.5 rounded-full bg-hu-white"
-                    : "h-1.5 w-1.5 rounded-full bg-hu-dot-inactive"
-                }
-              />
-            ))}
-          </div>
         </div>
       </div>
     </section>
