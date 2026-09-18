@@ -5,7 +5,7 @@ import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
 import { mapAuthError } from "@/lib/admin/auth-errors";
 
 export async function POST(request: Request) {
-  let body: { email?: string; password?: string };
+  let body: { email?: string; password?: string; remember?: boolean };
   try {
     body = await request.json();
   } catch {
@@ -14,6 +14,7 @@ export async function POST(request: Request) {
 
   const email = body.email?.trim().toLowerCase() || "";
   const password = body.password || "";
+  const remember = Boolean(body.remember);
 
   if (!email || !password) {
     return NextResponse.json(
@@ -39,7 +40,13 @@ export async function POST(request: Request) {
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value, options }) =>
-          cookieStore.set(name, value, options)
+          cookieStore.set(
+            name,
+            value,
+            remember
+              ? { ...options, maxAge: 60 * 60 * 24 * 30 }
+              : { ...options, maxAge: undefined, expires: undefined }
+          )
         );
       }
     }

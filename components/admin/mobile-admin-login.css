@@ -1,0 +1,395 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400&family=Noto+Sans+KR:wght@400&display=swap");
+
+.m-admin-login {
+  min-height: 100dvh;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.m-admin-login *,
+.m-admin-login *::before,
+.m-admin-login *::after {
+  box-sizing: border-box;
+}
+
+.m-admin-login-artboard {
+  width: 100%;
+  max-width: 391px;
+  margin-inline: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding-left: 24px;
+  padding-right: 24px;
+  padding-bottom: 34px;
+}
+
+.m-admin-login-artboard[data-top="default"] {
+  padding-top: 170px;
+}
+
+.m-admin-login-artboard[data-top="email-error"] {
+  padding-top: 160px;
+}
+
+.m-admin-login-artboard[data-top="login-error"] {
+  padding-top: 164px;
+}
+
+.LOGIN-LOGO {
+  width: 151px;
+  height: auto;
+  display: block;
+  margin-inline: auto;
+}
+
+.LOGIN-DESC {
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.571;
+  letter-spacing: -0.01em;
+  text-align: center;
+  color: rgba(28, 26, 25, 0.7);
+  margin: 25px 0 0;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+.m-admin-login-form {
+  margin-top: 65px;
+  width: 343px;
+  max-width: 100%;
+}
+
+.m-admin-login-field-email {
+  width: 340px;
+  max-width: 100%;
+}
+
+.m-admin-login-field-password {
+  width: 340px;
+  max-width: 100%;
+  margin-top: 35px;
+}
+
+.m-admin-login-input-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.m-admin-login-input-row input {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.INPUT-LABEL,
+.m-admin-login-input-row input.INPUT-LABEL {
+  font-family: "Noto Sans KR";
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.533;
+  letter-spacing: 0;
+  text-align: left;
+  color: rgb(151, 151, 151);
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+.m-admin-login-input-row input.INPUT-LABEL::placeholder {
+  font-family: "Noto Sans KR";
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.533;
+  letter-spacing: 0;
+  color: rgb(151, 151, 151);
+  opacity: 1;
+}
+
+.INPUT-TEXT-ACTIVE,
+.m-admin-login-input-row input.INPUT-TEXT-ACTIVE {
+  font-family: "Noto Sans KR";
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-align: left;
+  color: rgb(28, 26, 25);
+  line-height: 1.533;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+.INPUT-TEXT-ERROR,
+.m-admin-login-input-row input.INPUT-TEXT-ERROR {
+  font-family: "Noto Sans KR";
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-align: left;
+  color: rgb(28, 26, 25);
+  line-height: 1.533;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+.INPUT-PASSWORD,
+.m-admin-login-input-row input.INPUT-PASSWORD {
+  font-family: "Noto Sans KR";
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0.4em;
+  text-align: left;
+  color: rgb(28, 26, 25);
+  line-height: 1.533;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+.INPUT-PASSWORD-VISIBLE,
+.m-admin-login-input-row input.INPUT-PASSWORD-VISIBLE {
+  font-family: "Noto Sans KR";
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0.15em;
+  text-align: left;
+  color: rgb(28, 26, 25);
+  line-height: 1.533;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+.m-admin-login-input-row input.m-admin-login-has-icon {
+  padding-right: 28px; /* 임의값: 아이콘 20px + 여백 8px */
+}
+
+.m-admin-login-input-row input.m-admin-login-has-eye {
+  padding-right: 26px; /* 임의값: 아이콘 18px + 여백 8px */
+}
+
+.INPUT-LINE,
+.INPUT-LINE-INACTIVE {
+  width: 340px;
+  height: 0;
+  margin-top: 11px;
+  border: 0;
+  border-top: 1px solid #979797;
+}
+
+.INPUT-LINE-ACTIVE {
+  width: 340px;
+  height: 0;
+  margin-top: 11px;
+  border: 0;
+  border-top: 1px solid rgb(28, 26, 25);
+}
+
+.INPUT-LINE-ERROR {
+  width: 340px;
+  height: 0;
+  margin-top: 11px;
+  border: 0;
+  border-top: 1px solid rgb(195, 60, 60);
+}
+
+.ERROR-MSG {
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  text-align: left;
+  color: rgb(195, 60, 60);
+  margin: 8px 0 0;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+.LOGIN-ERROR-MSG {
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  text-align: left;
+  color: rgb(195, 60, 60);
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+.m-admin-login-error-row {
+  display: flex;
+  align-items: center;
+  gap: 4px; /* 임의값: 아이콘 ↔ 문구 */
+  margin-top: 8px;
+}
+
+.ICO-WARNING {
+  width: 20px;
+  height: 20px;
+  color: #c33c3c;
+  flex-shrink: 0;
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.ICO-ERROR {
+  width: 17px;
+  height: 17px;
+  color: rgb(195, 60, 60);
+  flex-shrink: 0;
+}
+
+.ICO-EYE,
+.ICO-EYE-OFF {
+  width: 18px;
+  height: 18px;
+  color: #8e8e8e;
+  flex-shrink: 0;
+}
+
+.m-admin-login-eye {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  line-height: 0;
+  cursor: pointer;
+}
+
+.m-admin-login-keep {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* 임의값: 체크박스 ↔ 텍스트 */
+  margin-top: 25px;
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.CHECKBOX {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid rgb(151, 151, 151);
+  border-radius: 1px;
+  background: transparent;
+  flex-shrink: 0;
+  display: block;
+}
+
+.CHECKBOX-CHECKED {
+  width: 17px;
+  height: 17px;
+  background-color: rgb(44, 58, 46);
+  border-radius: 2px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ICO-CHECK {
+  width: 11px;
+  height: 11px;
+  color: #ffffff;
+  display: block;
+}
+
+.KEEP-LOGIN-TEXT {
+  font-family: "Noto Sans KR";
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  text-align: left;
+  color: rgb(102, 102, 102);
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+.BTN-LOGIN {
+  width: 343px;
+  height: 52px;
+  background-color: rgb(44, 58, 46);
+  border-radius: 6px;
+  border: 0;
+  padding: 0;
+  margin-top: 50px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.BTN-LOGIN:disabled {
+  cursor: not-allowed;
+}
+
+.BTN-LOGIN-TEXT {
+  font-family: "Noto Sans KR";
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-align: center;
+  color: #ffffff;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+.m-admin-login-links {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 343px;
+  max-width: 100%;
+  margin-top: 20px;
+}
+
+.LINK-FIND-PW {
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  text-align: left;
+  color: rgb(28, 25, 25);
+  text-decoration: none;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+.LINK-GO-WEBSITE {
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  text-align: right;
+  color: rgb(28, 26, 25);
+  text-decoration: none;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+.FOOTER-COPYRIGHT {
+  font-family: "Inter";
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  text-align: center;
+  color: rgb(102, 102, 102);
+  margin: auto 0 0;
+  text-box-trim: trim-both;
+  text-box-edge: text alphabetic;
+}

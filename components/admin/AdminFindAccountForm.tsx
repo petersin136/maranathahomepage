@@ -3,129 +3,126 @@
 import Link from "next/link";
 import { useState } from "react";
 import { clsx } from "clsx";
+import { AdminSpecIcon } from "@/components/admin/AdminSpecIcon";
 
-type Tab = "id" | "password";
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function AdminFindAccountForm() {
-  const [tab, setTab] = useState<Tab>("password");
   const [email, setEmail] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
-  const [maskedEmail, setMaskedEmail] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const valid = EMAIL_RE.test(email.trim());
+  const canSubmit = valid && !sent && !loading;
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setMessage(null);
-    setMaskedEmail(null);
+    if (!valid) return;
+    setError(false);
     setLoading(true);
-
     try {
-      const endpoint =
-        tab === "id" ? "/api/admin/auth/find-id" : "/api/admin/auth/reset-password";
-      const res = await fetch(endpoint, {
+      const res = await fetch("/api/admin/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email })
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        setError(data.error || "요청에 실패했습니다.");
+        setError(true);
         return;
       }
-      setMessage(data.message || "처리되었습니다.");
-      if (data.maskedEmail) setMaskedEmail(data.maskedEmail);
+      setSent(true);
     } catch {
-      setError("네트워크 오류가 발생했습니다.");
+      setError(true);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div>
-      <div className="flex gap-6 border-b border-hu-black/10">
-        {(
-          [
-            { key: "password" as const, label: "비밀번호 찾기" },
-            { key: "id" as const, label: "아이디 확인" }
-          ] as const
-        ).map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => {
-              setTab(t.key);
-              setError(null);
-              setMessage(null);
-              setMaskedEmail(null);
-            }}
-            className={clsx(
-              "pb-3 font-sans-kr text-[13px] transition",
-              tab === t.key
-                ? "border-b-2 border-hu-black text-hu-black"
-                : "text-hu-muted hover:text-hu-body"
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+    <div className="min-h-dvh bg-hu-white text-[#1C1A19]">
+      <div className="mx-auto flex min-h-dvh w-full max-w-[390px] flex-col px-[24px] pb-[34px] pt-[224px]">
+        <h1 className="text-center font-serif text-[48px] font-medium leading-none tracking-[-0.02em] [text-box-trim:trim-both] [text-box-edge:text_alphabetic]">
+          hair up
+        </h1>
 
-      <p className="mt-6 font-sans-kr text-[13px] leading-relaxed text-hu-muted">
-        {tab === "password"
-          ? "가입에 사용한 이메일을 입력하면 비밀번호 재설정 링크를 보내드립니다."
-          : "직원 계정 이메일을 입력하면 등록 여부를 확인해 드립니다. 계정이 없다면 원장에게 문의해 주세요."}
-      </p>
+        <p className="mt-[26px] text-center font-sans-kr text-[13px] leading-[23px] text-[#7C7B7B] [text-box-trim:trim-both] [text-box-edge:cap_alphabetic]">
+          가입 시 등록한 이메일 주소를 입력해 주세요.
+          <br />
+          비밀번호를 재설정할 수 있는 링크를 보내드립니다.
+        </p>
 
-      <form onSubmit={onSubmit} className="mt-8 space-y-6">
-        <label className="block">
-          <span className="font-serif text-[11px] tracking-[0.14em] text-hu-accent">EMAIL</span>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="직원 이메일"
-            required
-            className="mt-2 w-full border-b border-hu-black/40 bg-transparent pb-2 font-sans-kr text-[15px] outline-none placeholder:text-hu-muted focus:border-hu-black"
-          />
-        </label>
-
-        {error ? (
-          <p className="font-sans-kr text-[13px] text-[#9b4a4a]" role="alert">
-            {error}
-          </p>
-        ) : null}
-        {message ? (
-          <div className="font-sans-kr text-[13px] text-hu-black" role="status">
-            <p>{message}</p>
-            {maskedEmail ? (
-              <p className="mt-2 font-serif text-[18px] tracking-[0.04em]">{maskedEmail}</p>
+        <form onSubmit={onSubmit} noValidate className="mt-[66px] flex flex-col leading-none">
+          <div>
+            <div className="relative leading-none">
+              <input
+                type="email"
+                inputMode="email"
+                autoComplete="username"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setError(false);
+                  setSent(false);
+                }}
+                placeholder="이메일"
+                aria-label="이메일"
+                aria-invalid={error}
+                className={clsx(
+                  "block h-[27px] w-full appearance-none border-b bg-transparent px-0 py-0 pb-[12px] font-sans-kr text-[14px] leading-none text-[#1C1A19] outline-none placeholder:text-[#979797]",
+                  error ? "border-[#C33C3C]" : email.length > 0 ? "border-[#1C1A19]" : "border-[#979797]"
+                )}
+              />
+            </div>
+            {error ? (
+              <p
+                className="mt-[9px] flex items-start gap-[6px] font-sans-kr text-[12px] leading-none text-[#C33C3C] [text-box-trim:trim-both] [text-box-edge:cap_alphabetic]"
+                role="alert"
+              >
+                <AdminSpecIcon
+                  name="exclamation_line"
+                  className="mt-[-2px] h-4 w-4 shrink-0 text-[#C33C3C]"
+                />
+                <span>등록되지 않은 계정입니다. 이메일을 다시 확인해 주세요.</span>
+              </p>
+            ) : null}
+            {sent ? (
+              <p
+                className="mt-[9px] font-sans-kr text-[12px] leading-[20px] text-[#666666] [text-box-trim:trim-both] [text-box-edge:cap_alphabetic]"
+                role="status"
+              >
+                입력하신 이메일로 재설정 링크를 전송했습니다.
+                <br />
+                메일함을 확인하고 24시간 이내에 변경을 완료해 주세요.
+              </p>
             ) : null}
           </div>
-        ) : null}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="flex h-[52px] w-full items-center justify-between bg-hu-cta px-6 font-sans-kr text-[14px] font-medium text-hu-white transition hover:bg-[#222222] disabled:cursor-not-allowed disabled:bg-[#bcbcbc]"
-        >
-          <span>
-            {loading
-              ? "처리 중..."
-              : tab === "password"
-                ? "재설정 메일 받기"
-                : "아이디 확인"}
-          </span>
-          <span aria-hidden>›</span>
-        </button>
-      </form>
+          <button
+            type="submit"
+            disabled={!canSubmit}
+            className={clsx(
+              "mt-[51px] flex h-[52px] w-full items-center justify-center rounded-[6px] font-sans-kr text-[14px]",
+              canSubmit
+                ? "bg-[#2C3A2E] text-hu-white"
+                : "cursor-not-allowed bg-[#EEEEEE] text-[#A3A3A3]"
+            )}
+          >
+            {sent ? "발송 완료" : "인증 메일 발송"}
+          </button>
 
-      <div className="mt-8 font-sans-kr text-[12px] text-hu-muted">
-        <Link href="/admin/login" className="underline underline-offset-2 hover:text-hu-black">
-          로그인으로 돌아가기
-        </Link>
+          <Link
+            href="/admin/login"
+            className="mt-[21px] text-center font-sans-kr text-[12px] leading-none text-[#1C1A19] [text-box-trim:trim-both] [text-box-edge:cap_alphabetic]"
+          >
+            로그인으로 돌아가기
+          </Link>
+        </form>
+
+        <p className="mt-auto pt-10 text-center font-sans-kr text-[11px] leading-none text-[#666666] [text-box-trim:trim-both] [text-box-edge:text_alphabetic]">
+          © hair up. All rights reserved.
+        </p>
       </div>
     </div>
   );

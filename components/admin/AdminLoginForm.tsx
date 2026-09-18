@@ -3,7 +3,12 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { AdminSpecIcon } from "@/components/admin/AdminSpecIcon";
+import { clsx } from "clsx";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const REMEMBER_KEY = "hu-admin-remember";
 
 function safeAdminPath(raw: string | null): Route {
   if (!raw || !raw.startsWith("/admin") || raw.startsWith("//") || raw.includes("://")) {
@@ -20,122 +25,212 @@ export default function AdminLoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [remember, setRemember] = useState(false);
+  const [emailError, setEmailError] = useState(false);
+  const [loginError, setLoginError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    try {
+      setRemember(window.localStorage.getItem(REMEMBER_KEY) === "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const underline = (hasError: boolean, filled: boolean) =>
+    hasError ? "border-[#C33C3C]" : filled ? "border-[#1C1A19]" : "border-[#979797]";
+
+  const validateEmail = (value: string) => {
+    const ok = EMAIL_RE.test(value.trim());
+    setEmailError(!ok);
+    return ok;
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    setLoginError(false);
+    setErrorMessage(null);
+    if (!validateEmail(email)) return;
+
     setLoading(true);
     try {
       const res = await fetch("/api/admin/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password, remember })
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        setError(data.error || "로그인에 실패했습니다.");
+        setLoginError(true);
+        setErrorMessage("이메일 또는 비밀번호를 확인해주세요.");
         return;
+      }
+      try {
+        window.localStorage.setItem(REMEMBER_KEY, remember ? "1" : "0");
+      } catch {
+        /* ignore */
       }
       router.replace(next);
       router.refresh();
     } catch {
-      setError("네트워크 오류가 발생했습니다.");
+      setLoginError(true);
+      setErrorMessage("네트워크 오류가 발생했습니다.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
-      <label className="block">
-        <span className="font-serif text-[11px] tracking-[0.14em] text-hu-accent">EMAIL</span>
-        <input
-          type="email"
-          autoComplete="username"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="직원 이메일"
-          required
-          className="mt-2 w-full border-b border-hu-black/40 bg-transparent pb-2 font-sans-kr text-[15px] outline-none placeholder:text-hu-muted focus:border-hu-black"
-        />
-      </label>
+    <div className="min-h-dvh bg-hu-white text-[#1C1A19]">
+      <div className="mx-auto flex min-h-dvh w-full max-w-[390px] flex-col px-[24px] pb-[34px] pt-[170px]">
+        <h1
+          className="text-center font-serif text-[48px] font-medium leading-none tracking-[-0.02em] [text-box-trim:trim-both] [text-box-edge:text_alphabetic]"
+        >
+          hair up
+        </h1>
 
-      <div>
-        <span className="font-serif text-[11px] tracking-[0.14em] text-hu-accent">PASSWORD</span>
-        <div className="relative mt-2">
-          <input
-            type={showPassword ? "text" : "password"}
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="비밀번호"
-            required
-            className="w-full border-b border-hu-black/40 bg-transparent pb-2 pr-10 font-sans-kr text-[15px] outline-none placeholder:text-hu-muted focus:border-hu-black"
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword((v) => !v)}
-            aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
-            className="absolute right-0 top-1/2 -translate-y-[60%] p-1 text-hu-muted transition hover:text-hu-black"
-          >
-            {showPassword ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path
-                  d="M3 3l18 18M10.6 10.6a2.5 2.5 0 003.5 3.5M9.9 5.1A10.5 10.5 0 0121 12c-.6 1-1.4 2-2.4 2.8M6.1 6.1C4.5 7.4 3.3 9.1 2.5 12c1.5 4.5 5.5 7.5 9.5 7.5 1.6 0 3.1-.4 4.5-1.1"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path
-                  d="M2.5 12C4 7.5 8 4.5 12 4.5S20 7.5 21.5 12C20 16.5 16 19.5 12 19.5S4 16.5 2.5 12z"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinejoin="round"
-                />
-                <circle cx="12" cy="12" r="2.75" stroke="currentColor" strokeWidth="1.5" />
-              </svg>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {error ? (
-        <p className="font-sans-kr text-[13px] text-[#9b4a4a]" role="alert">
-          {error}
+        <p className="mt-[26px] text-center font-sans-kr text-[13px] leading-[23px] text-[#7C7B7B] [text-box-trim:trim-both] [text-box-edge:cap_alphabetic]">
+          헤어업 파트너를 위한 관리자 공간입니다.
+          <br />
+          발급받은 계정으로 로그인해 주세요.
         </p>
-      ) : null}
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="flex h-[52px] w-full items-center justify-between bg-hu-cta px-6 font-sans-kr text-[14px] font-medium text-hu-white transition hover:bg-[#222222] disabled:cursor-not-allowed disabled:bg-[#bcbcbc]"
-      >
-        <span>{loading ? "로그인 중..." : "로그인"}</span>
-        <span aria-hidden>›</span>
-      </button>
+        <form onSubmit={onSubmit} noValidate className="mt-[66px] flex flex-col leading-none">
+          <div>
+            <div className="relative leading-none">
+              <input
+                type="email"
+                inputMode="email"
+                autoComplete="username"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setEmailError(false);
+                  setLoginError(false);
+                  setErrorMessage(null);
+                }}
+                onBlur={() => {
+                  if (email.trim()) validateEmail(email);
+                }}
+                placeholder="이메일"
+                aria-label="이메일"
+                aria-invalid={emailError}
+                className={clsx(
+                  "block h-[27px] w-full appearance-none border-b bg-transparent px-0 py-0 pb-[12px] font-sans-kr text-[14px] leading-none text-[#1C1A19] outline-none placeholder:text-[#979797]",
+                  emailError ? "pr-[28px]" : "pr-0",
+                  underline(emailError, email.length > 0)
+                )}
+              />
+              {emailError ? (
+                <span className="absolute right-0 top-0 flex h-[14px] items-center">
+                  <AdminSpecIcon
+                    name="exclamation_line"
+                    className="h-4 w-4 text-[#C33C3C]"
+                  />
+                </span>
+              ) : null}
+            </div>
+            {emailError ? (
+              <p
+                className="mt-[9px] font-sans-kr text-[12px] leading-none text-[#C33C3C] [text-box-trim:trim-both] [text-box-edge:cap_alphabetic]"
+                role="alert"
+              >
+                올바른 이메일 형식을 입력해 주세요.
+              </p>
+            ) : null}
+          </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-1 font-sans-kr text-[12px] text-hu-muted">
-        <div className="flex items-center gap-3">
-          <Link href="/admin/signup" className="underline underline-offset-2 hover:text-hu-black">
-            회원가입
-          </Link>
-          <Link
-            href="/admin/find-account"
-            className="underline underline-offset-2 hover:text-hu-black"
+          <div className="mt-[35px]">
+            <div className="relative leading-none">
+              <input
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setLoginError(false);
+                  setErrorMessage(null);
+                }}
+                placeholder="비밀번호"
+                aria-label="비밀번호"
+                required
+                className={clsx(
+                  "block h-[27px] w-full appearance-none border-b bg-transparent px-0 py-0 pb-[12px] font-sans-kr text-[14px] leading-none text-[#1C1A19] outline-none placeholder:text-[#979797]",
+                  password.length > 0 ? "pr-[28px]" : "pr-0",
+                  underline(false, password.length > 0)
+                )}
+              />
+              {password.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
+                  className="absolute right-0 top-0 flex h-[14px] w-4 items-center justify-center text-[#979797]"
+                >
+                  {showPassword ? (
+                    <AdminSpecIcon name="eye-crossed" className="h-4 w-4 text-[#979797]" />
+                  ) : (
+                    <AdminSpecIcon name="eye" className="h-4 w-4 text-[#979797]" />
+                  )}
+                </button>
+              ) : null}
+            </div>
+            {loginError && errorMessage ? (
+              <p
+                className="mt-[9px] flex items-start gap-[6px] font-sans-kr text-[12px] leading-none text-[#C33C3C] [text-box-trim:trim-both] [text-box-edge:cap_alphabetic]"
+                role="alert"
+              >
+                <AdminSpecIcon
+                  name="exclamation_line"
+                  className="mt-[-2px] h-4 w-4 shrink-0 text-[#C33C3C]"
+                />
+                <span>{errorMessage}</span>
+              </p>
+            ) : null}
+          </div>
+
+          <label className="mt-[26px] flex cursor-pointer items-center gap-[8px]">
+            <span
+              className={clsx(
+                "relative flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[2px] border",
+                remember ? "border-[#2C3A2E] bg-[#2C3A2E]" : "border-[#979797] bg-hu-white"
+              )}
+            >
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+                className="absolute inset-0 cursor-pointer opacity-0"
+              />
+              {remember ? (
+                <AdminSpecIcon name="check_2" className="h-[10px] w-[10px] text-hu-white" />
+              ) : null}
+            </span>
+            <span className="font-sans-kr text-[13px] leading-none text-[#666666] [text-box-trim:trim-both] [text-box-edge:cap_alphabetic]">
+              로그인 유지
+            </span>
+          </label>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="mt-[51px] flex h-[52px] w-full items-center justify-center rounded-[6px] bg-[#2C3A2E] font-sans-kr text-[14px] text-hu-white disabled:opacity-70"
           >
-            아이디·비밀번호 찾기
-          </Link>
-        </div>
-        <Link href="/" className="hover:text-hu-black">
-          홈으로
-        </Link>
+            로그인
+          </button>
+
+          <div className="mt-[21px] flex items-center justify-between font-sans-kr text-[12px] leading-none text-[#6F6E6E] [text-box-trim:trim-both] [text-box-edge:cap_alphabetic]">
+            <Link href="/admin/find-account">비밀번호 찾기</Link>
+            <Link href="/">웹사이트 바로가기</Link>
+          </div>
+        </form>
+
+        <p className="mt-auto pt-10 text-center font-sans-kr text-[11px] leading-none text-[#666666] [text-box-trim:trim-both] [text-box-edge:text_alphabetic]">
+          © hair up. All rights reserved.
+        </p>
       </div>
-    </form>
+    </div>
   );
 }

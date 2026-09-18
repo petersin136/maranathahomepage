@@ -1,7 +1,7 @@
 export function mapAuthError(message?: string | null): string {
   const m = (message || "").toLowerCase();
   if (m.includes("invalid login") || m.includes("invalid credentials")) {
-    return "이메일 또는 비밀번호가 올바르지 않습니다.";
+    return "이메일 또는 비밀번호를 확인해주세요.";
   }
   if (m.includes("email not confirmed")) {
     return "이메일 인증이 완료되지 않은 계정입니다.";

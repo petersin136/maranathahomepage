@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getSupabaseServiceRole } from "@/lib/supabase/admin";
 import { mapAuthError } from "@/lib/admin/auth-errors";
+
+async function hasStaffUser(email: string): Promise<boolean> {
+  const admin = getSupabaseServiceRole();
+  const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  if (error) throw error;
+  return data.users.some((u) => u.email?.toLowerCase() === email);
+}
 
 export async function POST(request: Request) {
   let body: { email?: string };
@@ -15,6 +23,25 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { ok: false, error: "올바른 이메일을 입력해 주세요." },
       { status: 400 }
+    );
+  }
+
+  try {
+    const found = await hasStaffUser(email);
+    if (!found) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "등록되지 않은 계정입니다. 이메일을 다시 확인해 주세요."
+        },
+        { status: 404 }
+      );
+    }
+  } catch (err) {
+    console.error("[reset-password] lookup", err);
+    return NextResponse.json(
+      { ok: false, error: "확인 중 오류가 발생했습니다." },
+      { status: 500 }
     );
   }
 
@@ -35,9 +62,8 @@ export async function POST(request: Request) {
     );
   }
 
-  // 계정 존재 여부를 드러내지 않음
   return NextResponse.json({
     ok: true,
-    message: "등록된 계정이라면 비밀번호 재설정 메일을 보내드렸습니다."
+    message: "입력하신 이메일로 재설정 링크를 전송했습니다."
   });
 }
