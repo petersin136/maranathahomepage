@@ -118,7 +118,7 @@ export default function AdminLoginForm() {
                 aria-label="이메일"
                 aria-invalid={emailError}
                 className={clsx(
-                  "block h-[27px] w-full appearance-none border-b bg-transparent px-0 py-0 pb-[12px] font-sans-kr text-[14px] leading-none text-[#1C1A19] outline-none placeholder:text-[#979797]",
+                  "block min-h-[26px] w-full appearance-none overflow-visible border-b bg-transparent px-0 py-0 pb-[12px] font-sans-kr text-[14px] leading-[26px] text-[#1C1A19] outline-none placeholder:text-[#979797]",
                   emailError ? "pr-[28px]" : "pr-0",
                   underline(emailError, email.length > 0)
                 )}
@@ -157,7 +157,7 @@ export default function AdminLoginForm() {
                 aria-label="비밀번호"
                 required
                 className={clsx(
-                  "block h-[27px] w-full appearance-none border-b bg-transparent px-0 py-0 pb-[12px] font-sans-kr text-[14px] leading-none text-[#1C1A19] outline-none placeholder:text-[#979797]",
+                  "block min-h-[26px] w-full appearance-none overflow-visible border-b bg-transparent px-0 py-0 pb-[12px] font-sans-kr text-[14px] leading-[26px] text-[#1C1A19] outline-none placeholder:text-[#979797]",
                   password.length > 0 ? "pr-[28px]" : "pr-0",
                   underline(false, password.length > 0)
                 )}

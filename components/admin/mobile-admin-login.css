@@ -91,6 +91,9 @@
   outline: none;
   appearance: none;
   -webkit-appearance: none;
+  overflow: visible;
+  height: 26px;
+  line-height: 26px;
 }
 
 .INPUT-LABEL,
@@ -98,19 +101,17 @@
   font-family: "Noto Sans KR";
   font-size: 15px;
   font-weight: 400;
-  line-height: 1.533;
+  line-height: 26px;
   letter-spacing: 0;
   text-align: left;
   color: rgb(151, 151, 151);
-  text-box-trim: trim-both;
-  text-box-edge: cap alphabetic;
 }
 
 .m-admin-login-input-row input.INPUT-LABEL::placeholder {
   font-family: "Noto Sans KR";
   font-size: 15px;
   font-weight: 400;
-  line-height: 1.533;
+  line-height: 26px;
   letter-spacing: 0;
   color: rgb(151, 151, 151);
   opacity: 1;
@@ -124,9 +125,7 @@
   letter-spacing: 0;
   text-align: left;
   color: rgb(28, 26, 25);
-  line-height: 1.533;
-  text-box-trim: trim-both;
-  text-box-edge: cap alphabetic;
+  line-height: 26px;
 }
 
 .INPUT-TEXT-ERROR,
@@ -137,9 +136,7 @@
   letter-spacing: 0;
   text-align: left;
   color: rgb(28, 26, 25);
-  line-height: 1.533;
-  text-box-trim: trim-both;
-  text-box-edge: cap alphabetic;
+  line-height: 26px;
 }
 
 .INPUT-PASSWORD,
@@ -150,9 +147,7 @@
   letter-spacing: 0.4em;
   text-align: left;
   color: rgb(28, 26, 25);
-  line-height: 1.533;
-  text-box-trim: trim-both;
-  text-box-edge: cap alphabetic;
+  line-height: 26px;
 }
 
 .INPUT-PASSWORD-VISIBLE,
@@ -163,9 +158,7 @@
   letter-spacing: 0.15em;
   text-align: left;
   color: rgb(28, 26, 25);
-  line-height: 1.533;
-  text-box-trim: trim-both;
-  text-box-edge: cap alphabetic;
+  line-height: 26px;
 }
 
 .m-admin-login-input-row input.m-admin-login-has-icon {
