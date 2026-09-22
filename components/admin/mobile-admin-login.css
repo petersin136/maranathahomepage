@@ -91,7 +91,7 @@
   outline: none;
   appearance: none;
   -webkit-appearance: none;
-  overflow: visible;
+  overflow: hidden;
   height: 26px;
   line-height: 26px;
 }
@@ -506,22 +506,23 @@ body:has(.m-admin-login[data-layout="desktop"]) {
 .m-admin-login[data-layout="desktop"] .m-admin-login-input-row input.INPUT-FIELD,
 .m-admin-login[data-layout="desktop"] .INPUT-FIELD {
   width: 100%;
-  height: auto;
-  min-height: 0;
+  height: 26px;
+  min-height: 26px;
+  line-height: 26px;
   border: none;
   border-bottom: 1px solid #979797;
   border-radius: 0;
   font-family: "Noto Sans KR", sans-serif;
   font-weight: 400;
   font-size: 17px;
-  line-height: normal;
   color: #1c1a19;
   background: transparent;
   box-sizing: border-box;
   outline: none;
   padding: 0;
-  text-box-trim: trim-both;
-  text-box-edge: cap alphabetic;
+  overflow: hidden;
+  text-box-trim: none;
+  text-box-edge: auto;
 }
 
 .m-admin-login[data-layout="desktop"] .INPUT-FIELD::placeholder {
@@ -552,7 +553,7 @@ body:has(.m-admin-login[data-layout="desktop"]) {
   font-family: "Noto Sans KR", sans-serif;
   font-size: 17px;
   font-weight: 400;
-  line-height: normal;
+  line-height: 26px;
   letter-spacing: 0;
 }
 
@@ -771,8 +772,9 @@ body:has(.m-admin-login[data-layout="desktop"]) {
 .m-admin-login[data-layout="desktop"] .AUTH-CARD .m-admin-login-input-row input,
 .m-admin-login[data-layout="desktop"] .AUTH-CARD .INPUT-FIELD {
   width: 100%;
-  height: auto;
-  min-height: 0;
+  height: 26px;
+  min-height: 26px;
+  line-height: 26px;
   font-family: "Noto Sans KR", sans-serif;
   font-size: 17px;
   font-weight: 400;
@@ -786,8 +788,9 @@ body:has(.m-admin-login[data-layout="desktop"]) {
   outline: none;
   padding: 0;
   box-sizing: border-box;
-  text-box-trim: trim-both;
-  text-box-edge: cap alphabetic;
+  overflow: hidden;
+  text-box-trim: none;
+  text-box-edge: auto;
 }
 
 .m-admin-login[data-layout="desktop"] .AUTH-CARD .INPUT-FIELD::placeholder {
