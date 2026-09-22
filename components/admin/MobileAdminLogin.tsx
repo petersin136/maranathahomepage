@@ -105,15 +105,15 @@ export default function MobileAdminLogin({
   const isDesktop = layout === "desktop";
 
   return (
-    <div className="m-admin-login" data-layout={layout}>
-      <div className="m-admin-login-artboard" data-top={isDesktop ? "default" : topState}>
+    <div className="m-admin-login ADMIN-LOGIN-WRAPPER" data-layout={layout}>
+      <div className="m-admin-login-artboard ADMIN-LOGIN-CARD" data-top={isDesktop ? "default" : topState}>
         <img
-          className="LOGIN-LOGO"
+          className="LOGIN-LOGO ADMIN-LOGIN-LOGO-SVG"
           src="/hair-up-logo.png"
           alt="hair up"
           width={151}
         />
-        <p className="LOGIN-DESC">
+        <p className="LOGIN-DESC ADMIN-LOGIN-DESC">
           헤어업 파트너를 위한 관리자 공간입니다.
           <br />
           발급받은 계정으로 로그인해 주세요.
@@ -123,7 +123,7 @@ export default function MobileAdminLogin({
           <div className="m-admin-login-field-email">
             <div className="m-admin-login-input-row">
               <input
-                className={`${emailTextClass}${emailFormatError ? " m-admin-login-has-icon" : ""}`}
+                className={`INPUT-FIELD ${emailTextClass}${emailFocused ? " is-focused" : ""}${emailFormatError ? " IS-ERROR m-admin-login-has-icon" : ""}`}
                 type="email"
                 autoComplete="username"
                 value={email}
@@ -140,19 +140,25 @@ export default function MobileAdminLogin({
                 }}
               />
               {emailFormatError ? (
-                <AdminSpecIcon name="exclamation_line" className="ICO-WARNING" />
+                <AdminSpecIcon name="exclamation_line" className="ICO-WARNING INPUT-ERROR-ICON" />
               ) : null}
             </div>
-            <div className={emailLineClass} />
+            {isDesktop ? null : <div className={emailLineClass} />}
             {emailFormatError ? (
-              <p className="ERROR-MSG">올바른 이메일 형식을 입력해 주세요.</p>
+              <p className="ERROR-MSG INPUT-ERROR-MSG">올바른 이메일 형식을 입력해 주세요.</p>
             ) : null}
           </div>
 
-          <div className="m-admin-login-field-password">
+          <div
+            className={
+              emailFormatError
+                ? "m-admin-login-field-password is-after-email-error"
+                : "m-admin-login-field-password"
+            }
+          >
             <div className="m-admin-login-input-row">
               <input
-                className={`${passwordTextClass}${password ? " m-admin-login-has-eye" : ""}`}
+                className={`INPUT-FIELD ${passwordTextClass}${passwordFocused ? " is-focused" : ""}${password ? " m-admin-login-has-eye" : ""}`}
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 value={password}
@@ -173,17 +179,17 @@ export default function MobileAdminLogin({
                   onClick={() => setShowPassword((v) => !v)}
                 >
                   {showPassword ? (
-                    <AdminSpecIcon name="eye-crossed" className="ICO-EYE-OFF" />
+                    <AdminSpecIcon name="eye-crossed" className="ICO-EYE-OFF INPUT-PASSWORD-ICON" />
                   ) : (
-                    <AdminSpecIcon name="eye" className="ICO-EYE" />
+                    <AdminSpecIcon name="eye" className="ICO-EYE INPUT-PASSWORD-ICON" />
                   )}
                 </button>
               ) : null}
             </div>
-            <div className={passwordLineClass} />
+            {isDesktop ? null : <div className={passwordLineClass} />}
             {loginError && !emailFormatError ? (
               <div className="m-admin-login-error-row">
-                <AdminSpecIcon name="exclamation_line" className="ICO-ERROR" />
+                <AdminSpecIcon name="exclamation_line" className="ICO-ERROR LOGIN-ERROR-ICON" />
                 <p className="LOGIN-ERROR-MSG">{loginError}</p>
               </div>
             ) : null}
@@ -200,35 +206,35 @@ export default function MobileAdminLogin({
             aria-pressed={remember}
           >
             {remember ? (
-              <span className="CHECKBOX-CHECKED">
+              <span className="CHECKBOX-CHECKED CHECKBOX-CUSTOM">
                 <AdminSpecIcon name="check_2" className="ICO-CHECK" />
               </span>
             ) : (
-              <span className="CHECKBOX" />
+              <span className="CHECKBOX CHECKBOX-CUSTOM" />
             )}
-            <span className="KEEP-LOGIN-TEXT">로그인 유지</span>
+            <span className="KEEP-LOGIN-TEXT KEEP-LOGIN-LABEL">로그인 유지</span>
           </button>
 
-          <button type="submit" className="BTN-LOGIN" disabled={loading}>
+          <button type="submit" className="BTN-LOGIN BTN-ADMIN-LOGIN" disabled={loading}>
             <span className="BTN-LOGIN-TEXT">로그인</span>
           </button>
 
           <div className="m-admin-login-links">
-            <Link href="/admin/find-account" className="LINK-FIND-PW">
+            <Link href="/admin/find-account" className="LINK-FIND-PW ADMIN-LOGIN-LINK">
               비밀번호 찾기
             </Link>
-            <Link href="/" className="LINK-GO-WEBSITE">
+            <Link href="/" className="LINK-GO-WEBSITE ADMIN-LOGIN-LINK">
               웹사이트 바로가기
             </Link>
           </div>
         </form>
 
         {isDesktop ? null : (
-          <p className="FOOTER-COPYRIGHT">© hair up. All rights reserved.</p>
+          <p className="FOOTER-COPYRIGHT ADMIN-FOOTER-COPYRIGHT">© hair up. All rights reserved.</p>
         )}
       </div>
       {isDesktop ? (
-        <p className="FOOTER-COPYRIGHT">© hair up. All rights reserved.</p>
+        <p className="FOOTER-COPYRIGHT ADMIN-FOOTER-COPYRIGHT">© hair up. All rights reserved.</p>
       ) : null}
     </div>
   );

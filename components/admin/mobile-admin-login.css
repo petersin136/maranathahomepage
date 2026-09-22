@@ -194,6 +194,13 @@
   border-top: 1px solid rgb(195, 60, 60);
 }
 
+.m-admin-login[data-layout="mobile"] .INPUT-LINE,
+.m-admin-login[data-layout="mobile"] .INPUT-LINE-INACTIVE,
+.m-admin-login[data-layout="mobile"] .INPUT-LINE-ACTIVE,
+.m-admin-login[data-layout="mobile"] .INPUT-LINE-ERROR {
+  margin-top: 7px;
+}
+
 .ERROR-MSG {
   font-family: "Noto Sans KR";
   font-size: 12px;
@@ -213,13 +220,15 @@
   letter-spacing: -0.01em;
   text-align: left;
   color: rgb(195, 60, 60);
+  margin: 0;
+  line-height: 12px;
   text-box-trim: trim-both;
   text-box-edge: cap alphabetic;
 }
 
 .m-admin-login-error-row {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 4px; /* 임의값: 아이콘 ↔ 문구 */
   margin-top: 8px;
 }
@@ -272,32 +281,40 @@
   border: 0;
   background: transparent;
   cursor: pointer;
+  line-height: 0;
 }
 
 /* 로그인 에러 문구 → 로그인 유지(체크박스) 15 */
-.m-admin-login-keep.is-after-error {
+.m-admin-login-keep.is-after-error,
+.m-admin-login[data-layout="mobile"] .m-admin-login-keep.is-after-error {
   margin-top: 15px;
 }
 
-.CHECKBOX {
-  box-sizing: border-box;
-  width: 16px;
-  height: 16px;
-  border: 1.5px solid rgb(151, 151, 151);
-  border-radius: 1px;
-  background: transparent;
-  flex-shrink: 0;
-  display: block;
-}
-
+.CHECKBOX,
 .CHECKBOX-CHECKED {
   box-sizing: border-box;
   width: 16px;
   height: 16px;
+  min-width: 16px;
+  min-height: 16px;
+  max-width: 16px;
+  max-height: 16px;
+  flex: 0 0 16px;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.CHECKBOX {
+  border: 1.5px solid rgb(151, 151, 151);
+  border-radius: 1px;
+  background: transparent;
+  display: block;
+}
+
+.CHECKBOX-CHECKED {
   border: 0;
   background-color: rgb(44, 58, 46);
   border-radius: 2px;
-  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -306,8 +323,15 @@
 .ICO-CHECK {
   width: 11px;
   height: 11px;
+  min-width: 11px;
+  min-height: 11px;
+  max-width: 11px;
+  max-height: 11px;
+  flex: 0 0 11px;
   color: #ffffff;
   display: block;
+  line-height: 0;
+  overflow: hidden;
 }
 
 .KEEP-LOGIN-TEXT {
@@ -395,46 +419,499 @@
   text-box-edge: text alphabetic;
 }
 
-/* ===== PC 1440: 1024 mock × 1.40625 ===== */
-.m-admin-login[data-layout="desktop"] {
-  min-height: 100dvh;
-  background: #f9f8f4;
-  align-items: center;
+/* ===== PC 로그인 시안 (파란 수치 + 마젠타 CSS) ===== */
+html:has(.m-admin-login[data-layout="desktop"]),
+body:has(.m-admin-login[data-layout="desktop"]) {
+  background-color: #faf8f5;
+  margin: 0;
+}
+
+.m-admin-login[data-layout="desktop"].ADMIN-LOGIN-WRAPPER {
+  background-color: #faf8f5;
+  min-height: 100vh;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
   justify-content: center;
-  padding: 40px 24px;
+  align-items: center;
+  padding: 0;
 }
 
-.m-admin-login[data-layout="desktop"] .m-admin-login-artboard {
+.m-admin-login[data-layout="desktop"] .ADMIN-LOGIN-CARD {
   width: 500px;
-  max-width: 100%;
+  min-height: 621px;
+  max-width: 500px;
   flex: none;
+  flex-shrink: 0;
   margin-inline: auto;
-  padding: 70px 45px 48px;
-  background: #ffffff;
-  border-radius: 14px;
-  box-shadow: 0 12px 40px rgba(28, 26, 25, 0.08); /* 임의값: 시안 소프트 섀도 */
+  padding: 70px 46px 70px;
+  background-color: #ffffff;
+  border-radius: 10px;
+  box-shadow:
+    0px 2px 4px 0px rgba(0, 0, 0, 0.02),
+    0px 12px 28px 0px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
 }
 
-.m-admin-login[data-layout="desktop"] .m-admin-login-artboard[data-top="default"],
-.m-admin-login[data-layout="desktop"] .m-admin-login-artboard[data-top="email-error"],
-.m-admin-login[data-layout="desktop"] .m-admin-login-artboard[data-top="login-error"] {
+.m-admin-login[data-layout="desktop"] .ADMIN-LOGIN-CARD[data-top="default"],
+.m-admin-login[data-layout="desktop"] .ADMIN-LOGIN-CARD[data-top="email-error"],
+.m-admin-login[data-layout="desktop"] .ADMIN-LOGIN-CARD[data-top="login-error"] {
   padding-top: 70px;
 }
 
-.m-admin-login[data-layout="desktop"] .m-admin-login-form,
-.m-admin-login[data-layout="desktop"] .m-admin-login-field-email,
-.m-admin-login[data-layout="desktop"] .m-admin-login-field-password,
-.m-admin-login[data-layout="desktop"] .INPUT-LINE,
-.m-admin-login[data-layout="desktop"] .INPUT-LINE-INACTIVE,
-.m-admin-login[data-layout="desktop"] .INPUT-LINE-ACTIVE,
-.m-admin-login[data-layout="desktop"] .INPUT-LINE-ERROR,
-.m-admin-login[data-layout="desktop"] .BTN-LOGIN,
-.m-admin-login[data-layout="desktop"] .m-admin-login-links {
+.m-admin-login[data-layout="desktop"] .ADMIN-LOGIN-LOGO-SVG {
+  width: 151px;
+  height: auto;
+  display: block;
+  fill: #1c1a19;
+}
+
+.m-admin-login[data-layout="desktop"] .ADMIN-LOGIN-DESC {
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: -0.01em;
+  text-align: center;
+  color: rgba(28, 26, 25, 0.7);
+  word-break: keep-all;
+  margin: 26px 0 0;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+.m-admin-login[data-layout="desktop"] .m-admin-login-form {
+  margin-top: 80px;
   width: 100%;
 }
 
-.m-admin-login[data-layout="desktop"] .FOOTER-COPYRIGHT {
-  margin: 32px 0 0; /* 임의값: 카드 ↔ 카피라이트 */
+.m-admin-login[data-layout="desktop"] .m-admin-login-field-email,
+.m-admin-login[data-layout="desktop"] .m-admin-login-field-password,
+.m-admin-login[data-layout="desktop"] .m-admin-login-links {
+  width: 100%;
+  max-width: none;
+}
+
+.m-admin-login[data-layout="desktop"] .m-admin-login-field-password {
+  margin-top: 28px;
+}
+
+.m-admin-login[data-layout="desktop"] .m-admin-login-field-password.is-after-email-error {
+  margin-top: 26px;
+}
+
+.m-admin-login[data-layout="desktop"] .m-admin-login-input-row input,
+.m-admin-login[data-layout="desktop"] .m-admin-login-input-row input.INPUT-FIELD,
+.m-admin-login[data-layout="desktop"] .INPUT-FIELD {
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  border: none;
+  border-bottom: 1px solid #979797;
+  border-radius: 0;
+  font-family: "Noto Sans KR", sans-serif;
+  font-weight: 400;
+  font-size: 17px;
+  line-height: normal;
+  color: #1c1a19;
+  background: transparent;
+  box-sizing: border-box;
+  outline: none;
+  padding: 0;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+.m-admin-login[data-layout="desktop"] .INPUT-FIELD::placeholder {
+  color: #979797;
+  opacity: 1;
+  font-size: 17px;
+  letter-spacing: 0;
+}
+
+.m-admin-login[data-layout="desktop"] .m-admin-login-input-row input.INPUT-FIELD:focus,
+.m-admin-login[data-layout="desktop"] .m-admin-login-input-row input.INPUT-FIELD:focus-visible,
+.m-admin-login[data-layout="desktop"] .m-admin-login-input-row input.INPUT-FIELD.is-focused {
+  border: none;
+  border-bottom: 1px solid #1c1a19;
+  outline: none;
+}
+
+.m-admin-login[data-layout="desktop"] .INPUT-LABEL,
+.m-admin-login[data-layout="desktop"] .m-admin-login-input-row input.INPUT-LABEL,
+.m-admin-login[data-layout="desktop"] .INPUT-TEXT-ACTIVE,
+.m-admin-login[data-layout="desktop"] .m-admin-login-input-row input.INPUT-TEXT-ACTIVE,
+.m-admin-login[data-layout="desktop"] .INPUT-TEXT-ERROR,
+.m-admin-login[data-layout="desktop"] .m-admin-login-input-row input.INPUT-TEXT-ERROR,
+.m-admin-login[data-layout="desktop"] .INPUT-PASSWORD,
+.m-admin-login[data-layout="desktop"] .m-admin-login-input-row input.INPUT-PASSWORD,
+.m-admin-login[data-layout="desktop"] .INPUT-PASSWORD-VISIBLE,
+.m-admin-login[data-layout="desktop"] .m-admin-login-input-row input.INPUT-PASSWORD-VISIBLE {
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 17px;
+  font-weight: 400;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.m-admin-login[data-layout="desktop"] .INPUT-LABEL,
+.m-admin-login[data-layout="desktop"] .m-admin-login-input-row input.INPUT-LABEL {
+  color: #979797;
+}
+
+.m-admin-login[data-layout="desktop"] .INPUT-FIELD.IS-ERROR,
+.m-admin-login[data-layout="desktop"] .m-admin-login-input-row input.INPUT-FIELD.IS-ERROR,
+.m-admin-login[data-layout="desktop"] .m-admin-login-input-row input.INPUT-FIELD.IS-ERROR:focus,
+.m-admin-login[data-layout="desktop"] .m-admin-login-input-row input.INPUT-FIELD.IS-ERROR:focus-visible,
+.m-admin-login[data-layout="desktop"] .m-admin-login-input-row input.INPUT-FIELD.IS-ERROR.is-focused,
+.m-admin-login[data-layout="desktop"] .m-admin-login-input-row input.INPUT-TEXT-ERROR,
+.m-admin-login[data-layout="desktop"] .m-admin-login-input-row input.INPUT-TEXT-ERROR:focus {
+  border-bottom-color: rgb(195, 60, 60);
+}
+
+.m-admin-login[data-layout="desktop"] .INPUT-ERROR-ICON {
+  width: 20px;
+  height: 20px;
+  color: rgb(195, 60, 60);
+}
+
+.m-admin-login[data-layout="desktop"] .INPUT-ERROR-MSG {
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  color: rgb(195, 60, 60);
+  text-align: left;
+  margin-top: 10px;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+.m-admin-login[data-layout="desktop"] .m-admin-login-input-row input.INPUT-FIELD[type="password"] {
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 17px;
+  font-weight: 400;
+  color: rgb(28, 26, 25);
+  letter-spacing: 0.5em;
+}
+
+.m-admin-login[data-layout="desktop"] .m-admin-login-input-row input.INPUT-FIELD.INPUT-PASSWORD-VISIBLE {
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 17px;
+  font-weight: 400;
+  color: rgb(28, 26, 25);
+  letter-spacing: 0.1em;
+}
+
+.m-admin-login[data-layout="desktop"] .INPUT-PASSWORD-ICON {
+  width: 18px;
+  height: 18px;
+  color: #8e8e8e;
+}
+
+.m-admin-login[data-layout="desktop"] .CHECKBOX-CUSTOM {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  min-height: 16px;
+  max-width: 16px;
+  max-height: 16px;
+  flex: 0 0 16px;
+  overflow: hidden;
+  border: 1.5px solid #979797;
+  border-radius: 1px;
+  box-sizing: border-box;
+  background-color: transparent;
+}
+
+.m-admin-login[data-layout="desktop"] .CHECKBOX-CHECKED.CHECKBOX-CUSTOM {
+  border: 0;
+  border-radius: 1px;
+  background-color: rgb(44, 58, 46);
+}
+
+.m-admin-login[data-layout="desktop"] .KEEP-LOGIN-LABEL {
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: #666666;
+  user-select: none;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+.m-admin-login[data-layout="desktop"] .m-admin-login-keep {
+  margin-top: 30px;
+}
+
+.m-admin-login[data-layout="desktop"] .m-admin-login-keep.is-after-error {
+  margin-top: 15px;
+}
+
+.m-admin-login[data-layout="desktop"] .m-admin-login-error-row {
+  margin-top: 10px;
+  align-items: center;
+}
+
+.m-admin-login[data-layout="desktop"] .LOGIN-ERROR-ICON {
+  width: 19px;
+  height: 19px;
+  color: rgb(195, 60, 60);
+}
+
+.m-admin-login[data-layout="desktop"] .LOGIN-ERROR-MSG {
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: rgb(195, 60, 60);
+  text-align: left;
+}
+
+.m-admin-login[data-layout="desktop"] .BTN-ADMIN-LOGIN {
+  width: 409px;
+  height: 55px;
+  background-color: rgb(44, 58, 46);
+  border: none;
+  border-radius: 6px;
+  margin-top: 48px;
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: #ffffff;
+  text-align: center;
+  cursor: pointer;
+}
+
+.m-admin-login[data-layout="desktop"] .BTN-ADMIN-LOGIN .BTN-LOGIN-TEXT {
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: #ffffff;
+}
+
+.m-admin-login[data-layout="desktop"] .m-admin-login-links {
+  margin-top: 28px;
+}
+
+.m-admin-login[data-layout="desktop"] .ADMIN-LOGIN-LINK {
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: #1c1a19;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+
+.m-admin-login[data-layout="desktop"] .ADMIN-FOOTER-COPYRIGHT,
+.m-admin-login[data-layout="desktop"] .COPYRIGHT {
+  font-family: "Inter", sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: rgb(102, 102, 102);
+  letter-spacing: 0.01em;
+  text-align: center;
+  margin: 50px 0 0;
+  text-box-trim: trim-both;
+  text-box-edge: text alphabetic;
+}
+
+/* ===== PC 비밀번호 찾기 시안 ===== */
+.m-admin-login[data-layout="desktop"] .AUTH-CARD {
+  width: 500px;
+  height: 516px;
+  max-width: 500px;
+  flex: none;
+  flex-shrink: 0;
+  margin-inline: auto;
+  padding: 70px 46px 70px;
+  background-color: rgb(255, 255, 255);
+  border-radius: 10px;
+  box-shadow:
+    0px 2px 4px 0px rgba(0, 0, 0, 0.02),
+    0px 12px 28px 0px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.m-admin-login[data-layout="desktop"] .AUTH-CARD[data-top="default"] {
+  padding-top: 70px;
+}
+
+.m-admin-login[data-layout="desktop"] .LOGO {
+  width: 151px;
+  fill: #1c1a19;
+}
+
+.m-admin-login[data-layout="desktop"] .AUTH-DESC {
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  color: rgba(28, 26, 25, 0.702);
+  line-height: 1.6;
+  letter-spacing: -0.01em;
+  text-align: center;
+  margin: 26px 0 0;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+.m-admin-login[data-layout="desktop"] .AUTH-CARD .m-admin-login-form {
+  margin-top: 80px;
+  width: 100%;
+}
+
+.m-admin-login[data-layout="desktop"] .AUTH-CARD .m-admin-login-field-email {
+  width: 100%;
+  max-width: none;
+}
+
+.m-admin-login[data-layout="desktop"] .AUTH-CARD .m-admin-login-input-row input,
+.m-admin-login[data-layout="desktop"] .AUTH-CARD .INPUT-FIELD {
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 17px;
+  font-weight: 400;
+  color: rgb(151, 151, 151);
+  letter-spacing: -0.01em;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgb(151, 151, 151);
+  border-radius: 0;
+  outline: none;
+  padding: 0;
+  box-sizing: border-box;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+.m-admin-login[data-layout="desktop"] .AUTH-CARD .INPUT-FIELD::placeholder {
+  color: rgb(151, 151, 151);
+  opacity: 1;
+  letter-spacing: -0.01em;
+}
+
+.m-admin-login[data-layout="desktop"] .AUTH-CARD .INPUT-FIELD:focus {
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 17px;
+  font-weight: 400;
+  color: rgb(28, 26, 25);
+  text-align: left;
+  border-bottom: 1px solid rgb(28, 26, 25);
+}
+
+.m-admin-login[data-layout="desktop"] .AUTH-CARD .INPUT-FIELD:not(:placeholder-shown) {
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 17px;
+  font-weight: 400;
+  color: rgb(28, 26, 25);
+  text-align: left;
+  border-bottom: 1px solid rgb(151, 151, 151);
+}
+
+.m-admin-login[data-layout="desktop"] .AUTH-CARD .INPUT-FIELD:not(:placeholder-shown):focus {
+  border-bottom: 1px solid rgb(28, 26, 25);
+}
+
+.m-admin-login[data-layout="desktop"] .AUTH-CARD .INPUT-FIELD.IS-ERROR,
+.m-admin-login[data-layout="desktop"] .AUTH-CARD .INPUT-FIELD.IS-ERROR:focus,
+.m-admin-login[data-layout="desktop"] .AUTH-CARD .INPUT-FIELD.IS-ERROR:not(:placeholder-shown),
+.m-admin-login[data-layout="desktop"] .AUTH-CARD .INPUT-FIELD.IS-ERROR:not(:placeholder-shown):focus {
+  border-bottom: 1px solid rgb(195, 60, 60);
+}
+
+.m-admin-login[data-layout="desktop"] .AUTH-CARD .INPUT-ERROR-ICON {
+  width: 19px;
+  height: 19px;
+  color: rgb(195, 60, 60);
+  position: static;
+  top: auto;
+  right: auto;
+  transform: none;
+}
+
+.m-admin-login[data-layout="desktop"] .AUTH-CARD .INPUT-ERROR-MSG {
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: rgb(195, 60, 60);
+  letter-spacing: -0.01em;
+  text-align: left;
+}
+
+.m-admin-login[data-layout="desktop"] .RESET-SENT-MSG {
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: rgb(102, 102, 102);
+  line-height: 1.692;
+  letter-spacing: -0.01em;
+  text-align: left;
+  margin-top: 10px;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+.m-admin-login[data-layout="desktop"] .BTN-SUBMIT {
+  width: 409px;
+  height: 55px;
+  background-color: rgb(238, 238, 238);
+  border: none;
+  border-radius: 6px;
+  margin-top: 48px;
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: rgb(163, 163, 163);
+  text-align: center;
+  cursor: pointer;
+}
+
+.m-admin-login[data-layout="desktop"] .BTN-SUBMIT .BTN-LOGIN-TEXT {
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: rgb(163, 163, 163);
+}
+
+.m-admin-login[data-layout="desktop"] .BTN-SUBMIT.is-disabled,
+.m-admin-login[data-layout="desktop"] .BTN-SUBMIT:disabled {
+  background-color: rgb(238, 238, 238);
+  color: rgb(163, 163, 163);
+  cursor: not-allowed;
+}
+
+.m-admin-login[data-layout="desktop"] .BTN-SUBMIT.IS-ACTIVE {
+  width: 409px;
+  height: 55px;
+  background-color: rgb(44, 58, 46);
+  border-radius: 6px;
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: rgb(255, 255, 255);
+  text-align: center;
+  cursor: pointer;
+}
+
+.m-admin-login[data-layout="desktop"] .BTN-SUBMIT.IS-ACTIVE .BTN-LOGIN-TEXT {
+  color: rgb(255, 255, 255);
+}
+
+.m-admin-login[data-layout="desktop"] .LINK-BACK {
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: rgb(28, 26, 25);
+  letter-spacing: -0.01em;
+  text-align: center;
+  margin-top: 28px;
+  text-decoration: none;
 }
 
 .BTN-LOGIN.is-disabled {

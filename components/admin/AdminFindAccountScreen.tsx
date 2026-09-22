@@ -57,10 +57,10 @@ export default function AdminFindAccountScreen({
   };
 
   return (
-    <div className="m-admin-login" data-layout={layout}>
-      <div className="m-admin-login-artboard" data-top="default">
-        <img className="LOGIN-LOGO" src="/hair-up-logo.png" alt="hair up" width={151} />
-        <p className="LOGIN-DESC">
+    <div className="m-admin-login ADMIN-LOGIN-WRAPPER" data-layout={layout}>
+      <div className="m-admin-login-artboard AUTH-CARD" data-top="default">
+        <img className="LOGIN-LOGO LOGO" src="/hair-up-logo.png" alt="hair up" width={151} />
+        <p className="LOGIN-DESC AUTH-DESC">
           가입 시 등록한 이메일 주소를 입력해 주세요.
           <br />
           비밀번호를 재설정할 수 있는 링크를 보내드립니다.
@@ -70,7 +70,7 @@ export default function AdminFindAccountScreen({
           <div className="m-admin-login-field-email">
             <div className="m-admin-login-input-row">
               <input
-                className={textClass}
+                className={`INPUT-FIELD ${textClass}${error ? " IS-ERROR" : ""}`}
                 type="email"
                 autoComplete="username"
                 value={email}
@@ -85,17 +85,17 @@ export default function AdminFindAccountScreen({
                 onBlur={() => setFocused(false)}
               />
             </div>
-            <div className={lineClass} />
+            {isDesktop ? null : <div className={lineClass} />}
             {error ? (
               <div className="m-admin-login-error-row">
-                <AdminSpecIcon name="exclamation_line" className="ICO-ERROR" />
-                <p className="LOGIN-ERROR-MSG">
+                <AdminSpecIcon name="exclamation_line" className="ICO-ERROR INPUT-ERROR-ICON" />
+                <p className="LOGIN-ERROR-MSG INPUT-ERROR-MSG">
                   등록되지 않은 계정입니다. 이메일을 다시 확인해 주세요.
                 </p>
               </div>
             ) : null}
             {sent ? (
-              <p className="FIND-SUCCESS-MSG" role="status">
+              <p className="FIND-SUCCESS-MSG RESET-SENT-MSG" role="status">
                 입력하신 이메일로 재설정 링크를 전송했습니다.
                 <br />
                 메일함을 확인하고 24시간 이내에 변경을 완료해 주세요.
@@ -105,23 +105,23 @@ export default function AdminFindAccountScreen({
 
           <button
             type="submit"
-            className={canSubmit ? "BTN-LOGIN" : "BTN-LOGIN is-disabled"}
+            className={canSubmit ? "BTN-LOGIN BTN-SUBMIT IS-ACTIVE" : "BTN-LOGIN BTN-SUBMIT is-disabled"}
             disabled={!canSubmit}
           >
             <span className="BTN-LOGIN-TEXT">{sent ? "발송 완료" : "인증 메일 발송"}</span>
           </button>
 
-          <Link href="/admin/login" className="LINK-BACK-LOGIN">
+          <Link href="/admin/login" className="LINK-BACK-LOGIN LINK-BACK">
             로그인으로 돌아가기
           </Link>
         </form>
 
         {isDesktop ? null : (
-          <p className="FOOTER-COPYRIGHT">© hair up. All rights reserved.</p>
+          <p className="FOOTER-COPYRIGHT COPYRIGHT">© hair up. All rights reserved.</p>
         )}
       </div>
       {isDesktop ? (
-        <p className="FOOTER-COPYRIGHT">© hair up. All rights reserved.</p>
+        <p className="FOOTER-COPYRIGHT COPYRIGHT">© hair up. All rights reserved.</p>
       ) : null}
     </div>
   );
