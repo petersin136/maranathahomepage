@@ -70,7 +70,7 @@ export default function AdminFindAccountForm() {
                 aria-label="이메일"
                 aria-invalid={error}
                 className={clsx(
-                  "block min-h-[26px] w-full appearance-none overflow-visible border-b bg-transparent px-0 py-0 pb-[12px] font-sans-kr text-[14px] leading-[26px] text-[#1C1A19] outline-none placeholder:text-[#979797]",
+                  "block min-h-[26px] w-full appearance-none overflow-visible border-b bg-transparent px-0 py-0 pb-[10px] font-sans-kr text-[14px] leading-[26px] text-[#1C1A19] outline-none placeholder:text-[#979797]",
                   error ? "border-[#C33C3C]" : email.length > 0 ? "border-[#1C1A19]" : "border-[#979797]"
                 )}
               />

@@ -118,7 +118,7 @@ export default function AdminLoginForm() {
                 aria-label="이메일"
                 aria-invalid={emailError}
                 className={clsx(
-                  "block min-h-[26px] w-full appearance-none overflow-visible border-b bg-transparent px-0 py-0 pb-[12px] font-sans-kr text-[14px] leading-[26px] text-[#1C1A19] outline-none placeholder:text-[#979797]",
+                  "block min-h-[26px] w-full appearance-none overflow-visible border-b bg-transparent px-0 py-0 pb-[10px] font-sans-kr text-[14px] leading-[26px] text-[#1C1A19] outline-none placeholder:text-[#979797]",
                   emailError ? "pr-[28px]" : "pr-0",
                   underline(emailError, email.length > 0)
                 )}
@@ -157,7 +157,7 @@ export default function AdminLoginForm() {
                 aria-label="비밀번호"
                 required
                 className={clsx(
-                  "block min-h-[26px] w-full appearance-none overflow-visible border-b bg-transparent px-0 py-0 pb-[12px] font-sans-kr text-[14px] leading-[26px] text-[#1C1A19] outline-none placeholder:text-[#979797]",
+                  "block min-h-[26px] w-full appearance-none overflow-visible border-b bg-transparent px-0 py-0 pb-[10px] font-sans-kr text-[14px] leading-[26px] text-[#1C1A19] outline-none placeholder:text-[#979797]",
                   password.length > 0 ? "pr-[28px]" : "pr-0",
                   underline(false, password.length > 0)
                 )}
@@ -191,11 +191,18 @@ export default function AdminLoginForm() {
             ) : null}
           </div>
 
-          <label className="mt-[26px] flex cursor-pointer items-center gap-[8px]">
+          <label
+            className={clsx(
+              "flex cursor-pointer items-center gap-[8px]",
+              loginError && errorMessage ? "mt-[15px]" : "mt-[26px]"
+            )}
+          >
             <span
               className={clsx(
-                "relative flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[2px] border",
-                remember ? "border-[#2C3A2E] bg-[#2C3A2E]" : "border-[#979797] bg-hu-white"
+                "relative box-border flex h-4 w-4 shrink-0 items-center justify-center rounded-[2px]",
+                remember
+                  ? "border-0 bg-[#2C3A2E]"
+                  : "border-[1.5px] border-[#979797] bg-hu-white"
               )}
             >
               <input

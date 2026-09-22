@@ -191,7 +191,11 @@ export default function MobileAdminLogin({
 
           <button
             type="button"
-            className="m-admin-login-keep"
+            className={
+              loginError && !emailFormatError
+                ? "m-admin-login-keep is-after-error"
+                : "m-admin-login-keep"
+            }
             onClick={() => setRemember((v) => !v)}
             aria-pressed={remember}
           >

@@ -173,7 +173,7 @@
 .INPUT-LINE-INACTIVE {
   width: 340px;
   height: 0;
-  margin-top: 11px;
+  margin-top: 9px;
   border: 0;
   border-top: 1px solid #979797;
 }
@@ -181,7 +181,7 @@
 .INPUT-LINE-ACTIVE {
   width: 340px;
   height: 0;
-  margin-top: 11px;
+  margin-top: 9px;
   border: 0;
   border-top: 1px solid rgb(28, 26, 25);
 }
@@ -189,7 +189,7 @@
 .INPUT-LINE-ERROR {
   width: 340px;
   height: 0;
-  margin-top: 11px;
+  margin-top: 9px;
   border: 0;
   border-top: 1px solid rgb(195, 60, 60);
 }
@@ -274,7 +274,13 @@
   cursor: pointer;
 }
 
+/* 로그인 에러 문구 → 로그인 유지(체크박스) 15 */
+.m-admin-login-keep.is-after-error {
+  margin-top: 15px;
+}
+
 .CHECKBOX {
+  box-sizing: border-box;
   width: 16px;
   height: 16px;
   border: 1.5px solid rgb(151, 151, 151);
@@ -285,8 +291,10 @@
 }
 
 .CHECKBOX-CHECKED {
-  width: 17px;
-  height: 17px;
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  border: 0;
   background-color: rgb(44, 58, 46);
   border-radius: 2px;
   flex-shrink: 0;
