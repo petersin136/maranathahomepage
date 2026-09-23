@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { updateSession } from "@/lib/supabase/middleware";
+import { copyAuthCookies, updateSession } from "@/lib/supabase/middleware";
 
 const AUTH_PATHS = [
   "/admin/login",
@@ -20,7 +20,7 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin/login";
     url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
+    return copyAuthCookies(supabaseResponse, NextResponse.redirect(url));
   }
 
   // 비밀번호 재설정 페이지는 복구 세션이 있는 상태에서도 접근 가능
@@ -28,7 +28,7 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin";
     url.search = "";
-    return NextResponse.redirect(url);
+    return copyAuthCookies(supabaseResponse, NextResponse.redirect(url));
   }
 
   return supabaseResponse;
