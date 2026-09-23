@@ -5,6 +5,8 @@ export type BookingStatus =
   | "cancelled"
   | "noshow";
 
+export type PaymentMethod = "card" | "cash" | "transfer";
+
 export type CustomerGender = "W" | "M";
 
 export type BookingRow = {
@@ -29,6 +31,10 @@ export type BookingRow = {
   admin_memo: string | null;
   total_amount: number | null;
   deposit_amount: number | null;
+  final_amount: number | null;
+  payment_method: PaymentMethod | null;
+  cash_receipt_issued: boolean | null;
+  paid_at: string | null;
 };
 
 export type CreateBookingBody = {

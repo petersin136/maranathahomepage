@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { clsx } from "clsx";
 import BookingActionButtons from "@/components/admin/BookingActionButtons";
 import BookingConfirmModal from "@/components/admin/BookingConfirmModal";
+import BookingPaymentModal from "@/components/admin/BookingPaymentModal";
 import {
   parseRequestLanguage,
   resolveCustomerRequestText,
@@ -13,7 +14,7 @@ import {
 } from "@/lib/admin/booking-display";
 import { BOOKING_STATUS_OPTIONS, cancelReasonLabel } from "@/lib/admin/booking-labels";
 import { useBookingActions } from "@/lib/admin/useBookingActions";
-import type { BookingRow, BookingStatus } from "@/lib/bookings/types";
+import type { BookingRow, BookingStatus, PaymentMethod } from "@/lib/bookings/types";
 
 const TABS = [
   { key: "pending", label: "대기" },
@@ -22,8 +23,64 @@ const TABS = [
   { key: "cancelled_noshow", label: "취소·노쇼" }
 ] as const;
 
+const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
+  card: "카드",
+  cash: "현금",
+  transfer: "계좌이체"
+};
+
+const CASH_RECEIPT_THRESHOLD = 100_000;
+
 function shortDate(ymd: string) {
   return ymd.length >= 10 ? ymd.slice(2) : ymd;
+}
+
+function hasPaymentInfo(b: BookingRow) {
+  return b.final_amount != null && b.payment_method != null;
+}
+
+function PaymentInfoLine({
+  booking,
+  onAddPayment
+}: {
+  booking: BookingRow;
+  onAddPayment: () => void;
+}) {
+  if (!hasPaymentInfo(booking)) {
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onAddPayment();
+        }}
+        className="mt-1.5 text-left font-sans-kr text-[13px] leading-snug text-hu-muted underline-offset-2 hover:underline"
+      >
+        결제 정보 없음
+      </button>
+    );
+  }
+
+  const method = booking.payment_method as PaymentMethod;
+  const amount = `${(booking.final_amount as number).toLocaleString("ko-KR")}원`;
+  const needsReceiptWarning =
+    method !== "card" &&
+    (booking.final_amount as number) >= CASH_RECEIPT_THRESHOLD &&
+    !booking.cash_receipt_issued;
+
+  return (
+    <p className="mt-1.5 font-sans-kr text-[13px] leading-snug text-hu-muted">
+      <span>
+        {PAYMENT_METHOD_LABEL[method]} · {amount}
+      </span>
+      {method !== "card" && booking.cash_receipt_issued ? (
+        <span> · 현금영수증 발급</span>
+      ) : null}
+      {needsReceiptWarning ? (
+        <span className="text-[#9b4a4a]"> · 현금영수증 미발급</span>
+      ) : null}
+    </p>
+  );
 }
 
 export default function AdminBookingsPage() {
@@ -113,7 +170,8 @@ export default function AdminBookingsPage() {
             ]
               .filter(Boolean)
               .join(" · ");
-            const hasSecondLine = Boolean(requestBody) || (cancelled && Boolean(reason));
+            const hasMemoLine = Boolean(requestBody) || (cancelled && Boolean(reason));
+            const showPaymentLine = b.status === "completed";
 
             return (
               <li
@@ -162,7 +220,7 @@ export default function AdminBookingsPage() {
                     <span className="text-hu-black/25">·</span>
                     <span>입금 {b.deposit_paid ? "Y" : "N"}</span>
                   </div>
-                  {hasSecondLine ? (
+                  {hasMemoLine ? (
                     <p
                       className="mt-1.5 flex min-w-0 items-baseline gap-2 text-[13px] leading-snug lg:truncate"
                       title={secondLineTitle}
@@ -183,6 +241,12 @@ export default function AdminBookingsPage() {
                       ) : null}
                     </p>
                   ) : null}
+                  {showPaymentLine ? (
+                    <PaymentInfoLine
+                      booking={b}
+                      onAddPayment={() => actions.openPayment(b)}
+                    />
+                  ) : null}
                 </div>
 
                 <div className="flex items-center justify-between gap-3 lg:contents">
@@ -195,7 +259,12 @@ export default function AdminBookingsPage() {
                       disabled={actions.busyId === b.id}
                       onChange={(e) => {
                         e.stopPropagation();
-                        void actions.updateStatus(b, e.target.value as BookingStatus);
+                        const next = e.target.value as BookingStatus;
+                        if (next === "completed") {
+                          actions.openPayment(b);
+                          return;
+                        }
+                        void actions.updateStatus(b, next);
                       }}
                       className="h-9 w-full border border-hu-black/20 bg-hu-white px-2.5 font-sans-kr text-[13px] outline-none disabled:opacity-40"
                     >
@@ -232,6 +301,17 @@ export default function AdminBookingsPage() {
           busy={!!actions.busyId}
           onClose={actions.closeConfirm}
           onConfirm={actions.runConfirm}
+        />
+      ) : null}
+
+      {actions.paymentTarget ? (
+        <BookingPaymentModal
+          booking={actions.paymentTarget}
+          busy={actions.busyId === actions.paymentTarget.id}
+          onClose={actions.closePayment}
+          onSave={(payload) => {
+            void actions.savePayment(payload);
+          }}
         />
       ) : null}
     </div>

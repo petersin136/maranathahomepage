@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminUser, requireSupabaseAdmin } from "@/lib/admin/auth";
-import type { BookingStatus } from "@/lib/bookings/types";
+import type { BookingStatus, PaymentMethod } from "@/lib/bookings/types";
 
 const STATUSES: BookingStatus[] = [
   "pending",
@@ -9,6 +9,8 @@ const STATUSES: BookingStatus[] = [
   "cancelled",
   "noshow"
 ];
+
+const PAYMENT_METHODS: PaymentMethod[] = ["card", "cash", "transfer"];
 
 const ADMIN_CANCEL_REASON = "admin_cancel";
 
@@ -49,6 +51,9 @@ export async function PATCH(
     deposit_paid?: boolean;
     admin_memo?: string | null;
     deposit_amount?: number | null;
+    final_amount?: number | null;
+    payment_method?: PaymentMethod | null;
+    cash_receipt_issued?: boolean | null;
   };
 
   try {
@@ -78,6 +83,41 @@ export async function PATCH(
   if (body.deposit_amount !== undefined) {
     patch.deposit_amount =
       body.deposit_amount == null ? null : Math.max(0, Math.round(Number(body.deposit_amount)));
+  }
+
+  const hasPaymentFields =
+    body.final_amount !== undefined ||
+    body.payment_method !== undefined ||
+    body.cash_receipt_issued !== undefined;
+
+  if (hasPaymentFields) {
+    if (body.payment_method !== undefined) {
+      if (body.payment_method != null && !PAYMENT_METHODS.includes(body.payment_method)) {
+        return NextResponse.json(
+          { ok: false, error: "결제 수단이 올바르지 않습니다." },
+          { status: 400 }
+        );
+      }
+      patch.payment_method = body.payment_method;
+    }
+    if (body.final_amount !== undefined) {
+      if (body.final_amount == null || Number.isNaN(Number(body.final_amount))) {
+        return NextResponse.json(
+          { ok: false, error: "최종 결제 금액이 올바르지 않습니다." },
+          { status: 400 }
+        );
+      }
+      patch.final_amount = Math.max(0, Math.round(Number(body.final_amount)));
+    }
+    if (body.cash_receipt_issued !== undefined) {
+      patch.cash_receipt_issued = Boolean(body.cash_receipt_issued);
+    }
+    // 결제 정보 저장 시 완료 시각 기록 (클라이언트 시각 신뢰하지 않음)
+    patch.paid_at = new Date().toISOString();
+    if (body.status === undefined) {
+      patch.status = "completed";
+      patch.cancel_reason = null;
+    }
   }
 
   if (Object.keys(patch).length === 0) {

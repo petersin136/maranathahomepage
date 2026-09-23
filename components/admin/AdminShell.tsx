@@ -4,25 +4,11 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { clsx } from "clsx";
-
-const NAV: {
-  href:
-    | "/admin"
-    | "/admin/bookings"
-    | "/admin/calendar"
-    | "/admin/artists"
-    | "/admin/services"
-    | "/admin/reminders";
-  label: string;
-  exact?: boolean;
-}[] = [
-  { href: "/admin", label: "대시보드", exact: true },
-  { href: "/admin/bookings", label: "예약" },
-  { href: "/admin/calendar", label: "캘린더" },
-  { href: "/admin/artists", label: "디자이너" },
-  { href: "/admin/services", label: "시술" },
-  { href: "/admin/reminders", label: "알림" }
-];
+import {
+  ADMIN_NAV_GROUPS,
+  findAdminNavGroup,
+  isAdminNavItemActive
+} from "@/lib/admin/nav";
 
 export default function AdminShell({
   children,
@@ -33,6 +19,7 @@ export default function AdminShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const activeGroup = findAdminNavGroup(pathname);
 
   useEffect(() => {
     const prev = document.documentElement.style.scrollbarGutter;
@@ -79,18 +66,39 @@ export default function AdminShell({
             </button>
           </div>
         </div>
-        <nav className="mx-auto flex max-w-[1200px] gap-5 overflow-x-auto px-5 pb-2.5 [scrollbar-width:none] lg:gap-7 lg:px-8 [&::-webkit-scrollbar]:hidden">
-          {NAV.map((item) => {
-            const active = item.exact
-              ? pathname === item.href
-              : pathname.startsWith(item.href);
+        <nav className="mx-auto grid max-w-[1200px] grid-cols-4 px-5 pb-2.5 lg:px-8">
+          {ADMIN_NAV_GROUPS.map((group) => {
+            const active = group.id === activeGroup.id;
+            const first = group.items[0];
+            return (
+              <Link
+                key={group.id}
+                href={first.href}
+                className={clsx(
+                  "text-center font-sans-kr text-[14px] font-medium tracking-[0.02em] transition sm:text-[15px]",
+                  active ? "text-white" : "text-white/70 hover:text-white"
+                )}
+              >
+                {group.label}
+              </Link>
+            );
+          })}
+        </nav>
+      </header>
+
+      <div className="border-b border-hu-black/10 bg-[#faf8f6]">
+        <nav className="mx-auto flex max-w-[1200px] gap-5 overflow-x-auto px-5 [scrollbar-width:none] lg:gap-6 lg:px-8 [&::-webkit-scrollbar]:hidden">
+          {activeGroup.items.map((item) => {
+            const active = isAdminNavItemActive(pathname, item);
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 className={clsx(
-                  "whitespace-nowrap font-sans-kr text-[15px] font-medium tracking-[0.02em] transition",
-                  active ? "text-white" : "text-white/70 hover:text-white"
+                  "shrink-0 whitespace-nowrap pb-3 pt-3 font-serif text-[13px] tracking-[0.1em]",
+                  active
+                    ? "border-b-2 border-hu-black text-hu-black"
+                    : "text-hu-muted"
                 )}
               >
                 {item.label}
@@ -98,8 +106,9 @@ export default function AdminShell({
             );
           })}
         </nav>
-      </header>
-      <main className="mx-auto min-h-[calc(100vh-96px)] max-w-[1200px] px-5 py-6 lg:px-8 lg:py-8">
+      </div>
+
+      <main className="mx-auto min-h-[calc(100vh-140px)] max-w-[1200px] px-5 py-6 lg:px-8 lg:py-8">
         {children}
       </main>
     </div>

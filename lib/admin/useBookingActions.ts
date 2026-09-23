@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import type { PaymentSavePayload } from "@/components/admin/BookingPaymentModal";
 import type { BookingRow, BookingStatus } from "@/lib/bookings/types";
 
 export type BookingActionTarget = {
@@ -15,7 +16,7 @@ export type BookingActionTarget = {
 export type BookingAction = "cancel" | "delete";
 
 export type BookingActionSuccess = {
-  action: BookingAction | "status";
+  action: BookingAction | "status" | "payment";
   booking: BookingRow | null;
 };
 
@@ -35,6 +36,7 @@ export function useBookingActions(options: Options = {}) {
     action: BookingAction;
     booking: BookingActionTarget;
   } | null>(null);
+  const [paymentTarget, setPaymentTarget] = useState<BookingRow | null>(null);
 
   const openCancel = useCallback((booking: BookingActionTarget) => {
     setConfirm({ action: "cancel", booking });
@@ -46,6 +48,14 @@ export function useBookingActions(options: Options = {}) {
 
   const closeConfirm = useCallback(() => {
     setConfirm((current) => (busyId ? current : null));
+  }, [busyId]);
+
+  const openPayment = useCallback((booking: BookingRow) => {
+    setPaymentTarget(booking);
+  }, []);
+
+  const closePayment = useCallback(() => {
+    setPaymentTarget((current) => (busyId ? current : null));
   }, [busyId]);
 
   const requestStatus = useCallback(
@@ -90,6 +100,39 @@ export function useBookingActions(options: Options = {}) {
     [busyId, onSuccess, openCancel, requestStatus]
   );
 
+  const savePayment = useCallback(
+    async (payload: PaymentSavePayload) => {
+      if (!paymentTarget || busyId) return;
+      const booking = paymentTarget;
+      setBusyId(booking.id);
+      setError(null);
+      try {
+        const res = await fetch(`/api/admin/bookings/${booking.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: "completed",
+            final_amount: payload.final_amount,
+            payment_method: payload.payment_method,
+            cash_receipt_issued: payload.cash_receipt_issued
+          })
+        });
+        const data = await parseJson(res);
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || "결제 정보 저장에 실패했습니다.");
+        }
+        setPaymentTarget(null);
+        await onSuccess?.({ action: "payment", booking: data.booking as BookingRow });
+      } catch (e) {
+        console.error("[booking] payment", e);
+        setError(e instanceof Error ? e.message : "결제 정보 저장에 실패했습니다.");
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [busyId, onSuccess, paymentTarget]
+  );
+
   const runConfirm = useCallback(async () => {
     if (!confirm || busyId) return;
     const { action, booking } = confirm;
@@ -126,6 +169,10 @@ export function useBookingActions(options: Options = {}) {
     openDelete,
     closeConfirm,
     runConfirm,
-    updateStatus
+    updateStatus,
+    paymentTarget,
+    openPayment,
+    closePayment,
+    savePayment
   };
 }
