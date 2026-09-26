@@ -447,12 +447,11 @@ export default function AdminCustomersPage() {
 
 function pageButtons(current: number, total: number): Array<number | "…"> {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-  const items: Array<number | "…"> = [1, 2, 3, 4, 5, "…", total];
   if (current > 5 && current < total) {
-    return [1, "…", current - 1, current, current + 1, "…", total].filter(
-      (n, i, arr) => n !== "…" || arr[i - 1] !== "…"
-    );
+    const around: Array<number | "…"> = [1, "…", current - 1, current, current + 1, "…", total];
+    return around.filter((n, i, arr) => n !== "…" || arr[i - 1] !== "…");
   }
+  const items: Array<number | "…"> = [1, 2, 3, 4, 5, "…", total];
   return items;
 }
 
