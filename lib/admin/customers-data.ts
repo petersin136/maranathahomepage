@@ -71,9 +71,22 @@ export type QuietSlot = {
   count: number;
 };
 
+export type CustomerSendStatus = "pending" | "sent" | "failed" | "alert";
+
+export type CustomerDirectoryRow = {
+  phone: string;
+  name: string;
+  artistName: string;
+  services: string[];
+  lastVisitDate: string | null;
+  daysSince: number | null;
+  sendStatus: CustomerSendStatus;
+};
+
 export type CustomersDashboard = {
   today: string;
   excludedNoPhoneCount: number;
+  directory: CustomerDirectoryRow[];
   summary: {
     totalCustomers: number;
     returningCustomers: number;
@@ -250,6 +263,40 @@ function buildProfiles(bookings: BookingRow[]): {
   return { profiles: [...map.values()], excludedNoPhoneCount };
 }
 
+function primaryArtist(visits: CustomerVisit[]) {
+  const artistCounts = new Map<string, { name: string; count: number }>();
+  for (const v of visits) {
+    const key = v.artistId || v.artistName || "unknown";
+    const name = v.artistName || v.artistId || "미지정";
+    const cur = artistCounts.get(key) ?? { name, count: 0 };
+    cur.count += 1;
+    artistCounts.set(key, cur);
+  }
+  return [...artistCounts.values()].sort((a, b) => b.count - a.count)[0]?.name || "—";
+}
+
+export function buildCustomerDirectory(args: {
+  profiles: { phone: string; name: string; visits: CustomerVisit[] }[];
+  today: string;
+}): CustomerDirectoryRow[] {
+  const rows: CustomerDirectoryRow[] = [];
+  for (const p of args.profiles) {
+    if (!p.visits.length) continue;
+    const last = p.visits[p.visits.length - 1];
+    rows.push({
+      phone: p.phone,
+      name: p.name,
+      artistName: primaryArtist(p.visits),
+      services: last.serviceNames,
+      lastVisitDate: last.bookingDate,
+      daysSince: daysBetween(last.bookingDate, args.today),
+      sendStatus: "pending"
+    });
+  }
+  rows.sort((a, b) => (b.lastVisitDate || "").localeCompare(a.lastVisitDate || "") || a.name.localeCompare(b.name, "ko"));
+  return rows;
+}
+
 function buildChurn(args: {
   profiles: CustomerProfile[];
   today: string;
@@ -278,16 +325,7 @@ function buildChurn(args: {
     const thresholdDays = thresholdBase * CHURN_MULTIPLIER;
     if (daysSince <= thresholdDays) continue;
 
-    const artistCounts = new Map<string, { name: string; count: number }>();
-    for (const v of completed) {
-      const key = v.artistId || v.artistName || "unknown";
-      const name = v.artistName || v.artistId || "미지정";
-      const cur = artistCounts.get(key) ?? { name, count: 0 };
-      cur.count += 1;
-      artistCounts.set(key, cur);
-    }
-    const primary =
-      [...artistCounts.values()].sort((a, b) => b.count - a.count)[0]?.name || "—";
+    const primary = primaryArtist(completed);
 
     const lifetimeRevenue = completed.reduce((s, v) => s + v.amount, 0);
     risks.push({
@@ -534,6 +572,7 @@ export function aggregateCustomersDashboard(args: {
   return {
     today,
     excludedNoPhoneCount,
+    directory: buildCustomerDirectory({ profiles, today }),
     summary: {
       totalCustomers,
       returningCustomers,

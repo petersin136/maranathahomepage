@@ -31,6 +31,26 @@ export async function GET() {
       services: (servicesRes.data ?? []) as never
     });
 
+    const remindersRes = await admin
+      .from("customer_reminders")
+      .select("customer_phone, sent");
+    if (!remindersRes.error && remindersRes.data) {
+      const byPhone = new Map<string, { sent: boolean; pending: boolean }>();
+      for (const row of remindersRes.data) {
+        const phone = String(row.customer_phone || "").trim();
+        if (!phone) continue;
+        const cur = byPhone.get(phone) ?? { sent: false, pending: false };
+        if (row.sent) cur.sent = true;
+        else cur.pending = true;
+        byPhone.set(phone, cur);
+      }
+      data.directory = data.directory.map((row) => {
+        const flag = byPhone.get(row.phone);
+        if (!flag) return row;
+        return { ...row, sendStatus: flag.sent ? "sent" : "pending" };
+      });
+    }
+
     return NextResponse.json({ ok: true, ...data });
   } catch (e) {
     console.error("[admin/customers GET]", e);
