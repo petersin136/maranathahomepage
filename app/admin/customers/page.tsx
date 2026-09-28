@@ -20,6 +20,8 @@ const STATUS_META: Record<
   alert: { label: "알림 발송", color: "#3B6FE0" }
 };
 
+const STATUS_ORDER: CustomerSendStatus[] = ["pending", "alert", "sent", "failed"];
+
 const DAY_OPTIONS = [
   { id: "0-7", label: "7일 이내", min: 0, max: 7 },
   { id: "8-30", label: "8–30일", min: 8, max: 30 },
@@ -196,19 +198,19 @@ export default function AdminCustomersPage() {
   return (
     <div className="flex flex-col font-sans-kr text-[#1C1C1C] min-[1440px]:h-[calc(100dvh-5rem)]">
       <div className="flex items-center justify-between gap-6 pt-6">
-        <h1 className="flex items-baseline gap-2 text-[22px] font-bold leading-none tracking-[-0.02em]">
+        <h1 className="flex items-baseline gap-2 text-[30px] font-bold leading-none tracking-[-0.02em]">
           고객관리
-          <span className="text-[12px] font-normal text-[#8A847C]">
+          <span className="text-[15px] font-normal text-[#8A847C]">
             총 {rows.length.toLocaleString("ko-KR")}명
           </span>
         </h1>
-        <label className="flex h-[36px] w-[300px] items-center gap-2 rounded-[8px] border-2 border-[#4D4744] bg-white px-3">
-          <Icon src="/admin-icons/lnb/search-bold.png" className="h-[16px] w-[16px] text-[#3A3532]" />
+        <label className="flex h-[36px] w-[300px] items-center gap-2 rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-3">
+          <Icon src="/admin-icons/lnb/search-bold.png" className="h-[16px] w-[16px] text-[#9A948C]" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="고객명, 연락처 검색"
-            className="w-full bg-transparent text-[12px] font-normal outline-none placeholder:text-[#B0AAA4]"
+            className="w-full bg-transparent text-[15px] font-bold text-[#9A948C] outline-none placeholder:text-[#9A948C]"
           />
         </label>
       </div>
@@ -268,7 +270,7 @@ export default function AdminCustomersPage() {
             open={openFilter === "status"}
             onToggle={() => setOpenFilter((v) => (v === "status" ? null : "status"))}
           >
-            {(Object.keys(STATUS_META) as CustomerSendStatus[]).map((key) => (
+            {STATUS_ORDER.map((key) => (
               <FilterCheck
                 key={key}
                 label={STATUS_META[key].label}
@@ -285,7 +287,7 @@ export default function AdminCustomersPage() {
             type="button"
             aria-label="필터 초기화"
             onClick={resetFilters}
-            className="flex h-[40px] w-[40px] items-center justify-center rounded-[8px] border border-[#E4E0DA] text-[#8A847C] hover:text-[#1C1C1C]"
+            className="flex h-[36px] w-[36px] items-center justify-center rounded-[8px] border-[1.5px] border-[#9A948C] text-[#9A948C] hover:bg-[#F6F4F0]"
           >
             <Icon src="/admin-icons/lnb/refresh.png" className="h-[16px] w-[16px]" />
           </button>
@@ -293,13 +295,13 @@ export default function AdminCustomersPage() {
         <div className="flex w-[300px] items-center gap-2">
           <button
             type="button"
-            className="inline-flex h-[40px] flex-1 items-center justify-center rounded-[8px] border border-[#E4E0DA] bg-white px-3 text-[14px] font-normal text-[#3A3A3A]"
+            className="inline-flex h-[40px] flex-1 items-center justify-center rounded-[8px] border border-[#E4E0DA] bg-white px-3 text-[14px] font-bold text-[#3A3A3A]"
           >
             메시지 발송
           </button>
           <button
             type="button"
-            className="inline-flex h-[40px] flex-1 items-center justify-center gap-1.5 rounded-[8px] bg-[#2F3A2F] px-3 text-[14px] font-medium text-white"
+            className="inline-flex h-[40px] flex-1 items-center justify-center gap-1.5 rounded-[8px] bg-[#2F3A2F] px-3 text-[14px] font-bold text-white"
           >
             <Icon src="/admin-icons/lnb/plus.png" className="h-[14px] w-[14px]" />
             신규 등록
@@ -320,8 +322,8 @@ export default function AdminCustomersPage() {
             <col className="w-[9.3%]" />
           </colgroup>
           <thead>
-            <tr className="border-b border-[#EFEBE6] text-[14px] font-normal text-[#9A948C]">
-              <th className="py-3 pl-1 font-normal">
+            <tr className="border-b-[1.5px] border-[#C9C3BB] text-[15px] font-bold text-[#9A948C]">
+              <th className="py-3 pl-1 font-bold">
                 <CheckBox
                   checked={allPageSelected}
                   mixed={!allPageSelected && somePageSelected}
@@ -329,23 +331,23 @@ export default function AdminCustomersPage() {
                   label="현재 페이지 전체 선택"
                 />
               </th>
-              <th className="py-3 font-normal">
+              <th className="py-3 font-bold">
                 <button type="button" onClick={() => toggleSort("name")} className="inline-flex items-center gap-1">
                   고객명
                   <Icon src="/admin-icons/lnb/chevron-down.png" className="h-[12px] w-[12px]" />
                 </button>
               </th>
-              <th className="py-3 font-normal">연락처</th>
-              <th className="py-3 font-normal">담당자</th>
-              <th className="py-3 font-normal">최근 시술</th>
-              <th className="py-3 font-normal">
+              <th className="py-3 font-bold">연락처</th>
+              <th className="py-3 font-bold">담당자</th>
+              <th className="py-3 font-bold">최근 시술</th>
+              <th className="py-3 font-bold">
                 <button type="button" onClick={() => toggleSort("date")} className="inline-flex items-center gap-1">
                   최근 시술일
                   <Icon src="/admin-icons/lnb/chevron-down.png" className="h-[12px] w-[12px]" />
                 </button>
               </th>
-              <th className="py-3 font-normal">발송 상태</th>
-              <th className="py-3 font-normal">관리</th>
+              <th className="py-3 font-bold">발송 상태</th>
+              <th className="py-3 text-right font-bold">관리</th>
             </tr>
           </thead>
           {!emptyDirectory && !noMatch ? (
@@ -379,7 +381,7 @@ export default function AdminCustomersPage() {
                         {status.label}
                       </span>
                     </td>
-                    <td className="py-[15px] font-normal text-[#8A847C]">상세보기</td>
+                    <td className="py-[15px] text-right font-normal text-[#8A847C]">상세보기</td>
                   </tr>
                 );
               })}
@@ -500,22 +502,28 @@ function FilterChip({
   children: React.ReactNode;
 }) {
   return (
-    <div className="relative">
+    <div className="relative w-max">
       <button
         type="button"
         onClick={onToggle}
-        className="flex h-[40px] w-max items-center gap-3 rounded-[8px] border border-[#E4E0DA] bg-white px-9 text-[14px] font-normal text-[#3A3A3A]"
+        className="flex h-[36px] w-max items-center gap-2 rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-3 text-[13px] font-semibold leading-none text-[#1C1C1C]"
       >
-        <Icon src={icon} className="h-[16px] w-[16px] text-[#8A847C]" />
-        {label}
-        <span className="inline-flex h-[20px] min-w-[20px] items-center justify-center rounded-[4px] bg-[#F3EFEA] px-1 text-[12px] text-[#6F6963]">
-          {count}
+        <Icon src={icon} className="h-[15px] w-[15px] text-[#9A948C]" />
+        <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">{label}</span>
+        <span className="inline-flex h-[20px] min-w-[20px] items-center justify-center rounded-[4px] bg-[#F3EFEA] px-1 text-[12px] font-semibold leading-none text-[#9A948C]">
+          <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">{count}</span>
         </span>
-        선택
-        <Icon src="/admin-icons/lnb/chevron-down.png" className="h-[14px] w-[14px] text-[#8A847C]" />
+        <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both] text-[#1C1C1C]">선택</span>
+        <Icon
+          src={open || count > 0 ? "/admin-icons/lnb/chevron-down-bold.png" : "/admin-icons/lnb/chevron-down.png"}
+          className={clsx(
+            "h-[16px] w-[16px] text-[#9A948C]",
+            open && "rotate-180"
+          )}
+        />
       </button>
       {open ? (
-        <div className="absolute left-0 top-[46px] z-20 max-h-[240px] min-w-[180px] overflow-auto rounded-[10px] border border-[#EFEBE6] bg-white py-1 shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
+        <div className="absolute left-0 top-[42px] z-30 w-max min-w-full overflow-auto rounded-[12px] border border-[#EFEBE6] bg-white py-2 shadow-[0_8px_24px_rgba(28,28,28,0.08)]">
           {children}
         </div>
       ) : null}
@@ -536,11 +544,11 @@ function FilterCheck({
     <button
       type="button"
       onClick={onChange}
-      className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] hover:bg-[#F6F4F0]"
+      className="flex w-full items-center gap-4 px-5 py-2 text-left text-[14px] text-[#1C1C1C] hover:bg-[#F6F4F0]"
     >
       <span
         className={clsx(
-          "flex h-[16px] w-[16px] items-center justify-center rounded-[3px] border",
+          "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[3px] border",
           checked ? "border-[#1C1C1C] bg-[#1C1C1C] text-white" : "border-[#D5D0CA]"
         )}
       >

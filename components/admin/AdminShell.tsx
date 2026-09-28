@@ -213,7 +213,7 @@ export default function AdminShell({
 
       <aside className="relative hidden h-screen w-[242px] shrink-0 flex-col bg-[#F9F8F4] min-[1440px]:flex">
         <Link href="/" className="block px-[27px] pt-[36px]">
-          <img src="/admin-icons/hair-up-logo.png" alt="hair up" className="h-[44px] w-auto" />
+          <img src="/admin-icons/hair-up-logo.png" alt="hair up" className="h-[42px] w-auto" />
         </Link>
 
         <nav className="mt-[37px] flex flex-col px-[11px]">
@@ -226,13 +226,13 @@ export default function AdminShell({
                 href={item.href}
                 prefetch={false}
                 className={clsx(
-                  "flex h-[59px] items-center gap-[13px] rounded-[4px] px-[14px] font-sans-kr text-[18px] leading-none",
+                  "flex h-[59px] items-center gap-[13px] rounded-[4px] px-[14px] font-sans-kr text-[17px] leading-none",
                   active
                     ? "bg-white font-medium text-[#1C1C1C]"
                     : "font-normal text-[#7A746E] hover:bg-white/60"
                 )}
               >
-                <LnbIcon src={item.icon} className="h-[22px] w-[22px]" />
+                <LnbIcon src={item.icon} className="h-[20px] w-[20px]" />
                 <span>{item.label}</span>
                 {badge != null && badge > 0 ? (
                   <span className="ml-auto inline-flex h-[21px] min-w-[21px] items-center justify-center rounded-full bg-[#E4DFD6] px-[6px] font-sans-kr text-[12px] font-medium leading-none text-[#6F6963]">

@@ -9,64 +9,50 @@ import {
 export const dynamic = "force-dynamic";
 export const preferredRegion = "icn1";
 
-const STATUS_LABEL: Record<string, string> = {
-  pending: "대기",
-  confirmed: "확정",
-  completed: "완료",
-  cancelled: "취소",
-  noshow: "노쇼"
+const STATUS_META: Record<string, { label: string; color: string }> = {
+  pending: { label: "대기", color: "#8A847C" },
+  confirmed: { label: "확정", color: "#1F9D62" },
+  completed: { label: "완료", color: "#1F9D62" },
+  cancelled: { label: "취소", color: "#E24B4B" },
+  noshow: { label: "노쇼", color: "#E24B4B" }
 };
 
 export default function AdminDashboardPage() {
   const today = todayKst();
 
   return (
-    <div>
-      <h1 className="font-serif text-[28px] tracking-[0.06em] lg:text-[32px]">DASHBOARD</h1>
-      <p className="mt-2 font-sans-kr text-[13px] text-hu-muted">오늘 · {today}</p>
+    <div className="font-sans-kr text-[#1C1C1C]">
+      <div className="flex items-end justify-between gap-6 pt-6">
+        <h1 className="flex items-baseline gap-2 text-[30px] font-bold leading-none tracking-[-0.02em]">
+          대시보드
+          <span className="text-[15px] font-normal text-[#8A847C]">오늘 · {today}</span>
+        </h1>
+      </div>
 
       <Suspense fallback={<StatsSkeleton />}>
         <DashboardStats />
       </Suspense>
 
-      <div id="dash-pending" className="mt-10 scroll-mt-8">
-        <Suspense
-          fallback={
-            <ListSkeleton
-              title="확정 대기"
-              subtitle="PENDING · 숫자 클릭 시 이 목록"
-              action
-            />
-          }
-        >
+      <div id="dash-pending" className="mt-12 scroll-mt-8">
+        <Suspense fallback={<ListSkeleton title="확정 대기" subtitle="확정을 기다리는 예약" action />}>
           <PendingSection />
         </Suspense>
       </div>
 
-      <div id="dash-today" className="mt-10 scroll-mt-8">
-        <Suspense
-          fallback={<ListSkeleton title="오늘의 예약" action />}
-        >
+      <div id="dash-today" className="mt-12 scroll-mt-8">
+        <Suspense fallback={<ListSkeleton title="오늘의 예약" action />}>
           <TodaySection />
         </Suspense>
       </div>
 
-      <div id="dash-week" className="mt-10 scroll-mt-8">
-        <Suspense
-          fallback={
-            <ListSkeleton title="주간 예약" subtitle="이번 주 · 오늘 제외" />
-          }
-        >
+      <div id="dash-week" className="mt-12 scroll-mt-8">
+        <Suspense fallback={<ListSkeleton title="주간 예약" subtitle="이번 주 · 오늘 제외" />}>
           <WeekSection />
         </Suspense>
       </div>
 
-      <div id="dash-month" className="mt-10 scroll-mt-8">
-        <Suspense
-          fallback={
-            <ListSkeleton title="월간 예약" subtitle="이번 달 · 이번 주 제외" />
-          }
-        >
+      <div id="dash-month" className="mt-12 scroll-mt-8">
+        <Suspense fallback={<ListSkeleton title="월간 예약" subtitle="이번 달 · 이번 주 제외" />}>
           <MonthSection />
         </Suspense>
       </div>
@@ -78,26 +64,16 @@ async function DashboardStats() {
   const data = await getDashboardData();
 
   return (
-    <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
-      <a
-        href="#dash-today"
-        className="block cursor-pointer bg-hu-white px-5 py-6 text-left shadow-[0_1px_0_rgba(0,0,0,0.04)] transition hover:bg-hu-beige/40 lg:px-8 lg:py-7"
-      >
-        <p className="font-serif text-[12px] tracking-[0.14em] text-hu-accent">TODAY</p>
-        <p className="mt-3 font-serif text-[40px] underline decoration-hu-black/20 underline-offset-8">
-          {data.todayCount}
-        </p>
-        <p className="mt-1 font-sans-kr text-[13px] text-hu-muted">오늘 예약 · 클릭하면 아래로</p>
+    <div className="mt-12 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <a href="#dash-today" className="block rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-5 py-5 transition hover:bg-[#F6F4F0]">
+        <p className="text-[15px] font-bold text-[#9A948C]">오늘 예약</p>
+        <p className="mt-3 text-[30px] font-bold leading-none">{data.todayCount}</p>
+        <p className="mt-2 text-[13px] text-[#8A847C]">클릭하면 아래 목록으로</p>
       </a>
-      <a
-        href="#dash-pending"
-        className="block cursor-pointer bg-hu-white px-5 py-6 text-left transition hover:bg-hu-beige/40 lg:px-8 lg:py-7"
-      >
-        <p className="font-serif text-[12px] tracking-[0.14em] text-hu-accent">PENDING</p>
-        <p className="mt-3 font-serif text-[40px] underline decoration-hu-black/20 underline-offset-8">
-          {data.pendingCount}
-        </p>
-        <p className="mt-1 font-sans-kr text-[13px] text-hu-muted">확정 대기 · 클릭하면 아래로</p>
+      <a href="#dash-pending" className="block rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-5 py-5 transition hover:bg-[#F6F4F0]">
+        <p className="text-[15px] font-bold text-[#9A948C]">확정 대기</p>
+        <p className="mt-3 text-[30px] font-bold leading-none">{data.pendingCount}</p>
+        <p className="mt-2 text-[13px] text-[#8A847C]">클릭하면 아래 목록으로</p>
       </a>
     </div>
   );
@@ -108,12 +84,12 @@ async function PendingSection() {
   return (
     <BookingSection
       title="확정 대기"
-      subtitle="PENDING · 숫자 클릭 시 이 목록"
+      subtitle="확정을 기다리는 예약"
       empty="대기 중인 예약이 없습니다."
       bookings={data.pendingBookings}
       showDate
       action={
-        <Link href="/admin/bookings" className="font-sans-kr text-[12px] text-hu-muted underline">
+        <Link href="/admin/bookings" className={actionClass}>
           예약 전체
         </Link>
       }
@@ -129,7 +105,7 @@ async function TodaySection() {
       empty="오늘 예약이 없습니다."
       bookings={data.todayBookings}
       action={
-        <Link href="/admin/bookings" className="font-sans-kr text-[12px] text-hu-muted underline">
+        <Link href="/admin/bookings" className={actionClass}>
           전체 보기
         </Link>
       }
@@ -167,23 +143,26 @@ async function MonthSection() {
   );
 }
 
+const actionClass =
+  "inline-flex h-[36px] items-center justify-center rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-3 text-[14px] font-bold text-[#1C1C1C]";
+
 function StatsSkeleton() {
   return (
-    <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2" aria-hidden>
-      <div className="bg-hu-white px-5 py-6 shadow-[0_1px_0_rgba(0,0,0,0.04)] lg:px-8 lg:py-7">
-        <p className="font-serif text-[12px] tracking-[0.14em] text-hu-accent">TODAY</p>
-        <p className="mt-3 font-serif text-[40px] underline decoration-hu-black/20 underline-offset-8">
-          <span className="inline-block w-10 animate-pulse bg-hu-black/10 text-transparent">0</span>
-        </p>
-        <p className="mt-1 font-sans-kr text-[13px] text-hu-muted">오늘 예약 · 클릭하면 아래로</p>
-      </div>
-      <div className="bg-hu-white px-5 py-6 lg:px-8 lg:py-7">
-        <p className="font-serif text-[12px] tracking-[0.14em] text-hu-accent">PENDING</p>
-        <p className="mt-3 font-serif text-[40px] underline decoration-hu-black/20 underline-offset-8">
-          <span className="inline-block w-10 animate-pulse bg-hu-black/10 text-transparent">0</span>
-        </p>
-        <p className="mt-1 font-sans-kr text-[13px] text-hu-muted">확정 대기 · 클릭하면 아래로</p>
-      </div>
+    <div className="mt-12 grid grid-cols-1 gap-3 sm:grid-cols-2" aria-hidden>
+      <StatPlaceholder label="오늘 예약" hint="클릭하면 아래 목록으로" />
+      <StatPlaceholder label="확정 대기" hint="클릭하면 아래 목록으로" />
+    </div>
+  );
+}
+
+function StatPlaceholder({ label, hint }: { label: string; hint: string }) {
+  return (
+    <div className="rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-5 py-5">
+      <p className="text-[15px] font-bold text-[#9A948C]">{label}</p>
+      <p className="mt-3 text-[30px] font-bold leading-none">
+        <span className="inline-block w-10 animate-pulse bg-[#9A948C]/20 text-transparent">0</span>
+      </p>
+      <p className="mt-2 text-[13px] text-[#8A847C]">{hint}</p>
     </div>
   );
 }
@@ -199,30 +178,38 @@ function ListSkeleton({
 }) {
   return (
     <div aria-hidden>
-      <div className="flex items-baseline justify-between gap-4">
-        <div>
-          <h2 className="font-serif text-[18px] tracking-[0.08em]">{title}</h2>
-          {subtitle ? (
-            <p className="mt-1 font-sans-kr text-[12px] text-hu-muted">{subtitle}</p>
-          ) : null}
-        </div>
-        {action ? (
-          <span className="font-sans-kr text-[12px] text-hu-muted underline opacity-40">
-            {title === "오늘의 예약" ? "전체 보기" : "예약 전체"}
-          </span>
-        ) : null}
-      </div>
-      <ul className="mt-4 divide-y divide-hu-black/10 bg-hu-white">
-        {[0, 1, 2].map((i) => (
-          <li key={i} className="flex items-center justify-between gap-4 px-6 py-4">
-            <div className="min-w-0 flex-1">
-              <div className="h-[15px] w-48 max-w-full animate-pulse bg-hu-black/10" />
-              <div className="mt-1 h-[12px] w-32 max-w-full animate-pulse bg-hu-black/5" />
-            </div>
-            <div className="h-[12px] w-10 shrink-0 animate-pulse bg-hu-black/10" />
-          </li>
-        ))}
-      </ul>
+      <SectionHead
+        title={title}
+        subtitle={subtitle}
+        action={
+          action ? (
+            <span className={`${actionClass} opacity-40`}>
+              {title === "오늘의 예약" ? "전체 보기" : "예약 전체"}
+            </span>
+          ) : null
+        }
+      />
+      <div className="mt-5 h-24 animate-pulse rounded-[8px] bg-[#F3EFEA]" />
+    </div>
+  );
+}
+
+function SectionHead({
+  title,
+  subtitle,
+  action
+}: {
+  title: string;
+  subtitle?: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="flex items-end justify-between gap-4">
+      <h2 className="flex items-baseline gap-2 text-[20px] font-bold leading-none tracking-[-0.02em]">
+        {title}
+        {subtitle ? <span className="text-[15px] font-normal text-[#8A847C]">{subtitle}</span> : null}
+      </h2>
+      {action}
     </div>
   );
 }
@@ -244,43 +231,64 @@ function BookingSection({
 }) {
   return (
     <div>
-      <div className="flex items-baseline justify-between gap-4">
-        <div>
-          <h2 className="font-serif text-[18px] tracking-[0.08em]">{title}</h2>
-          {subtitle ? (
-            <p className="mt-1 font-sans-kr text-[12px] text-hu-muted">{subtitle}</p>
-          ) : null}
-        </div>
-        {action}
+      <SectionHead title={title} subtitle={subtitle} action={action} />
+      <div className="mt-5 overflow-x-auto">
+        <table className="w-full table-fixed text-left text-[16px] font-medium leading-[20px]">
+          <colgroup>
+            <col className="w-[18%]" />
+            <col className="w-[16%]" />
+            <col className="w-[18%]" />
+            <col className="w-[30%]" />
+            <col className="w-[18%]" />
+          </colgroup>
+          <thead>
+            <tr className="border-b-[1.5px] border-[#C9C3BB] text-[15px] font-bold text-[#9A948C]">
+              <th className="py-3 font-bold">{showDate ? "일시" : "시간"}</th>
+              <th className="py-3 font-bold">고객명</th>
+              <th className="py-3 font-bold">담당자</th>
+              <th className="py-3 font-bold">시술</th>
+              <th className="py-3 text-right font-bold">상태</th>
+            </tr>
+          </thead>
+          <tbody>
+            {bookings.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="py-16 text-center text-[14px] font-medium text-[#8A847C]">
+                  {empty}
+                </td>
+              </tr>
+            ) : (
+              bookings.map((b) => {
+                const status = STATUS_META[b.status] ?? { label: b.status, color: "#8A847C" };
+                const when = showDate ? `${b.booking_date} ${b.booking_time}` : b.booking_time;
+                return (
+                  <tr key={b.id} className="border-b border-[#F3EFEA]">
+                    <td className="truncate py-[15px] pr-3">
+                      <Link href={`/admin/bookings/${b.id}`} className="hover:underline">
+                        {when}
+                      </Link>
+                    </td>
+                    <td className="truncate py-[15px] pr-3">
+                      <Link href={`/admin/bookings/${b.id}`} className="hover:underline">
+                        {b.customer_name}
+                      </Link>
+                    </td>
+                    <td className="truncate py-[15px] pr-3">{b.artist_name || "—"}</td>
+                    <td className="truncate py-[15px] pr-3">{(b.service_names || []).join(" / ") || "—"}</td>
+                    <td className="py-[15px] text-right">
+                      <span className="inline-flex items-center gap-1.5 font-medium" style={{ color: status.color }}>
+                        <span className="h-[7px] w-[7px] rounded-full" style={{ background: status.color }} />
+                        {status.label}
+                        {b.deposit_paid ? " · 입금" : ""}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
       </div>
-      <ul className="mt-4 divide-y divide-hu-black/10 bg-hu-white">
-        {bookings.length === 0 ? (
-          <li className="px-6 py-8 font-sans-kr text-[13px] text-hu-muted">{empty}</li>
-        ) : (
-          bookings.map((b) => (
-            <li key={b.id}>
-              <Link
-                href={`/admin/bookings/${b.id}`}
-                className="flex items-center justify-between gap-3 px-5 py-4 transition hover:bg-hu-beige/50 lg:gap-4 lg:px-6"
-              >
-                <div>
-                  <p className="font-serif text-[15px]">
-                    {showDate ? `${b.booking_date} · ` : ""}
-                    {b.booking_time} · {b.customer_name}
-                  </p>
-                  <p className="mt-1 font-sans-kr text-[12px] text-hu-muted">
-                    {b.artist_name || "—"} · {(b.service_names || []).join(" / ") || "시술 미상"}
-                  </p>
-                </div>
-                <span className="shrink-0 font-sans-kr text-[12px] text-hu-body">
-                  {STATUS_LABEL[b.status] || b.status}
-                  {b.deposit_paid ? " · 입금" : ""}
-                </span>
-              </Link>
-            </li>
-          ))
-        )}
-      </ul>
     </div>
   );
 }
