@@ -2,10 +2,18 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { clsx } from "clsx";
+import {
+  adminChart,
+  adminColor,
+  adminLayout,
+  adminSize,
+  adminTrend,
+  adminType
+} from "@/lib/admin/design-tokens";
 import {
   Bar,
   BarChart,
+  Cell,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -15,6 +23,38 @@ import type {
   SalesDashboard,
   SalesPreset
 } from "@/lib/admin/sales-data";
+
+/** 고객관리 검색·필터 칩 테두리 두께. 토큰 목록에는 없다. */
+const controlBorder = `1.5px solid ${adminColor.label}`;
+
+const cardStyle = {
+  background: adminColor.surface,
+  borderRadius: adminLayout.cardRadius,
+  boxShadow: adminLayout.cardShadow,
+  padding: adminLayout.cardPadding
+};
+
+const statCardStyle = {
+  ...cardStyle,
+  minHeight: "100px"
+};
+
+const sectionTitleStyle = {
+  ...adminType.tableHead,
+  color: adminColor.ink,
+  marginBottom: adminLayout.cardGap
+};
+
+function px(value: string) {
+  return Number.parseInt(value, 10);
+}
+
+const cellStyle = {
+  ...adminType.tableCell,
+  color: adminColor.ink,
+  paddingTop: adminSize.tableCellPaddingY,
+  paddingBottom: adminSize.tableCellPaddingY
+};
 
 const PRESETS: { key: SalesPreset; label: string }[] = [
   { key: "today", label: "오늘" },
@@ -36,6 +76,16 @@ function pct(value: number | null, digits = 1) {
 
 function shortChartDate(ymd: string) {
   return ymd.length >= 10 ? `${ymd.slice(5, 7)}/${ymd.slice(8, 10)}` : ymd;
+}
+
+function trendColor(value: number | null | undefined) {
+  if (value == null || value === 0) return adminTrend.flat;
+  return value > 0 ? adminTrend.up : adminTrend.down;
+}
+
+function chartOpacity(value: number, max: number) {
+  if (max <= 0 || value <= 0) return 0.2;
+  return 0.35 + 0.65 * (value / max);
 }
 
 export default function AdminSalesPage() {
@@ -85,33 +135,45 @@ export default function AdminSalesPage() {
     [data]
   );
 
-  return (
-    <div>
-      <h1 className="font-serif text-[28px] tracking-[0.06em] lg:text-[32px]">SALES</h1>
-      <p className="mt-2 font-sans-kr text-[13px] text-hu-muted">
-        매출 현황
-        {from && to ? ` · ${from} ~ ${to}` : ""}
-      </p>
+  const maxDaily = Math.max(0, ...(data?.daily ?? []).map((d) => d.revenue));
 
-      <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3 border-b border-hu-black/10 lg:mt-8">
-        {PRESETS.map((p) => (
-          <button
-            key={p.key}
-            type="button"
-            onClick={() => {
-              setPreset(p.key);
-              if (p.key !== "custom") void load(p.key);
-            }}
-            className={clsx(
-              "pb-3 font-serif text-[13px] tracking-[0.1em]",
-              preset === p.key
-                ? "border-b-2 border-hu-black text-hu-black"
-                : "text-hu-muted"
-            )}
-          >
-            {p.label}
-          </button>
-        ))}
+  return (
+    <div
+      className="font-sans-kr -mx-5 -my-6 min-h-[100dvh] px-5 py-6 lg:-mx-8 lg:-my-8 lg:px-8 lg:py-8 min-[1440px]:-mx-10 min-[1440px]:-my-10 min-[1440px]:px-10 min-[1440px]:py-10"
+      style={{ background: adminLayout.pageBg, color: adminColor.ink }}
+    >
+      <h1 className="mt-8 flex items-baseline gap-2 leading-none tracking-[-0.02em]">
+        <span style={adminType.pageTitle}>매출</span>
+        <span style={{ ...adminType.pageCount, color: adminColor.muted }}>
+          {from && to ? `${from} ~ ${to}` : "매출 현황"}
+        </span>
+      </h1>
+
+      <div className="mt-8 flex flex-wrap items-center gap-2">
+        {PRESETS.map((p) => {
+          const on = preset === p.key;
+          return (
+            <button
+              key={p.key}
+              type="button"
+              onClick={() => {
+                setPreset(p.key);
+                if (p.key !== "custom") void load(p.key);
+              }}
+              className="inline-flex items-center px-3"
+              style={{
+                height: adminSize.buttonHeight,
+                borderRadius: adminSize.buttonRadius,
+                ...adminType.button,
+                background: on ? adminColor.accent : adminColor.surface,
+                color: on ? adminColor.surface : adminColor.ink,
+                border: on ? `1.5px solid ${adminColor.accent}` : controlBorder
+              }}
+            >
+              {p.label}
+            </button>
+          );
+        })}
       </div>
 
       {preset === "custom" ? (
@@ -123,45 +185,78 @@ export default function AdminSalesPage() {
             void load("custom", customFrom, customTo);
           }}
         >
-          <label className="font-sans-kr text-[13px] text-hu-muted">
+          <label style={{ ...adminType.button, color: adminColor.label }}>
             시작
             <input
               type="date"
               value={customFrom}
               onChange={(e) => setCustomFrom(e.target.value)}
-              className="mt-1.5 block h-9 border border-hu-black/20 bg-hu-white px-2.5 text-hu-black outline-none"
+              className="mt-2 block px-2.5 outline-none"
+              style={{
+                height: adminSize.buttonHeight,
+                borderRadius: adminSize.buttonRadius,
+                border: controlBorder,
+                background: adminColor.surface,
+                ...adminType.button,
+                color: adminColor.ink
+              }}
             />
           </label>
-          <label className="font-sans-kr text-[13px] text-hu-muted">
+          <label style={{ ...adminType.button, color: adminColor.label }}>
             종료
             <input
               type="date"
               value={customTo}
               onChange={(e) => setCustomTo(e.target.value)}
-              className="mt-1.5 block h-9 border border-hu-black/20 bg-hu-white px-2.5 text-hu-black outline-none"
+              className="mt-2 block px-2.5 outline-none"
+              style={{
+                height: adminSize.buttonHeight,
+                borderRadius: adminSize.buttonRadius,
+                border: controlBorder,
+                background: adminColor.surface,
+                ...adminType.button,
+                color: adminColor.ink
+              }}
             />
           </label>
           <button
             type="submit"
-            className="h-9 bg-hu-black px-4 font-sans-kr text-[13px] text-white"
+            className="inline-flex items-center px-4"
+            style={{
+              height: adminSize.buttonHeight,
+              borderRadius: adminSize.buttonRadius,
+              background: adminColor.accent,
+              ...adminType.button,
+              color: adminColor.surface
+            }}
           >
             조회
           </button>
         </form>
       ) : null}
 
-      {error ? <p className="mt-6 font-sans-kr text-[13px] text-[#9b4a4a]">{error}</p> : null}
+      {error ? (
+        <p className="mt-6" style={{ ...adminType.pageCount, color: adminTrend.down }}>
+          {error}
+        </p>
+      ) : null}
       {loading && !data ? (
-        <p className="mt-6 font-sans-kr text-[13px] text-hu-muted">불러오는 중…</p>
+        <p className="mt-6" style={{ ...adminType.pageCount, color: adminColor.muted }}>
+          불러오는 중…
+        </p>
       ) : null}
 
       {data ? (
         <>
-          <div className="mt-6 grid grid-cols-2 gap-3 lg:mt-8 lg:grid-cols-4 lg:gap-4">
+          <div
+            className="mt-8 grid grid-cols-2 min-[1440px]:grid-cols-4"
+            style={{ gap: adminLayout.cardGap }}
+          >
             <SummaryCard
               label="총 매출"
               value={won(data.summary.totalRevenue)}
               hint={`직전 기간 대비 ${pct(data.summary.revenueChangeRate)}`}
+              trend={data.summary.revenueChangeRate}
             />
             <SummaryCard
               label="완료 건수"
@@ -171,37 +266,26 @@ export default function AdminSalesPage() {
                   ? `직전 대비 ${data.summary.completedChange >= 0 ? "+" : ""}${data.summary.completedChange} · 금액 미입력 ${data.summary.missingAmountCount}건 제외`
                   : `직전 대비 ${data.summary.completedChange >= 0 ? "+" : ""}${data.summary.completedChange} · ${pct(data.summary.completedChangeRate)}`
               }
+              trend={data.summary.completedChange}
             />
             <SummaryCard
               label="객단가"
               value={won(data.summary.avgTicket)}
               hint="총매출 / 완료 건수"
             />
-            <Link
-              href="/admin/bookings"
-              className="block bg-hu-white px-4 py-5 transition hover:bg-hu-beige/40 lg:px-5 lg:py-6"
-            >
-              <p className="font-serif text-[12px] tracking-[0.14em] text-hu-muted">
-                현금영수증 미발급
-              </p>
+            <Link href="/admin/bookings" className="block" style={statCardStyle}>
+              <p style={adminLayout.statLabel}>현금영수증 미발급</p>
               <p
-                className={clsx(
-                  "mt-3 font-serif text-[28px] lg:text-[32px]",
-                  data.summary.receiptWarningCount > 0
-                    ? "text-[#9b4a4a]"
-                    : "text-hu-muted"
-                )}
+                className="mt-4"
+                style={{
+                  ...adminLayout.statNumber,
+                  color:
+                    data.summary.receiptWarningCount > 0 ? adminChart.warning : adminLayout.statNumber.color
+                }}
               >
                 {data.summary.receiptWarningCount.toLocaleString("ko-KR")}
               </p>
-              <p
-                className={clsx(
-                  "mt-1 font-sans-kr text-[12px]",
-                  data.summary.receiptWarningCount > 0
-                    ? "text-[#9b4a4a]"
-                    : "text-hu-muted"
-                )}
-              >
+              <p className="mt-2" style={{ ...adminType.pageCount, color: adminColor.muted }}>
                 {data.summary.receiptWarningCount > 0
                   ? "10만원 이상 현금·이체 · 예약 목록"
                   : "해당 없음 · 예약 목록"}
@@ -210,30 +294,30 @@ export default function AdminSalesPage() {
           </div>
 
           {emptyCompleted ? (
-            <p className="mt-10 bg-hu-white px-5 py-10 text-center font-sans-kr text-[13px] text-hu-muted">
+            <p className="mt-10 py-16 text-center" style={{ ...adminType.pageCount, color: adminColor.muted }}>
               해당 기간에 완료된 예약이 없습니다
             </p>
           ) : (
-            <>
-              <section className="mt-10">
-                <h2 className="font-serif text-[16px] tracking-[0.08em]">일별 매출 추이</h2>
-                <div className="mt-4 h-[260px] bg-hu-white px-2 py-4 lg:px-4">
+            <div className="flex flex-col" style={{ marginTop: adminLayout.cardGap, gap: adminLayout.cardGap }}>
+              <section style={cardStyle}>
+                <h2 style={sectionTitleStyle}>일별 매출 추이</h2>
+                <div className="h-[280px] px-3 py-5">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={data.daily} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                       <XAxis
                         dataKey="date"
                         tickFormatter={shortChartDate}
-                        tick={{ fontSize: 11, fill: "#666" }}
-                        axisLine={{ stroke: "rgba(0,0,0,0.12)" }}
+                        tick={{ fontSize: px(adminType.tableHead.fontSize), fill: adminColor.label }}
+                        axisLine={{ stroke: adminColor.ruleStrong }}
                         tickLine={false}
                         interval="preserveStartEnd"
                       />
                       <YAxis
                         tickFormatter={(v: number) => v.toLocaleString("ko-KR")}
-                        tick={{ fontSize: 11, fill: "#666" }}
+                        tick={{ fontSize: px(adminType.tableHead.fontSize), fill: adminColor.label }}
                         axisLine={false}
                         tickLine={false}
-                        width={56}
+                        width={64}
                       />
                       <Tooltip
                         formatter={(value) => [
@@ -242,31 +326,53 @@ export default function AdminSalesPage() {
                         ]}
                         labelFormatter={(label) => `날짜 ${label}`}
                         contentStyle={{
-                          border: "1px solid rgba(0,0,0,0.12)",
-                          fontSize: 12
+                          border: `1px solid ${adminColor.rule}`,
+                          borderRadius: px(adminSize.buttonRadius),
+                          fontSize: px(adminType.button.fontSize),
+                          color: adminColor.ink
                         }}
                       />
-                      <Bar dataKey="revenue" fill="#1c1a19" maxBarSize={28} />
+                      <Bar
+                        dataKey="revenue"
+                        radius={[px(adminSize.navItemRadius), px(adminSize.navItemRadius), 0, 0]}
+                        maxBarSize={28}
+                      >
+                        {data.daily.map((d) => (
+                          <Cell
+                            key={d.date}
+                            fill={adminChart.color}
+                            fillOpacity={chartOpacity(d.revenue, maxDaily)}
+                          />
+                        ))}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </section>
 
-              <section className="mt-10">
-                <h2 className="font-serif text-[16px] tracking-[0.08em]">결제수단별 비중</h2>
-                <ul className="mt-4 divide-y divide-hu-black/10 bg-hu-white">
+              <section style={cardStyle}>
+                <h2 style={sectionTitleStyle}>결제수단별 비중</h2>
+                <ul className="grid min-[1440px]:grid-cols-3">
                   {data.methods.map((m) => (
-                    <li key={m.method} className="px-5 py-4">
-                      <div className="flex items-baseline justify-between gap-4 font-sans-kr text-[14px]">
-                        <span>{m.label}</span>
-                        <span className="text-hu-muted">
-                          {won(m.amount)} · {m.count.toLocaleString("ko-KR")}건 · {m.share.toFixed(1)}%
-                        </span>
-                      </div>
-                      <div className="mt-2 h-1.5 bg-hu-black/10">
+                    <li key={m.method}>
+                      <p style={{ ...adminType.tableHead, color: adminColor.label }}>{m.label}</p>
+                      <p className="mt-3 tabular-nums" style={adminLayout.statNumber}>
+                        {won(m.amount)}
+                      </p>
+                      <p className="mt-2" style={{ ...adminType.pageCount, color: adminColor.muted }}>
+                        {m.count.toLocaleString("ko-KR")}건 · {m.share.toFixed(1)}%
+                      </p>
+                      <div
+                        className="mt-4 h-[8px] rounded-full"
+                        style={{ background: adminColor.rule }}
+                      >
                         <div
-                          className="h-full bg-hu-black"
-                          style={{ width: `${Math.min(100, m.share)}%` }}
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${Math.min(100, Math.max(m.share, m.amount > 0 ? 2 : 0))}%`,
+                            background: adminChart.color,
+                            opacity: chartOpacity(m.share, 100)
+                          }}
                         />
                       </div>
                     </li>
@@ -274,37 +380,44 @@ export default function AdminSalesPage() {
                 </ul>
               </section>
 
-              <section className="mt-10">
-                <h2 className="font-serif text-[16px] tracking-[0.08em]">디자이너별 매출</h2>
+              <section style={cardStyle}>
+                <h2 style={sectionTitleStyle}>디자이너별 매출</h2>
                 {data.artists.length === 0 ? (
-                  <p className="mt-4 bg-hu-white px-5 py-8 font-sans-kr text-[13px] text-hu-muted">
+                  <p className="px-6 py-10" style={{ ...adminType.pageCount, color: adminColor.muted }}>
                     해당 기간에 완료된 예약이 없습니다
                   </p>
                 ) : (
-                  <div className="mt-4 overflow-x-auto bg-hu-white">
-                    <table className="min-w-full text-left font-sans-kr text-[13px]">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left" style={{ lineHeight: "20px" }}>
                       <thead>
-                        <tr className="border-b border-hu-black/10 text-hu-muted">
-                          <th className="px-5 py-3 font-normal">디자이너</th>
-                          <th className="px-5 py-3 font-normal">매출</th>
-                          <th className="px-5 py-3 font-normal">건수</th>
-                          <th className="px-5 py-3 font-normal">객단가</th>
-                          <th className="px-5 py-3 font-normal">비중</th>
-                          {showIncentive ? (
-                            <th className="px-5 py-3 font-normal">예상 인센티브</th>
-                          ) : null}
+                        <tr
+                          style={{
+                            ...adminType.tableHead,
+                            color: adminColor.label,
+                            borderBottom: `1.5px solid ${adminColor.ruleStrong}`
+                          }}
+                        >
+                          <th className="py-3 font-bold">디자이너</th>
+                          <th className="py-3 font-bold">매출</th>
+                          <th className="py-3 font-bold">건수</th>
+                          <th className="py-3 font-bold">객단가</th>
+                          <th className="py-3 font-bold">비중</th>
+                          {showIncentive ? <th className="py-3 font-bold">예상 인센티브</th> : null}
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-hu-black/10">
+                      <tbody>
                         {data.artists.map((a) => (
-                          <tr key={`${a.artistId ?? a.artistName}`}>
-                            <td className="px-5 py-3">{a.artistName}</td>
-                            <td className="px-5 py-3 tabular-nums">{won(a.revenue)}</td>
-                            <td className="px-5 py-3 tabular-nums">{a.count}</td>
-                            <td className="px-5 py-3 tabular-nums">{won(a.avgTicket)}</td>
-                            <td className="px-5 py-3 tabular-nums">{a.share.toFixed(1)}%</td>
+                          <tr
+                            key={`${a.artistId ?? a.artistName}`}
+                            style={{ borderBottom: `1px solid ${adminColor.rule}` }}
+                          >
+                            <td className="pr-3" style={cellStyle}>{a.artistName}</td>
+                            <td className="pr-3 tabular-nums" style={cellStyle}>{won(a.revenue)}</td>
+                            <td className="pr-3 tabular-nums" style={cellStyle}>{a.count}</td>
+                            <td className="pr-3 tabular-nums" style={cellStyle}>{won(a.avgTicket)}</td>
+                            <td className="pr-3 tabular-nums" style={cellStyle}>{a.share.toFixed(1)}%</td>
                             {showIncentive ? (
-                              <td className="px-5 py-3 tabular-nums text-hu-muted">
+                              <td className="tabular-nums" style={{ ...cellStyle, color: adminColor.muted }}>
                                 {a.incentive != null && a.commissionRate != null
                                   ? `${a.commissionRate}% · ${won(a.incentive)}`
                                   : "—"}
@@ -318,62 +431,75 @@ export default function AdminSalesPage() {
                 )}
               </section>
 
-              <section className="mt-10">
-                <h2 className="font-serif text-[16px] tracking-[0.08em]">시술별 선택 건수</h2>
+              <section style={cardStyle}>
+                <h2 style={sectionTitleStyle}>시술별 선택 건수</h2>
                 {data.services.length === 0 ? (
-                  <p className="mt-4 bg-hu-white px-5 py-8 font-sans-kr text-[13px] text-hu-muted">
+                  <p className="px-6 py-10" style={{ ...adminType.pageCount, color: adminColor.muted }}>
                     해당 기간에 완료된 예약이 없습니다
                   </p>
                 ) : (
-                  <ul className="mt-4 divide-y divide-hu-black/10 bg-hu-white">
+                  <ul>
                     {data.services.map((s, i) => (
                       <li
                         key={s.name}
-                        className="flex items-center justify-between px-5 py-3 font-sans-kr text-[13px]"
+                        className="flex items-center justify-between"
+                        style={{
+                          ...adminType.tableCell,
+                          color: adminColor.ink,
+                          paddingTop: adminSize.tableCellPaddingY,
+                          paddingBottom: adminSize.tableCellPaddingY,
+                          borderBottom: `1px solid ${adminColor.rule}`
+                        }}
                       >
                         <span>
-                          <span className="mr-3 text-hu-muted">{i + 1}</span>
+                          <span className="mr-3" style={{ color: adminColor.label }}>
+                            {i + 1}
+                          </span>
                           {s.name}
                         </span>
-                        <span className="tabular-nums text-hu-muted">{s.count}건</span>
+                        <span className="tabular-nums">{s.count}건</span>
                       </li>
                     ))}
                   </ul>
                 )}
               </section>
-            </>
+            </div>
           )}
 
-          <section className="mt-10">
-            <h2 className="font-serif text-[16px] tracking-[0.08em]">취소 / 노쇼 현황</h2>
-            <p className="mt-1 font-sans-kr text-[12px] text-hu-muted">
-              예약일(booking_date) 기준 · 전체 {data.attrition.totalBookings.toLocaleString("ko-KR")}건
-            </p>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="bg-hu-white px-5 py-5">
-                <p className="font-sans-kr text-[13px] text-hu-muted">취소</p>
-                <p className="mt-2 font-serif text-[28px]">
+          <section style={{ ...cardStyle, marginTop: adminLayout.cardGap }}>
+            <h2 className="flex items-baseline gap-2" style={sectionTitleStyle}>
+              <span>취소 / 노쇼</span>
+              <span style={{ ...adminType.pageCount, color: adminColor.muted }}>
+                예약일 기준 · 전체 {data.attrition.totalBookings.toLocaleString("ko-KR")}건
+              </span>
+            </h2>
+            <div className="grid grid-cols-2">
+              <div>
+                <p style={{ ...adminType.tableHead, color: adminColor.label }}>취소</p>
+                <p className="mt-3" style={adminLayout.statNumber}>
                   {data.attrition.cancelledCount.toLocaleString("ko-KR")}
                 </p>
-                <p className="mt-1 font-sans-kr text-[12px] text-hu-muted">
+                <p className="mt-2" style={{ ...adminType.pageCount, color: adminColor.muted }}>
                   전체 대비 {data.attrition.cancelledRate.toFixed(1)}%
                 </p>
               </div>
-              <div className="bg-hu-white px-5 py-5">
-                <p className="font-sans-kr text-[13px] text-hu-muted">노쇼</p>
+              <div>
+                <p style={{ ...adminType.tableHead, color: adminColor.label }}>노쇼</p>
                 <p
-                  className={clsx(
-                    "mt-2 font-serif text-[28px]",
-                    data.attrition.noshowHigh && "text-[#9b4a4a]"
-                  )}
+                  className="mt-3"
+                  style={{
+                    ...adminLayout.statNumber,
+                    color: data.attrition.noshowHigh ? adminChart.warning : adminLayout.statNumber.color
+                  }}
                 >
                   {data.attrition.noshowCount.toLocaleString("ko-KR")}
                 </p>
                 <p
-                  className={clsx(
-                    "mt-1 font-sans-kr text-[12px]",
-                    data.attrition.noshowHigh ? "text-[#9b4a4a]" : "text-hu-muted"
-                  )}
+                  className="mt-2"
+                  style={{
+                    ...adminType.pageCount,
+                    color: data.attrition.noshowHigh ? adminChart.warning : adminColor.muted
+                  }}
                 >
                   전체 대비 {data.attrition.noshowRate.toFixed(1)}%
                   {data.attrition.noshowHigh ? " · 10% 초과" : ""}
@@ -390,17 +516,21 @@ export default function AdminSalesPage() {
 function SummaryCard({
   label,
   value,
-  hint
+  hint,
+  trend
 }: {
   label: string;
   value: string;
   hint: string;
+  trend?: number | null;
 }) {
   return (
-    <div className="bg-hu-white px-4 py-5 lg:px-5 lg:py-6">
-      <p className="font-serif text-[12px] tracking-[0.14em] text-hu-muted">{label}</p>
-      <p className="mt-3 font-serif text-[22px] leading-tight lg:text-[26px]">{value}</p>
-      <p className="mt-1 font-sans-kr text-[12px] text-hu-muted">{hint}</p>
+    <div style={statCardStyle}>
+      <p style={adminLayout.statLabel}>{label}</p>
+      <p className="mt-4" style={adminLayout.statNumber}>{value}</p>
+      <p className="mt-2" style={{ ...adminType.pageCount, color: trendColor(trend) }}>
+        {hint}
+      </p>
     </div>
   );
 }

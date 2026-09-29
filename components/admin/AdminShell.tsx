@@ -1,57 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import type { Route } from "next";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { clsx } from "clsx";
 import {
-  ADMIN_NAV_GROUPS,
-  findAdminNavGroup,
-  isAdminNavItemActive,
-  type AdminHref
+  ADMIN_MENUS,
+  ADMIN_SIDEBAR_SLOT_ID,
+  adminSubTabs,
+  findAdminMenu,
+  isAdminMenuActive,
+  isAdminNavItemActive
 } from "@/lib/admin/nav";
 import { createClient } from "@/lib/supabase/browser";
-
-/**
- * LNB 시안은 1024px 목업. 데스크톱 프레임 1440 = ×1.40625.
- * 사이드 242px, 배경 #F9F8F4, 활성 메뉴 흰 박스.
- */
-const LNB_ITEMS: {
-  href: AdminHref;
-  label: string;
-  icon: string;
-  exact?: boolean;
-  match: string[];
-  badge?: "bookings";
-}[] = [
-  { href: "/admin", label: "대시보드", icon: "/admin-icons/lnb/house.png", exact: true, match: ["/admin"] },
-  {
-    href: "/admin/bookings",
-    label: "예약관리",
-    icon: "/admin-icons/lnb/calendar.png",
-    match: ["/admin/bookings"],
-    badge: "bookings"
-  },
-  { href: "/admin/calendar", label: "캘린더", icon: "/admin-icons/lnb/calendar-check.png", match: ["/admin/calendar"] },
-  {
-    href: "/admin/customers",
-    label: "고객관리",
-    icon: "/admin-icons/lnb/users.png",
-    match: ["/admin/customers", "/admin/reminders"]
-  },
-  {
-    href: "/admin/sales",
-    label: "매출/정산",
-    icon: "/admin-icons/lnb/usd.png",
-    match: ["/admin/sales", "/admin/expenses", "/admin/settlements", "/admin/tax", "/admin/export"]
-  },
-  {
-    href: "/admin/settings",
-    label: "매장설정",
-    icon: "/admin-icons/lnb/settings.png",
-    match: ["/admin/settings", "/admin/artists", "/admin/services"]
-  }
-];
 
 function LnbIcon({ src, className }: { src: string; className?: string }) {
   return (
@@ -72,9 +34,18 @@ function LnbIcon({ src, className }: { src: string; className?: string }) {
   );
 }
 
-function lnbActive(pathname: string, item: (typeof LNB_ITEMS)[number]) {
-  if (item.exact) return pathname === item.href;
-  return item.match.some((href) => pathname === href || pathname.startsWith(`${href}/`));
+const WEEKDAY_EN = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+
+function todayLabelKst() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(new Date());
+  const [y, m, d] = parts.split("-");
+  const dow = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d))).getUTCDay();
+  return `${y}. ${m}. ${d}. ${WEEKDAY_EN[dow]}`;
 }
 
 export default function AdminShell({
@@ -86,18 +57,26 @@ export default function AdminShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const activeGroup = findAdminNavGroup(pathname);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const activeMenu = findAdminMenu(pathname);
+  const subTabs = adminSubTabs(activeMenu);
   const [profileName, setProfileName] = useState("관리자");
+  const [businessName, setBusinessName] = useState<string | null>(null);
   const [pendingCount, setPendingCount] = useState<number | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [todayLabel, setTodayLabel] = useState("");
+  const [globalQuery, setGlobalQuery] = useState("");
 
   useEffect(() => {
-    const prev = document.documentElement.style.scrollbarGutter;
-    document.documentElement.style.scrollbarGutter = "stable";
-    return () => {
-      document.documentElement.style.scrollbarGutter = prev;
-    };
+    setTodayLabel(todayLabelKst());
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/admin/tax")
+      .then((res) => res.json())
+      .then((data) => {
+        const name = data?.settings?.business_name;
+        if (typeof name === "string" && name.trim()) setBusinessName(name.trim());
+      })
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -122,14 +101,7 @@ export default function AdminShell({
       .catch(() => undefined);
   }, [pathname]);
 
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onDown = (e: MouseEvent) => {
-      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
-    };
-    window.addEventListener("mousedown", onDown);
-    return () => window.removeEventListener("mousedown", onDown);
-  }, [menuOpen]);
+  const shopName = businessName || profileName;
 
   const logout = async () => {
     await fetch("/api/admin/auth/logout", { method: "POST" });
@@ -138,7 +110,7 @@ export default function AdminShell({
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#faf8f6] text-hu-black min-[1440px]:flex min-[1440px]:bg-white">
+    <div className="min-h-screen bg-dash-bg text-text1 min-[1440px]:flex min-[1440px]:h-screen min-[1440px]:flex-col">
       <header className="sticky top-0 z-50 bg-hu-black text-hu-white min-[1440px]:hidden">
         <div className="mx-auto flex max-w-[1200px] items-center justify-between px-5 py-2.5 lg:px-8">
           <div className="flex items-baseline gap-2 lg:gap-3">
@@ -168,28 +140,28 @@ export default function AdminShell({
             </button>
           </div>
         </div>
-        <nav className="mx-auto grid max-w-[1200px] grid-cols-4 border-t border-white/10 px-5 py-2.5 lg:px-8">
-          {ADMIN_NAV_GROUPS.map((group) => {
-            const active = group.id === activeGroup.id;
-            const first = group.items[0];
+        <nav className="mx-auto grid max-w-[1200px] grid-cols-6 border-t border-white/10 px-5 py-2.5 lg:px-8">
+          {ADMIN_MENUS.map((menu) => {
+            const active = menu.id === activeMenu?.id;
             return (
               <Link
-                key={group.id}
-                href={first.href}
+                key={menu.id}
+                href={menu.href}
                 prefetch={false}
                 className={clsx(
                   "text-center font-sans-kr text-[14px] font-medium tracking-[0.02em] transition sm:text-[15px]",
                   active ? "text-white" : "text-white/70 hover:text-white"
                 )}
               >
-                {group.label}
+                {menu.label}
               </Link>
             );
           })}
         </nav>
-        <div className="border-t border-white/10 bg-[#faf8f6]">
+        {subTabs.length > 0 ? (
+        <div className="border-t border-white/10 bg-dash-bg">
           <nav className="mx-auto flex max-w-[1200px] gap-5 overflow-x-auto px-5 [scrollbar-width:none] lg:gap-6 lg:px-8 [&::-webkit-scrollbar]:hidden">
-            {activeGroup.items.map((item) => {
+            {subTabs.map((item) => {
               const active = isAdminNavItemActive(pathname, item);
               return (
                 <Link
@@ -209,100 +181,113 @@ export default function AdminShell({
             })}
           </nav>
         </div>
+        ) : null}
       </header>
 
-      <aside className="relative hidden h-screen w-[242px] shrink-0 flex-col bg-[#F9F8F4] min-[1440px]:flex">
-        <Link href="/" className="block px-[27px] pt-[36px]">
-          <img src="/admin-icons/hair-up-logo.png" alt="hair up" className="h-[42px] w-auto" />
-        </Link>
-
-        <nav className="mt-[37px] flex flex-col px-[11px]">
-          {LNB_ITEMS.map((item) => {
-            const active = lnbActive(pathname, item);
-            const badge = item.badge === "bookings" ? pendingCount : null;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                prefetch={false}
-                className={clsx(
-                  "flex h-[59px] items-center gap-[13px] rounded-[4px] px-[14px] font-sans-kr text-[17px] leading-none",
-                  active
-                    ? "bg-white font-medium text-[#1C1C1C]"
-                    : "font-normal text-[#7A746E] hover:bg-white/60"
-                )}
-              >
-                <LnbIcon src={item.icon} className="h-[20px] w-[20px]" />
-                <span>{item.label}</span>
-                {badge != null && badge > 0 ? (
-                  <span className="ml-auto inline-flex h-[21px] min-w-[21px] items-center justify-center rounded-full bg-[#E4DFD6] px-[6px] font-sans-kr text-[12px] font-medium leading-none text-[#6F6963]">
-                    {badge}
-                  </span>
-                ) : null}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div ref={menuRef} className="relative mt-auto border-t border-[#E6E1DA] px-[18px] pb-[27px] pt-[18px]">
-          {menuOpen ? (
-            <div className="absolute bottom-[78px] left-[207px] z-20 w-[235px] overflow-hidden rounded-[12px] bg-white py-[6px] shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
-              <button
-                type="button"
-                className="flex h-[42px] w-full items-center gap-[10px] px-[16px] text-left font-sans-kr text-[14px] text-[#3A3A3A] hover:bg-[#F6F4F0]"
-              >
-                <LnbIcon src="/admin-icons/lnb/card.png" className="h-[16px] w-[16px]" />
-                플랜 및 결제 관리
+      <div className="admin-topbar hidden min-[1440px]:flex">
+        <div className="admin-topbar__brand">
+          <Link href="/" aria-label="hair up 홈">
+            <img src="/admin-icons/hair-up-logo.png" alt="hair up" className="h-[52px] w-auto" />
+          </Link>
+        </div>
+        <div className="pc-content-topbar flex flex-1 items-end justify-between gap-6">
+          <nav className="pc-nav-tabs gap-12">
+            {ADMIN_MENUS.map((menu) => {
+              const badge = menu.badge === "bookings" ? pendingCount : null;
+              return (
+                <Link
+                  key={menu.id}
+                  href={menu.href}
+                  prefetch={false}
+                  className={clsx("pc-nav-tab", isAdminMenuActive(pathname, menu) && "active")}
+                >
+                  {menu.label}
+                  {badge != null && badge > 0 ? <span className="pc-nav-tab__badge">{badge}</span> : null}
+                </Link>
+              );
+            })}
+          </nav>
+          <div className="ml-auto flex items-center gap-2 pb-[6px]">
+            <form
+              role="search"
+              className="pc-topbar-search mr-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const q = globalQuery.trim();
+                if (!q) return;
+                router.push(`/admin/customers?q=${encodeURIComponent(q)}` as Route);
+                setGlobalQuery("");
+              }}
+            >
+              <input
+                value={globalQuery}
+                onChange={(e) => setGlobalQuery(e.target.value)}
+                placeholder="검색어를 입력하세요"
+                aria-label="고객 검색"
+              />
+              <button type="submit" aria-label="검색" className="flex items-center">
+                <LnbIcon src="/admin-icons/lnb/search.png" className="h-[16px] w-[16px] text-[color:var(--topbar-search-icon)]" />
               </button>
-              <Link
-                href="/admin/settings"
-                onClick={() => setMenuOpen(false)}
-                className="flex h-[42px] items-center gap-[10px] px-[16px] font-sans-kr text-[14px] text-[#3A3A3A] hover:bg-[#F6F4F0]"
-              >
-                <LnbIcon src="/admin-icons/lnb/user.png" className="h-[16px] w-[16px]" />
-                계정 설정
-              </Link>
-              <div className="my-[4px] border-t border-[#ECEAE6]" />
-              <button
-                type="button"
-                onClick={logout}
-                className="flex h-[42px] w-full items-center gap-[10px] px-[16px] text-left font-sans-kr text-[14px] text-[#3A3A3A] hover:bg-[#F6F4F0]"
-              >
-                <LnbIcon src="/admin-icons/lnb/exit.png" className="h-[16px] w-[16px]" />
-                로그아웃
-              </button>
-            </div>
-          ) : null}
-
-          <div className="flex items-center gap-[10px]">
-            <span className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full bg-[#7C726C] text-[#F4F1EC]">
-              <LnbIcon src="/admin-icons/lnb/user.png" className="h-[18px] w-[18px]" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate font-sans-kr text-[15px] font-medium leading-[1.2] text-[#1C1C1C]">
-                {profileName}
-              </span>
-              <span className="mt-[2px] block font-sans-kr text-[12px] font-normal leading-[1.2] text-[#8A847C]">
-                Starter Plan
-              </span>
-            </span>
+            </form>
+            <Link
+              href="/admin/settings"
+              aria-label="설정"
+              className="flex h-[36px] w-[36px] items-center justify-center rounded-pc border border-line bg-surface text-text1 hover:bg-pc-bg-alt"
+            >
+              <LnbIcon src="/admin-icons/lnb/settings.png" className="h-[16px] w-[16px]" />
+            </Link>
             <button
               type="button"
-              aria-label="계정 메뉴"
-              aria-expanded={menuOpen}
-              onClick={() => setMenuOpen((v) => !v)}
-              className="flex h-[28px] w-[28px] items-center justify-center text-[#8A847C] hover:text-[#1C1C1C]"
+              onClick={logout}
+              aria-label="로그아웃"
+              className="flex h-[36px] w-[36px] items-center justify-center rounded-pc border border-line bg-surface text-text1 hover:bg-pc-bg-alt"
             >
-              <LnbIcon src="/admin-icons/lnb/dots.png" className="h-[16px] w-[16px]" />
+              <LnbIcon src="/admin-icons/lnb/exit.png" className="h-[16px] w-[16px]" />
             </button>
           </div>
         </div>
-      </aside>
+      </div>
 
-      <div className="min-w-0 flex-1">
-        <main className="mx-auto min-h-[calc(100vh-160px)] max-w-[1200px] px-5 py-6 lg:px-8 lg:py-8 min-[1440px]:max-w-none min-[1440px]:px-10 min-[1440px]:py-10">
-          {children}
-        </main>
+      <div className="app-shell">
+        <aside className="sidebar hidden min-[1440px]:flex">
+          <div className="sidebar__date">
+            <span className="sidebar__date-label">Today</span>
+            <span className="sidebar__date-value">{todayLabel}</span>
+          </div>
+
+          <nav className="sidebar__nav">
+            <div className="sidebar__group">
+              {subTabs.map((tab) => (
+                <Link
+                  key={tab.href}
+                  href={tab.href}
+                  prefetch={false}
+                  className={clsx("sidebar__item", isAdminNavItemActive(pathname, tab) && "is-active")}
+                >
+                  {tab.icon ? <LnbIcon src={tab.icon} className="h-[18px] w-[18px]" /> : null}
+                  <span>{tab.label}</span>
+                </Link>
+              ))}
+            </div>
+            <div id={ADMIN_SIDEBAR_SLOT_ID} />
+          </nav>
+
+          <div className="flex items-center gap-[10px] px-5 pb-6">
+            <span className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-pc bg-app-black text-pc-sm font-bold text-surface">
+              {shopName.slice(0, 1)}
+            </span>
+            <span className="min-w-0 flex-1 font-pc-kr leading-[1.2]">
+              <span className="block truncate text-[13px] font-bold text-dash-ink">{shopName}</span>
+              <span className="mt-[2px] block text-pc-sm font-medium text-text3">관리자</span>
+            </span>
+          </div>
+        </aside>
+
+        <div className="app-main">
+          <main className="page-content">
+            <div className="page-inner">{children}</div>
+          </main>
+        </div>
       </div>
     </div>
   );

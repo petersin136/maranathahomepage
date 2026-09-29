@@ -6,9 +6,16 @@ import { useCallback, useEffect, useState } from "react";
 import { clsx } from "clsx";
 import BookingActionButtons from "@/components/admin/BookingActionButtons";
 import BookingConfirmModal from "@/components/admin/BookingConfirmModal";
+import BookingPaymentModal from "@/components/admin/BookingPaymentModal";
 import { BOOKING_STATUS_OPTIONS, cancelReasonLabel } from "@/lib/admin/booking-labels";
 import { useBookingActions } from "@/lib/admin/useBookingActions";
-import type { BookingRow, BookingStatus } from "@/lib/bookings/types";
+import type { BookingRow, BookingStatus, PaymentMethod } from "@/lib/bookings/types";
+
+const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
+  card: "카드",
+  cash: "현금",
+  transfer: "계좌이체"
+};
 
 export default function AdminBookingDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -85,58 +92,60 @@ export default function AdminBookingDetailPage() {
 
   const reason = cancelReasonLabel(booking.cancel_reason);
 
+  const request =
+    booking.customer_request?.trim() ||
+    (booking.admin_memo?.startsWith("[고객요청] ")
+      ? booking.admin_memo.slice("[고객요청] ".length)
+      : "");
+  const payment =
+    booking.final_amount != null
+      ? `${booking.payment_method ? PAYMENT_METHOD_LABEL[booking.payment_method] : "결제"} · ${booking.final_amount.toLocaleString("ko-KR")}원`
+      : "없음";
+
   return (
-    <div className="max-w-[720px]">
-      <Link href="/admin/bookings" className="font-sans-kr text-[12px] text-hu-muted">
+    <div className="font-sans-kr text-[#1C1C1C]">
+      <Link href="/admin/bookings" className="text-[15px] text-[#8A847C]">
         ← 목록
       </Link>
-      <h1 className="mt-4 font-serif text-[28px] tracking-[0.06em]">BOOKING DETAIL</h1>
+      <h1 className="mt-6 flex items-baseline gap-2 text-[30px] font-bold leading-none tracking-[-0.02em]">
+        예약 상세
+        <span className="text-[15px] font-normal text-[#8A847C]">{booking.customer_name}</span>
+      </h1>
 
-      {error ? <p className="mt-4 font-sans-kr text-[13px] text-[#9b4a4a]">{error}</p> : null}
+      {error ? <p className="mt-4 text-[13px] text-[#E24B4B]">{error}</p> : null}
 
-      <div className={clsx("mt-8 space-y-6 bg-hu-white px-5 py-6 lg:px-8 lg:py-8", booking.status === "cancelled" && "opacity-70")}>
-        <Row label="날짜" value={booking.booking_date} />
-        <Row label="시간" value={booking.booking_time} />
-        <Row label="디자이너" value={booking.artist_name || booking.artist_id} />
-        <Row label="시술" value={(booking.service_names || []).join(", ") || "—"} />
-        <Row label="고객" value={booking.customer_name} />
-        <Row
-          label="성별"
-          value={booking.customer_gender === "W" ? "W" : booking.customer_gender === "M" ? "M" : "—"}
-        />
-        <Row label="전화" value={booking.customer_phone} />
-        <Row
-          label="요청사항"
-          value={
-            booking.customer_request?.trim() ||
-            (booking.admin_memo?.startsWith("[고객요청] ")
-              ? booking.admin_memo.slice("[고객요청] ".length)
-              : null) ||
-            "—"
-          }
-        />
-        <Row
-          label="총 금액"
-          value={
-            booking.total_amount != null
-              ? `${booking.total_amount.toLocaleString("ko-KR")}원`
-              : "—"
-          }
-        />
-        <Row
-          label="예약금"
-          value={
-            booking.deposit_amount != null
-              ? `${booking.deposit_amount.toLocaleString("ko-KR")}원`
-              : "—"
-          }
-        />
+      <div className={clsx("mt-10", booking.status === "cancelled" && "opacity-70")}>
+        <dl>
+          <Field label="예약일" value={booking.booking_date} />
+          <Field label="시간" value={booking.booking_time} />
+          <Field label="담당" value={booking.artist_name || booking.artist_id} />
+          <Field label="시술" value={(booking.service_names || []).join(", ") || "—"} />
+          <Field label="고객" value={booking.customer_name} />
+          <Field
+            label="성별"
+            value={booking.customer_gender === "W" ? "여" : booking.customer_gender === "M" ? "남" : "—"}
+          />
+          <Field label="연락처" value={booking.customer_phone} />
+          <Field
+            label="예상 금액"
+            value={booking.total_amount != null ? `${booking.total_amount.toLocaleString("ko-KR")}원` : "—"}
+          />
+          <Field
+            label="예약금"
+            value={booking.deposit_amount != null ? `${booking.deposit_amount.toLocaleString("ko-KR")}원` : "—"}
+          />
+          <Field label="결제" value={payment} />
+          <Field label="고객 메모" value={request || "없음"} />
+        </dl>
         {booking.status === "cancelled" ? (
-          <Row label="취소 사유" value={reason || "—"} />
+          <p className="mt-3 text-[15px] leading-[24px]">
+            <span className="mr-3 font-bold text-[#9A948C]">취소 사유</span>
+            {reason || "—"}
+          </p>
         ) : null}
 
-        <div>
-          <p className="font-serif text-[12px] tracking-[0.1em] text-hu-accent">STATUS</p>
+        <div className="mt-8 border-t border-[#F3EFEA] pt-6">
+          <p className="text-[15px] font-bold text-[#9A948C]">상태</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {BOOKING_STATUS_OPTIONS.map((opt) => (
               <button
@@ -149,13 +158,17 @@ export default function AdminBookingDetailPage() {
                     actions.openCancel(booking);
                     return;
                   }
+                  if (opt.value === "completed") {
+                    actions.openPayment(booking);
+                    return;
+                  }
                   void actions.updateStatus(booking, opt.value as BookingStatus);
                 }}
                 className={clsx(
-                  "px-4 py-2 font-sans-kr text-[12px]",
+                  "inline-flex h-[36px] items-center rounded-[8px] border-[1.5px] px-3 text-[14px] font-bold",
                   booking.status === opt.value
-                    ? "bg-hu-black text-white"
-                    : "bg-hu-beige text-hu-body hover:bg-hu-beige-hover"
+                    ? "border-[#2F3A2F] bg-[#2F3A2F] text-white"
+                    : "border-[#9A948C] bg-white text-[#1C1C1C]"
                 )}
               >
                 {opt.label}
@@ -164,43 +177,42 @@ export default function AdminBookingDetailPage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between border-t border-hu-black/10 pt-6">
-          <div>
-            <p className="font-serif text-[12px] tracking-[0.1em] text-hu-accent">DEPOSIT</p>
-            <p className="mt-1 font-sans-kr text-[13px] text-hu-muted">예약금 입금 여부</p>
-          </div>
+        <div className="mt-6 flex items-center justify-between border-t border-[#F3EFEA] pt-6">
+          <p className="text-[15px] font-bold text-[#9A948C]">예약금 입금</p>
           <button
             type="button"
             disabled={busy}
             onClick={() => patch({ deposit_paid: !booking.deposit_paid })}
             className={clsx(
-              "px-5 py-2 font-sans-kr text-[13px]",
-              booking.deposit_paid ? "bg-hu-black text-white" : "bg-hu-beige text-hu-body"
+              "inline-flex h-[36px] items-center rounded-[8px] border-[1.5px] px-3 text-[14px] font-bold",
+              booking.deposit_paid
+                ? "border-[#2F3A2F] bg-[#2F3A2F] text-white"
+                : "border-[#9A948C] bg-white text-[#1C1C1C]"
             )}
           >
             {booking.deposit_paid ? "입금 완료" : "미입금"}
           </button>
         </div>
 
-        <div className="border-t border-hu-black/10 pt-6">
-          <p className="font-serif text-[12px] tracking-[0.1em] text-hu-accent">MEMO</p>
+        <div className="mt-6 border-t border-[#F3EFEA] pt-6">
+          <p className="text-[15px] font-bold text-[#9A948C]">관리 메모</p>
           <textarea
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
             rows={4}
-            className="mt-3 w-full border border-hu-black/10 bg-[#faf8f6] px-3 py-2 font-sans-kr text-[13px] outline-none focus:border-hu-black/30"
+            className="mt-3 w-full rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-3 py-2 text-[15px] outline-none"
           />
           <button
             type="button"
             disabled={busy}
             onClick={() => patch({ admin_memo: memo })}
-            className="mt-3 bg-hu-black px-5 py-2 font-sans-kr text-[13px] text-white disabled:bg-[#bcbcbc]"
+            className="mt-3 inline-flex h-[40px] items-center rounded-[8px] bg-[#2F3A2F] px-4 text-[14px] font-bold text-white disabled:opacity-40"
           >
             {saving ? "저장 중..." : "메모 저장"}
           </button>
         </div>
 
-        <div className="flex items-center justify-end border-t border-hu-black/10 pt-6">
+        <div className="mt-6 flex items-center justify-end border-t border-[#F3EFEA] pt-6">
           <BookingActionButtons
             booking={booking}
             busy={busy}
@@ -220,15 +232,26 @@ export default function AdminBookingDetailPage() {
           onConfirm={actions.runConfirm}
         />
       ) : null}
+
+      {actions.paymentTarget ? (
+        <BookingPaymentModal
+          booking={actions.paymentTarget}
+          busy={actions.busyId === actions.paymentTarget.id}
+          onClose={actions.closePayment}
+          onSave={(payload) => {
+            void actions.savePayment(payload);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Field({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-baseline justify-between gap-6 border-b border-hu-black/5 pb-3">
-      <dt className="font-serif text-[11px] tracking-[0.12em] text-hu-accent">{label}</dt>
-      <dd className="font-sans-kr text-[14px] text-hu-black">{value}</dd>
+    <div className="flex items-baseline gap-8 border-b border-[#F3EFEA] py-[15px]">
+      <dt className="w-[120px] shrink-0 text-[15px] font-bold text-[#9A948C]">{label}</dt>
+      <dd className="min-w-0 text-[16px] font-medium">{value}</dd>
     </div>
   );
 }

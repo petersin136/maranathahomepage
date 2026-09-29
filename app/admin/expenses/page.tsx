@@ -247,12 +247,13 @@ export default function AdminExpensesPage() {
   const importPreview = data?.recurringImport;
 
   return (
-    <div>
-      <h1 className="font-serif text-[28px] tracking-[0.06em] lg:text-[32px]">EXPENSES</h1>
-      <p className="mt-2 font-sans-kr text-[13px] text-hu-muted">
-        비용 관리
-        {data ? ` · ${data.year}년 ${data.month}월` : ""}
-      </p>
+    <div className="font-sans-kr text-[#1C1C1C]">
+      <h1 className="mt-8 flex items-baseline gap-2 text-[30px] font-bold leading-none tracking-[-0.02em]">
+        비용
+        <span className="text-[15px] font-normal text-[#8A847C]">
+          {data ? `${data.year}년 ${data.month}월` : "비용 관리"}
+        </span>
+      </h1>
 
       <div className="mt-6 flex flex-wrap items-center gap-3 lg:mt-8">
         <button

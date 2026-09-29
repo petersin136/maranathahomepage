@@ -76,14 +76,14 @@ export default function AdminExportPage() {
   };
 
   return (
-    <div>
-      <h1 className="font-serif text-[28px] tracking-[0.06em] lg:text-[32px]">EXPORT</h1>
-      <p className="mt-2 font-sans-kr text-[13px] text-hu-muted">
-        월 마감 내보내기 · 세무 대리인 전달용 엑셀
-      </p>
+    <div className="font-sans-kr text-[#1C1C1C]">
+      <h1 className="mt-8 flex items-baseline gap-2 text-[30px] font-bold leading-none tracking-[-0.02em]">
+        내보내기
+        <span className="text-[15px] font-normal text-[#8A847C]">월 마감 · 세무 대리인 전달용</span>
+      </h1>
 
-      <section className="mt-8 bg-hu-white px-5 py-6 lg:px-6">
-        <h2 className="font-serif text-[16px] tracking-[0.08em]">대상 월 선택</h2>
+      <section className="mt-8 rounded-[12px] border border-[#E4E0DA] bg-white px-6 py-6">
+        <h2 className="text-[20px] font-bold leading-none">대상 월</h2>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
             type="button"

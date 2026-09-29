@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { clsx } from "clsx";
-
 type Artist = {
   id: string;
   name_kr: string;
@@ -87,68 +86,86 @@ export default function AdminArtistsPage() {
   };
 
   return (
-    <div>
-      <h1 className="font-serif text-[28px] tracking-[0.06em] lg:text-[32px]">ARTISTS</h1>
-      <p className="mt-2 font-sans-kr text-[13px] text-hu-muted">디자이너 관리</p>
-      <p className="mt-4 min-h-[20px] font-sans-kr text-[13px] text-[#9b4a4a]">
-        {error || "\u00a0"}
-      </p>
+    <div className="font-sans-kr text-[#1C1C1C]">
+      <h1 className="mt-8 flex items-baseline gap-2 text-[30px] font-bold leading-none tracking-[-0.02em]">
+        <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">디자이너</span>
+        <span className="text-[15px] font-normal text-[#8A847C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+          총 {artists.length}명
+        </span>
+      </h1>
+      {error ? <p className="mt-6 text-[15px] font-medium text-[#E24B4B]">{error}</p> : null}
 
-      <div className="mt-4 grid grid-cols-1 items-start gap-8 lg:grid-cols-[1fr_0.9fr]">
-        <ul className="min-h-0 divide-y divide-hu-black/10 bg-hu-white lg:min-h-[520px]">
-          {artists.length === 0 ? (
-            <li className="px-5 py-8 font-sans-kr text-[13px] text-hu-muted">
-              디자이너가 없습니다.
-            </li>
-          ) : (
-            artists.map((a) => (
-              <li key={a.id} className="flex items-center justify-between gap-4 px-5 py-4">
-                <div className="min-w-0">
-                  <p className="font-serif text-[15px]">
-                    {a.name_kr} {a.name_en}
-                  </p>
-                  <p className="mt-1 font-sans-kr text-[12px] text-hu-muted">
-                    {a.role} · {a.is_published ? "게시" : "숨김"} · #{a.sort_order}
-                  </p>
-                </div>
-                <div className="flex shrink-0 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingId(a.id);
-                      setForm({
-                        id: a.id,
-                        name_kr: a.name_kr,
-                        name_en: a.name_en,
-                        role: a.role,
-                        image_url: a.image_url || "",
-                        instagram_url: a.instagram_url || "",
-                        sort_order: a.sort_order,
-                        is_published: a.is_published
-                      });
-                    }}
-                    className="px-3 py-1 font-sans-kr text-[12px] text-hu-body underline"
-                  >
-                    수정
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => remove(a.id)}
-                    className="px-3 py-1 font-sans-kr text-[12px] text-[#9b4a4a]"
-                  >
-                    삭제
-                  </button>
-                </div>
-              </li>
-            ))
-          )}
-        </ul>
+      <div className="mt-8 grid items-start gap-8 min-[1440px]:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="min-w-0 overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b-[1.5px] border-[#C9C3BB] text-[15px] font-bold text-[#9A948C]">
+                <th className="py-3 pr-4 font-bold">이름</th>
+                <th className="py-3 pr-4 font-bold">역할</th>
+                <th className="py-3 pr-4 font-bold">게시</th>
+                <th className="py-3 pr-4 font-bold">정렬</th>
+                <th className="py-3 text-right font-bold">관리</th>
+              </tr>
+            </thead>
+            <tbody className="text-[16px] font-medium">
+              {artists.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-8 text-[16px] text-[#8A847C]">
+                    디자이너가 없습니다.
+                  </td>
+                </tr>
+              ) : (
+                artists.map((a) => (
+                  <tr key={a.id} className="border-b border-[#F3EFEA]">
+                    <td className="py-[15px] pr-4">
+                      {a.name_kr}
+                      <span className="ml-2 text-[15px] font-normal text-[#8A847C]">{a.name_en}</span>
+                    </td>
+                    <td className="py-[15px] pr-4">{a.role}</td>
+                    <td className="py-[15px] pr-4" style={{ color: a.is_published ? "#1F9D62" : "#8A847C" }}>
+                      {a.is_published ? "게시" : "숨김"}
+                    </td>
+                    <td className="py-[15px] pr-4">{a.sort_order}</td>
+                    <td className="py-[15px] text-right">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingId(a.id);
+                          setForm({
+                            id: a.id,
+                            name_kr: a.name_kr,
+                            name_en: a.name_en,
+                            role: a.role,
+                            image_url: a.image_url || "",
+                            instagram_url: a.instagram_url || "",
+                            sort_order: a.sort_order,
+                            is_published: a.is_published
+                          });
+                        }}
+                        className="text-[16px] font-normal text-[#8A847C]"
+                      >
+                        수정
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => remove(a.id)}
+                        className="ml-4 text-[16px] font-normal text-[#E24B4B]"
+                      >
+                        삭제
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
-        <div className="min-h-0 bg-hu-white p-5 lg:sticky lg:top-6 lg:min-h-[520px] lg:p-6">
-          <p className="font-serif text-[14px] tracking-[0.08em]">
-            {editingId ? "EDIT ARTIST" : "NEW ARTIST"}
+        <div className="rounded-[12px] border border-[#E4E0DA] px-5 py-5">
+          <p className="text-[20px] font-bold leading-none [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+            {editingId ? "디자이너 수정" : "디자이너 추가"}
           </p>
-          <div className="mt-4 space-y-4">
+          <div className="mt-5 flex flex-col gap-4">
             <Field
               label="ID (영문)"
               value={form.id}
@@ -185,19 +202,20 @@ export default function AdminArtistsPage() {
               value={String(form.sort_order)}
               onChange={(v) => setForm((f) => ({ ...f, sort_order: Number(v) || 0 }))}
             />
-            <label className="flex items-center gap-2 font-sans-kr text-[13px]">
+            <label className="flex items-center gap-2 text-[15px] font-bold text-[#1C1C1C]">
               <input
                 type="checkbox"
                 checked={form.is_published}
                 onChange={(e) => setForm((f) => ({ ...f, is_published: e.target.checked }))}
+                className="size-[18px] accent-[#2F3A2F]"
               />
               게시
             </label>
-            <div className="flex gap-2 pt-2">
+            <div className="flex gap-2">
               <button
                 type="button"
                 onClick={save}
-                className="bg-hu-black px-5 py-2 font-sans-kr text-[13px] text-white"
+                className="inline-flex h-[36px] items-center rounded-[8px] bg-[#2F3A2F] px-4 text-[14px] font-bold text-white"
               >
                 저장
               </button>
@@ -205,7 +223,7 @@ export default function AdminArtistsPage() {
                 type="button"
                 onClick={reset}
                 className={clsx(
-                  "px-5 py-2 font-sans-kr text-[13px] text-hu-muted",
+                  "inline-flex h-[36px] items-center rounded-[8px] border-[1.5px] border-[#9A948C] px-4 text-[14px] font-bold text-[#1C1C1C]",
                   !editingId && "invisible"
                 )}
               >
@@ -231,17 +249,17 @@ function Field({
   readOnly?: boolean;
 }) {
   return (
-    <div>
-      <label className="font-sans-kr text-[11px] text-hu-muted">{label}</label>
+    <label className="block text-[15px] font-bold leading-none text-[#9A948C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+      {label}
       <input
         value={value}
         readOnly={readOnly}
         onChange={(e) => onChange(e.target.value)}
         className={clsx(
-          "mt-1 w-full border-b border-hu-black/30 bg-transparent py-1.5 font-sans-kr text-[14px] outline-none",
-          readOnly && "text-hu-muted"
+          "mt-2 block h-[36px] w-full rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-3 text-[15px] font-medium text-[#1C1C1C] outline-none",
+          readOnly && "bg-[#F9F8F4] text-[#8A847C]"
         )}
       />
-    </div>
+    </label>
   );
 }

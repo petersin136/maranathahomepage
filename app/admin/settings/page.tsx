@@ -3,6 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import type { TaxType } from "@/lib/admin/tax-data";
 
+const inputClass =
+  "mt-2 block h-[36px] w-full rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-3 text-[15px] font-medium text-[#1C1C1C] outline-none";
+
+const labelClass =
+  "block text-[15px] font-bold leading-none text-[#9A948C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]";
+
 export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -60,64 +66,60 @@ export default function AdminSettingsPage() {
   };
 
   return (
-    <div>
-      <h1 className="font-serif text-[28px] tracking-[0.06em] lg:text-[32px]">SETTINGS</h1>
-      <p className="mt-2 font-sans-kr text-[13px] text-hu-muted">사업자 정보</p>
+    <div className="font-sans-kr text-[#1C1C1C]">
+      <h1 className="mt-8 text-[30px] font-bold leading-none tracking-[-0.02em] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+        사업자 정보
+      </h1>
 
-      {error ? <p className="mt-6 font-sans-kr text-[13px] text-[#9b4a4a]">{error}</p> : null}
+      {error ? <p className="mt-6 text-[15px] font-medium text-[#E24B4B]">{error}</p> : null}
       {loading ? (
-        <p className="mt-6 font-sans-kr text-[13px] text-hu-muted">불러오는 중…</p>
+        <p className="mt-8 text-[15px] text-[#8A847C]">불러오는 중…</p>
       ) : (
-        <section className="mt-8 bg-hu-white px-5 py-5 lg:px-6 lg:py-6">
-          <h2 className="font-serif text-[16px] tracking-[0.08em]">사업자 설정</h2>
-          <div className="mt-4 flex flex-wrap items-end gap-3">
-            <label className="font-sans-kr text-[13px] text-hu-muted">
+        <section className="mt-8 max-w-[520px] rounded-[12px] border border-[#E4E0DA] px-6 py-6">
+          <div className="flex flex-col gap-5">
+            <label className={labelClass}>
               상호
               <input
                 type="text"
                 value={businessName}
                 onChange={(e) => setBusinessName(e.target.value)}
-                className="mt-1.5 block h-9 w-[180px] border border-hu-black/20 bg-hu-white px-2.5 text-hu-black outline-none"
+                className={inputClass}
               />
             </label>
-            <label className="font-sans-kr text-[13px] text-hu-muted">
+            <label className={labelClass}>
               사업자번호
               <input
                 type="text"
                 value={businessNumber}
                 onChange={(e) => setBusinessNumber(e.target.value)}
                 placeholder="000-00-00000"
-                className="mt-1.5 block h-9 w-[160px] border border-hu-black/20 bg-hu-white px-2.5 text-hu-black outline-none"
+                className={`${inputClass} placeholder:font-bold placeholder:text-[#9A948C]`}
               />
             </label>
-            <label className="font-sans-kr text-[13px] text-hu-muted">
+            <label className={labelClass}>
               과세유형
               <select
                 value={taxType}
                 onChange={(e) => setTaxType(e.target.value as TaxType | "")}
-                className="mt-1.5 block h-9 border border-hu-black/20 bg-hu-white px-2.5 text-hu-black outline-none"
+                className={inputClass}
               >
                 <option value="">선택</option>
                 <option value="general">일반과세자</option>
                 <option value="simplified">간이과세자</option>
               </select>
             </label>
-            <button
-              type="button"
-              disabled={saving}
-              onClick={() => void saveSettings()}
-              className="h-9 bg-hu-black px-4 font-sans-kr text-[13px] text-white disabled:bg-[#bcbcbc]"
-            >
-              {saving ? "저장 중..." : "저장"}
-            </button>
           </div>
-          {message ? (
-            <p className="mt-4 font-sans-kr text-[13px] text-hu-muted">{message}</p>
-          ) : (
-            <p className="mt-4 font-sans-kr text-[13px] text-hu-muted">
-              상호·사업자번호·과세유형은 세무 추정과 월 마감 엑셀 요약에 사용됩니다.
-            </p>
-          )}
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => void saveSettings()}
+            className="mt-6 inline-flex h-[36px] items-center rounded-[8px] bg-[#2F3A2F] px-4 text-[14px] font-bold leading-none text-white [text-box-edge:cap_alphabetic] [text-box-trim:trim-both] disabled:bg-[#C9C3BB]"
+          >
+            {saving ? "저장 중..." : "저장"}
+          </button>
+          <p className="mt-4 text-[15px] leading-none text-[#8A847C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+            {message || "상호·사업자번호·과세유형은 세무 추정과 월 마감 엑셀 요약에 사용됩니다."}
+          </p>
         </section>
       )}
     </div>

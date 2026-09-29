@@ -98,28 +98,29 @@ export default function AdminSettlementsPage() {
   const hasStaff = (data?.artists ?? []).some((a) => !a.isFreelance && a.hasCommission);
 
   return (
-    <div>
-      <h1 className="font-serif text-[28px] tracking-[0.06em] lg:text-[32px]">SETTLEMENTS</h1>
-      <p className="mt-2 font-sans-kr text-[13px] text-hu-muted">
-        디자이너 정산
-        {data ? ` · ${data.year}년 ${data.month}월` : ""}
-      </p>
+    <div className="font-sans-kr text-[#1C1C1C]">
+      <h1 className="mt-8 flex items-baseline gap-2 text-[30px] font-bold leading-none tracking-[-0.02em]">
+        정산
+        <span className="text-[15px] font-normal text-[#8A847C]">
+          {data ? `${data.year}년 ${data.month}월` : "디자이너 정산"}
+        </span>
+      </h1>
 
-      <div className="mt-6 flex flex-wrap items-center gap-3 lg:mt-8">
+      <div className="mt-8 flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={() => moveMonth(-1)}
-          className="h-9 border border-hu-black/20 bg-hu-white px-3 font-sans-kr text-[13px] text-hu-black"
+          className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-[8px] border-[1.5px] border-[#9A948C] text-[16px] font-bold"
           aria-label="이전 달"
         >
-          ←
+          ‹
         </button>
-        <label className="font-sans-kr text-[13px] text-hu-muted">
+        <label className="text-[13px] font-bold text-[#9A948C]">
           년
           <select
             value={year}
             onChange={(e) => onSelectYearMonth(Number(e.target.value), month)}
-            className="ml-2 h-9 border border-hu-black/20 bg-hu-white px-2.5 text-hu-black outline-none"
+            className="ml-2 h-[36px] rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-2.5 text-[14px] font-bold text-[#1C1C1C] outline-none"
           >
             {yearOptions.map((y) => (
               <option key={y} value={y}>
@@ -128,12 +129,12 @@ export default function AdminSettlementsPage() {
             ))}
           </select>
         </label>
-        <label className="font-sans-kr text-[13px] text-hu-muted">
+        <label className="text-[13px] font-bold text-[#9A948C]">
           월
           <select
             value={month}
             onChange={(e) => onSelectYearMonth(year, Number(e.target.value))}
-            className="ml-2 h-9 border border-hu-black/20 bg-hu-white px-2.5 text-hu-black outline-none"
+            className="ml-2 h-[36px] rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-2.5 text-[14px] font-bold text-[#1C1C1C] outline-none"
           >
             {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
               <option key={m} value={m}>
@@ -145,21 +146,19 @@ export default function AdminSettlementsPage() {
         <button
           type="button"
           onClick={() => moveMonth(1)}
-          className="h-9 border border-hu-black/20 bg-hu-white px-3 font-sans-kr text-[13px] text-hu-black"
+          className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-[8px] border-[1.5px] border-[#9A948C] text-[16px] font-bold"
           aria-label="다음 달"
         >
-          →
+          ›
         </button>
       </div>
 
-      {error ? <p className="mt-6 font-sans-kr text-[13px] text-[#9b4a4a]">{error}</p> : null}
-      {loading && !data ? (
-        <p className="mt-6 font-sans-kr text-[13px] text-hu-muted">불러오는 중…</p>
-      ) : null}
+      {error ? <p className="mt-6 text-[13px] text-[#E24B4B]">{error}</p> : null}
+      {loading && !data ? <p className="mt-6 text-[14px] text-[#8A847C]">불러오는 중…</p> : null}
 
       {data ? (
         <>
-          <div className="mt-6 grid grid-cols-2 gap-3 lg:mt-8 lg:grid-cols-4 lg:gap-4">
+          <div className="mt-8 grid grid-cols-2 gap-3 min-[1440px]:grid-cols-4">
             <SummaryCard label="총 매출" value={won(data.summary.totalRevenue)} />
             <SummaryCard label="총 인센티브" value={won(data.summary.totalIncentive)} />
             <SummaryCard label="총 원천징수" value={won(data.summary.totalWithholding)} />
@@ -167,34 +166,34 @@ export default function AdminSettlementsPage() {
           </div>
 
           {empty ? (
-            <p className="mt-10 bg-hu-white px-5 py-10 text-center font-sans-kr text-[13px] text-hu-muted">
+            <p className="mt-10 py-16 text-center text-[14px] font-medium text-[#8A847C]">
               해당 월에 정산할 내역이 없습니다
             </p>
           ) : (
             <section className="mt-10">
-              <h2 className="font-serif text-[16px] tracking-[0.08em]">디자이너별 정산</h2>
+              <h2 className="text-[20px] font-bold leading-none">디자이너별 정산</h2>
               {hasStaff ? (
-                <p className="mt-2 font-sans-kr text-[12px] text-hu-muted">
+                <p className="mt-2 text-[13px] text-[#8A847C]">
                   직원이 아닌 프리랜서만 원천징수(3.3%)를 적용합니다. 4대보험 대상 직원의
                   급여·공제는 급여대장에서 별도 처리하세요.
                 </p>
               ) : null}
-              <div className="mt-4 overflow-x-auto bg-hu-white">
-                <table className="min-w-full text-left font-sans-kr text-[13px]">
+              <div className="mt-5 overflow-x-auto">
+                <table className="min-w-full text-left text-[16px] font-medium leading-[20px]">
                   <thead>
-                    <tr className="border-b border-hu-black/10 text-hu-muted">
-                      <th className="px-4 py-3 font-normal">디자이너</th>
-                      <th className="px-4 py-3 font-normal">고용형태</th>
-                      <th className="px-4 py-3 font-normal">매출</th>
-                      <th className="px-4 py-3 font-normal">건수</th>
-                      <th className="px-4 py-3 font-normal">커미션율</th>
-                      <th className="px-4 py-3 font-normal">인센티브</th>
-                      <th className="px-4 py-3 font-normal">원천징수(3.3%)</th>
-                      <th className="px-4 py-3 font-normal">실지급액</th>
-                      <th className="px-4 py-3 font-normal">계좌</th>
+                    <tr className="border-b-[1.5px] border-[#C9C3BB] text-[15px] font-bold text-[#9A948C]">
+                      <th className="py-3 pr-3 font-bold">디자이너</th>
+                      <th className="py-3 pr-3 font-bold">고용형태</th>
+                      <th className="py-3 pr-3 font-bold">매출</th>
+                      <th className="py-3 pr-3 font-bold">건수</th>
+                      <th className="py-3 pr-3 font-bold">커미션율</th>
+                      <th className="py-3 pr-3 font-bold">인센티브</th>
+                      <th className="py-3 pr-3 font-bold">원천징수</th>
+                      <th className="py-3 pr-3 font-bold">실지급액</th>
+                      <th className="py-3 font-bold">계좌</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-hu-black/10">
+                  <tbody>
                     {data.artists.map((row) => {
                       const open = expandedId === row.artistId;
                       return (
@@ -216,7 +215,7 @@ export default function AdminSettlementsPage() {
                 </table>
               </div>
 
-              <p className="mt-4 font-sans-kr text-[12px] leading-relaxed text-hu-muted">
+              <p className="mt-4 text-[13px] leading-relaxed text-[#8A847C]">
                 원천징수 3.3%는 일반적인 사업소득 기준이며, 실제 신고·납부는 세무 대리인과
                 확인하세요.
                 <br />
@@ -232,9 +231,9 @@ export default function AdminSettlementsPage() {
 
 function SummaryCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-hu-white px-4 py-5 lg:px-5 lg:py-6">
-      <p className="font-serif text-[12px] tracking-[0.14em] text-hu-muted">{label}</p>
-      <p className="mt-3 font-serif text-[22px] leading-tight lg:text-[26px]">{value}</p>
+    <div className="rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-5 py-5">
+      <p className="text-[15px] font-bold text-[#9A948C]">{label}</p>
+      <p className="mt-4 text-[30px] font-bold leading-none">{value}</p>
     </div>
   );
 }
@@ -255,26 +254,26 @@ function ArtistSettlementBlock({
   return (
     <>
       <tr
-        className={clsx("cursor-pointer hover:bg-hu-beige/40", open && "bg-hu-beige/30")}
+        className={clsx("cursor-pointer border-b border-[#F3EFEA] hover:bg-[#F6F4F0]", open && "bg-[#F3EFEA]")}
         onClick={onToggle}
       >
-        <td className="px-4 py-3 font-medium">{row.artistName}</td>
-        <td className="px-4 py-3 text-hu-muted">{row.employmentLabel}</td>
-        <td className="px-4 py-3 tabular-nums">{won(row.revenue)}</td>
-        <td className="px-4 py-3 tabular-nums">{row.count}</td>
-        <td className="px-4 py-3 tabular-nums">
+        <td className="py-[15px] pr-3 font-medium">{row.artistName}</td>
+        <td className="py-[15px] pr-3 text-[#8A847C]">{row.employmentLabel}</td>
+        <td className="py-[15px] pr-3 tabular-nums">{won(row.revenue)}</td>
+        <td className="py-[15px] pr-3 tabular-nums">{row.count}</td>
+        <td className="py-[15px] pr-3 tabular-nums">
           {row.hasCommission ? `${row.commissionRate}%` : "0%"}
         </td>
-        <td className="px-4 py-3 tabular-nums">
+        <td className="py-[15px] pr-3 tabular-nums">
           {row.incentive != null ? won(row.incentive) : "—"}
         </td>
-        <td className="px-4 py-3 tabular-nums">
+        <td className="py-[15px] pr-3 tabular-nums">
           {row.withholding != null ? won(row.withholding) : "—"}
         </td>
-        <td className="px-4 py-3 tabular-nums">
+        <td className="py-[15px] pr-3 tabular-nums">
           {row.netPay != null ? won(row.netPay) : "—"}
         </td>
-        <td className="px-4 py-3">
+        <td className="py-[15px]">
           {row.bankDisplay && row.bankAccount ? (
             <button
               type="button"
@@ -282,39 +281,39 @@ function ArtistSettlementBlock({
                 e.stopPropagation();
                 onCopyAccount();
               }}
-              className="max-w-[220px] truncate text-left text-hu-muted underline-offset-2 hover:underline"
+              className="max-w-[220px] truncate text-left text-[#8A847C] underline-offset-2 hover:underline"
               title="계좌번호 복사"
             >
               {copied ? "복사됨" : row.bankDisplay}
             </button>
           ) : (
-            <span className="text-hu-muted">—</span>
+            <span className="text-[#8A847C]">—</span>
           )}
         </td>
       </tr>
       {open ? (
         <tr>
-          <td colSpan={9} className="bg-[#faf8f6] px-4 py-4">
-            <p className="font-sans-kr text-[12px] text-hu-muted">
+          <td colSpan={9} className="bg-[#F9F8F4] px-4 py-4">
+            <p className="text-[13px] text-[#8A847C]">
               {row.artistName} · 완료 예약 {row.count}건
               {row.isFreelance && row.incomeTax != null && row.localIncomeTax != null
                 ? ` · 소득세 ${won(row.incomeTax)} + 지방소득세 ${won(row.localIncomeTax)}`
                 : null}
             </p>
-            <ul className="mt-3 divide-y divide-hu-black/10 bg-hu-white">
+            <ul className="mt-3 bg-white">
               {row.bookings.map((b) => (
                 <li
                   key={b.id}
-                  className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-3 font-sans-kr text-[13px]"
+                  className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-[#F3EFEA] px-4 py-[15px] text-[15px]"
                 >
-                  <span className="tabular-nums text-hu-muted">{b.bookingDate.slice(2)}</span>
+                  <span className="tabular-nums text-[#9A948C]">{b.bookingDate.slice(2)}</span>
                   <span>{b.customerName}</span>
-                  <span className="text-hu-black/25">·</span>
-                  <span className="min-w-0 text-hu-muted">
+                  <span className="text-[#C9C3BB]">·</span>
+                  <span className="min-w-0 text-[#8A847C]">
                     {b.serviceNames.length ? b.serviceNames.join(", ") : "—"}
                   </span>
-                  <span className="text-hu-black/25">·</span>
-                  <span className="text-hu-muted">{b.paymentMethodLabel}</span>
+                  <span className="text-[#C9C3BB]">·</span>
+                  <span className="text-[#8A847C]">{b.paymentMethodLabel}</span>
                   <span className="ml-auto tabular-nums">{won(b.amount)}</span>
                 </li>
               ))}

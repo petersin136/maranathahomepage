@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { clsx } from "clsx";
-
 type Artist = {
   id: string;
   name_kr: string;
@@ -23,6 +22,17 @@ type Service = {
 };
 
 const CATEGORIES = ["Cut", "Perm", "Color", "Clinic"] as const;
+
+const CATEGORY_LABEL: Record<(typeof CATEGORIES)[number], string> = {
+  Cut: "커트",
+  Perm: "펌",
+  Color: "컬러",
+  Clinic: "클리닉"
+};
+
+function categoryLabel(category: string) {
+  return CATEGORY_LABEL[category as (typeof CATEGORIES)[number]] ?? category;
+}
 
 type FormState = {
   id: string;
@@ -187,25 +197,27 @@ export default function AdminServicesPage() {
   };
 
   return (
-    <div>
-      <h1 className="font-serif text-[28px] tracking-[0.06em] lg:text-[32px]">SERVICES</h1>
-      <p className="mt-2 font-sans-kr text-[13px] text-hu-muted">
-        시술 메뉴 관리 · 디자이너별 단가
-      </p>
-      <p className="mt-4 min-h-[20px] font-sans-kr text-[13px] text-[#9b4a4a]">
-        {error || "\u00a0"}
-      </p>
+    <div className="font-sans-kr text-[#1C1C1C]">
+      <h1 className="mt-8 flex items-baseline gap-2 text-[30px] font-bold leading-none tracking-[-0.02em]">
+        <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">시술</span>
+        <span className="text-[15px] font-normal text-[#8A847C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+          총 {filtered.length}개
+        </span>
+      </h1>
+      {error ? <p className="mt-6 text-[15px] font-medium text-[#E24B4B]">{error}</p> : null}
 
-      <div className="mt-2 flex gap-3">
+      <div className="mt-8 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={() => setFilter("all")}
           className={clsx(
-            "px-3 py-1 font-serif text-[12px]",
-            filter === "all" ? "bg-hu-black text-white" : "bg-hu-beige"
+            "inline-flex h-[36px] items-center rounded-[8px] border-[1.5px] px-3 text-[14px] font-bold leading-none [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]",
+            filter === "all"
+              ? "border-[#2F3A2F] bg-[#2F3A2F] text-white"
+              : "border-[#9A948C] bg-white text-[#1C1C1C]"
           )}
         >
-          All
+          전체
         </button>
         {CATEGORIES.map((c) => (
           <button
@@ -213,94 +225,119 @@ export default function AdminServicesPage() {
             type="button"
             onClick={() => setFilter(c)}
             className={clsx(
-              "px-3 py-1 font-serif text-[12px]",
-              filter === c ? "bg-hu-black text-white" : "bg-hu-beige"
+              "inline-flex h-[36px] items-center rounded-[8px] border-[1.5px] px-3 text-[14px] font-bold leading-none [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]",
+              filter === c
+                ? "border-[#2F3A2F] bg-[#2F3A2F] text-white"
+                : "border-[#9A948C] bg-white text-[#1C1C1C]"
             )}
           >
-            {c}
+            {categoryLabel(c)}
           </button>
         ))}
       </div>
 
-      <div className="mt-8 grid grid-cols-1 items-start gap-8 lg:grid-cols-[1.2fr_0.9fr]">
-        <ul className="min-h-0 divide-y divide-hu-black/10 bg-hu-white lg:min-h-[560px]">
-          {filtered.length === 0 ? (
-            <li className="px-5 py-8 font-sans-kr text-[13px] text-hu-muted">시술이 없습니다.</li>
-          ) : (
-            filtered.map((s) => (
-              <li key={s.id} className="flex items-center justify-between gap-4 px-5 py-4">
-                <div className="min-w-0">
-                  <p className="font-serif text-[14px] text-hu-accent">{s.category}</p>
-                  <p className="mt-1 truncate font-sans-kr text-[14px]">{s.name}</p>
-                  <p className="mt-1 font-sans-kr text-[12px] text-hu-muted">
-                    {priceSummary(s, artists)} · {s.duration_minutes}분 · 예약금{" "}
-                    {s.deposit_amount != null
-                      ? `${s.deposit_amount.toLocaleString("ko-KR")}원`
-                      : "—"}{" "}
-                    · {s.is_published ? "게시" : "숨김"}
-                    {s.revisit_days != null ? ` · 주기 ${s.revisit_days}일` : ""}
-                  </p>
-                </div>
-                <div className="flex shrink-0 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingId(s.id);
-                      setForm({
-                        id: s.id,
-                        category: s.category,
-                        name: s.name,
-                        price: s.price,
-                        duration_minutes: s.duration_minutes,
-                        deposit_amount: s.deposit_amount ?? 0,
-                        sort_order: s.sort_order,
-                        revisit_days: s.revisit_days ?? null,
-                        is_published: s.is_published,
-                        artistPrices: fillArtistPrices(s.price, s.artist_prices)
-                      });
-                    }}
-                    className="px-3 py-1 font-sans-kr text-[12px] underline"
-                  >
-                    수정
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => remove(s.id)}
-                    className="px-3 py-1 font-sans-kr text-[12px] text-[#9b4a4a]"
-                  >
-                    삭제
-                  </button>
-                </div>
-              </li>
-            ))
-          )}
-        </ul>
+      <div className="mt-8 grid items-start gap-8 min-[1440px]:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="min-w-0 overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b-[1.5px] border-[#C9C3BB] text-[15px] font-bold text-[#9A948C]">
+                <th className="py-3 pr-4 font-bold">시술명</th>
+                <th className="py-3 pr-4 font-bold">가격</th>
+                <th className="py-3 pr-4 font-bold">시간</th>
+                <th className="py-3 pr-4 font-bold">예약금</th>
+                <th className="py-3 pr-4 font-bold">게시</th>
+                <th className="py-3 text-right font-bold">관리</th>
+              </tr>
+            </thead>
+            <tbody className="text-[16px] font-medium">
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-[16px] text-[#8A847C]">
+                    시술이 없습니다.
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((s) => (
+                  <tr key={s.id} className="border-b border-[#F3EFEA]">
+                    <td className="py-[15px] pr-4">
+                      {s.name}
+                      <span className="ml-2 text-[15px] font-normal text-[#8A847C]">
+                        {categoryLabel(s.category)}
+                        {s.revisit_days != null ? ` · ${s.revisit_days}일` : ""}
+                      </span>
+                    </td>
+                    <td className="py-[15px] pr-4 whitespace-nowrap">{priceSummary(s, artists)}</td>
+                    <td className="py-[15px] pr-4 whitespace-nowrap">{s.duration_minutes}분</td>
+                    <td className="py-[15px] pr-4 whitespace-nowrap">
+                      {s.deposit_amount != null
+                        ? `${s.deposit_amount.toLocaleString("ko-KR")}원`
+                        : "—"}
+                    </td>
+                    <td className="py-[15px] pr-4" style={{ color: s.is_published ? "#1F9D62" : "#8A847C" }}>
+                      {s.is_published ? "게시" : "숨김"}
+                    </td>
+                    <td className="py-[15px] text-right whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingId(s.id);
+                          setForm({
+                            id: s.id,
+                            category: s.category,
+                            name: s.name,
+                            price: s.price,
+                            duration_minutes: s.duration_minutes,
+                            deposit_amount: s.deposit_amount ?? 0,
+                            sort_order: s.sort_order,
+                            revisit_days: s.revisit_days ?? null,
+                            is_published: s.is_published,
+                            artistPrices: fillArtistPrices(s.price, s.artist_prices)
+                          });
+                        }}
+                        className="text-[16px] font-normal text-[#8A847C]"
+                      >
+                        수정
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => remove(s.id)}
+                        className="ml-4 text-[16px] font-normal text-[#E24B4B]"
+                      >
+                        삭제
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
-        <div className="min-h-0 bg-hu-white p-5 lg:sticky lg:top-6 lg:min-h-[560px] lg:p-6">
-          <p className="font-serif text-[14px] tracking-[0.08em]">
-            {editingId ? "EDIT SERVICE" : "NEW SERVICE"}
+        <div className="rounded-[12px] border border-[#E4E0DA] px-5 py-5">
+          <p className="text-[20px] font-bold leading-none [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+            {editingId ? "시술 수정" : "시술 추가"}
           </p>
-          <div className="mt-4 space-y-4">
+          <div className="mt-5 flex flex-col gap-4">
             <Field
               label="ID"
               value={form.id}
               onChange={(v) => setForm((f) => ({ ...f, id: v }))}
               readOnly={Boolean(editingId)}
             />
-            <div>
-              <label className="font-sans-kr text-[11px] text-hu-muted">카테고리</label>
+            <label className="block text-[15px] font-bold leading-none text-[#9A948C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+              카테고리
               <select
                 value={form.category}
                 onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                className="mt-1 w-full border-b border-hu-black/30 bg-transparent py-1.5 font-sans-kr text-[14px] outline-none"
+                className="mt-2 block h-[36px] w-full rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-3 text-[15px] font-medium text-[#1C1C1C] outline-none"
               >
                 {CATEGORIES.map((c) => (
                   <option key={c} value={c}>
-                    {c}
+                    {categoryLabel(c)}
                   </option>
                 ))}
               </select>
-            </div>
+            </label>
             <Field
               label="시술명"
               value={form.name}
@@ -308,18 +345,18 @@ export default function AdminServicesPage() {
             />
 
             <div>
-              <p className="font-sans-kr text-[11px] text-hu-muted">디자이너별 가격 (원)</p>
-              <div className="mt-2 space-y-3 border border-hu-black/10 px-3 py-3">
+              <p className="text-[15px] font-bold leading-none text-[#9A948C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+                디자이너별 가격
+              </p>
+              <div className="mt-2 rounded-[8px] border-[1.5px] border-[#9A948C] px-3 py-3">
                 {artists.length === 0 ? (
-                  <p className="font-sans-kr text-[12px] text-hu-muted">
-                    등록된 디자이너가 없습니다.
-                  </p>
+                  <p className="text-[15px] text-[#8A847C]">등록된 디자이너가 없습니다.</p>
                 ) : (
                   artists.map((a) => (
-                    <div key={a.id} className="flex items-center justify-between gap-3">
-                      <span className="shrink-0 font-serif text-[13px]">
+                    <div key={a.id} className="flex items-center justify-between gap-3 py-2">
+                      <span className="shrink-0 text-[15px] font-medium">
                         {a.name_kr}{" "}
-                        <span className="text-hu-muted">{a.name_en}</span>
+                        <span className="font-normal text-[#8A847C]">{a.name_en}</span>
                       </span>
                       <input
                         type="number"
@@ -335,7 +372,7 @@ export default function AdminServicesPage() {
                             }
                           }))
                         }
-                        className="w-[120px] border-b border-hu-black/30 bg-transparent py-1 text-right font-sans-kr text-[14px] outline-none"
+                        className="h-[36px] w-[120px] rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-2 text-right text-[15px] font-medium outline-none"
                       />
                     </div>
                   ))
@@ -369,19 +406,20 @@ export default function AdminServicesPage() {
                 }))
               }
             />
-            <label className="flex items-center gap-2 font-sans-kr text-[13px]">
+            <label className="flex items-center gap-2 text-[15px] font-bold text-[#1C1C1C]">
               <input
                 type="checkbox"
                 checked={form.is_published}
                 onChange={(e) => setForm((f) => ({ ...f, is_published: e.target.checked }))}
+                className="size-[18px] accent-[#2F3A2F]"
               />
               게시
             </label>
-            <div className="flex gap-2 pt-2">
+            <div className="flex gap-2">
               <button
                 type="button"
                 onClick={save}
-                className="bg-hu-black px-5 py-2 font-sans-kr text-[13px] text-white"
+                className="inline-flex h-[36px] items-center rounded-[8px] bg-[#2F3A2F] px-4 text-[14px] font-bold text-white"
               >
                 저장
               </button>
@@ -389,7 +427,7 @@ export default function AdminServicesPage() {
                 type="button"
                 onClick={reset}
                 className={clsx(
-                  "px-5 py-2 font-sans-kr text-[13px] text-hu-muted",
+                  "inline-flex h-[36px] items-center rounded-[8px] border-[1.5px] border-[#9A948C] px-4 text-[14px] font-bold text-[#1C1C1C]",
                   !editingId && "invisible"
                 )}
               >
@@ -417,18 +455,18 @@ function Field({
   type?: string;
 }) {
   return (
-    <div>
-      <label className="font-sans-kr text-[11px] text-hu-muted">{label}</label>
+    <label className="block text-[15px] font-bold leading-none text-[#9A948C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+      {label}
       <input
         type={type}
         value={value}
         readOnly={readOnly}
         onChange={(e) => onChange(e.target.value)}
         className={clsx(
-          "mt-1 w-full border-b border-hu-black/30 bg-transparent py-1.5 font-sans-kr text-[14px] outline-none",
-          readOnly && "text-hu-muted"
+          "mt-2 block h-[36px] w-full rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-3 text-[15px] font-medium text-[#1C1C1C] outline-none",
+          readOnly && "bg-[#F9F8F4] text-[#8A847C]"
         )}
       />
-    </div>
+    </label>
   );
 }

@@ -15,6 +15,7 @@ export type CustomerVisit = {
   serviceIds: string[];
   serviceNames: string[];
   amount: number;
+  memo: string | null;
 };
 
 export type ChurnRiskCustomer = {
@@ -78,8 +79,13 @@ export type CustomerDirectoryRow = {
   name: string;
   artistName: string;
   services: string[];
+  /** status='completed' 예약 중 가장 최근 booking_date */
   lastVisitDate: string | null;
   daysSince: number | null;
+  visitCount: number;
+  lifetimeRevenue: number;
+  churnRisk: boolean;
+  memo: string | null;
   sendStatus: CustomerSendStatus;
 };
 
@@ -122,6 +128,7 @@ type BookingRow = {
   service_names: string[] | null;
   final_amount: number | null;
   deposit_paid: boolean | null;
+  admin_memo?: string | null;
 };
 
 type ServiceRow = {
@@ -241,7 +248,8 @@ function buildProfiles(bookings: BookingRow[]): {
         : [],
       amount: b.final_amount != null && Number.isFinite(Number(b.final_amount))
         ? Number(b.final_amount)
-        : 0
+        : 0,
+      memo: (b.admin_memo || "").trim() || null
     };
 
     const cur = map.get(phone) ?? {
@@ -275,21 +283,32 @@ function primaryArtist(visits: CustomerVisit[]) {
   return [...artistCounts.values()].sort((a, b) => b.count - a.count)[0]?.name || "—";
 }
 
+function lifetimeRevenueOf(visits: CustomerVisit[]) {
+  return visits.reduce((s, v) => s + v.amount, 0);
+}
+
 export function buildCustomerDirectory(args: {
-  profiles: { phone: string; name: string; visits: CustomerVisit[] }[];
+  profiles: CustomerProfile[];
   today: string;
+  churnPhones: Set<string>;
 }): CustomerDirectoryRow[] {
   const rows: CustomerDirectoryRow[] = [];
   for (const p of args.profiles) {
     if (!p.visits.length) continue;
-    const last = p.visits[p.visits.length - 1];
+    const completed = p.completedVisits;
+    const last = completed.length ? completed[completed.length - 1] : null;
+    const memo = [...p.visits].reverse().find((v) => v.memo)?.memo ?? null;
     rows.push({
       phone: p.phone,
       name: p.name,
-      artistName: primaryArtist(p.visits),
-      services: last.serviceNames,
-      lastVisitDate: last.bookingDate,
-      daysSince: daysBetween(last.bookingDate, args.today),
+      artistName: primaryArtist(completed.length ? completed : p.visits),
+      services: last?.serviceNames ?? [],
+      lastVisitDate: last?.bookingDate ?? null,
+      daysSince: last ? daysBetween(last.bookingDate, args.today) : null,
+      visitCount: completed.length,
+      lifetimeRevenue: lifetimeRevenueOf(completed),
+      churnRisk: args.churnPhones.has(p.phone),
+      memo,
       sendStatus: "pending"
     });
   }
@@ -327,7 +346,7 @@ function buildChurn(args: {
 
     const primary = primaryArtist(completed);
 
-    const lifetimeRevenue = completed.reduce((s, v) => s + v.amount, 0);
+    const lifetimeRevenue = lifetimeRevenueOf(completed);
     risks.push({
       phone: p.phone,
       name: p.name,
@@ -572,7 +591,11 @@ export function aggregateCustomersDashboard(args: {
   return {
     today,
     excludedNoPhoneCount,
-    directory: buildCustomerDirectory({ profiles, today }),
+    directory: buildCustomerDirectory({
+      profiles,
+      today,
+      churnPhones: new Set(churn.customers.map((c) => c.phone))
+    }),
     summary: {
       totalCustomers,
       returningCustomers,

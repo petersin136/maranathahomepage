@@ -31,7 +31,45 @@ export async function GET(
     console.error("[GET /api/admin/bookings/:id]", error);
     return NextResponse.json({ ok: false, error: "예약을 찾을 수 없습니다." }, { status: 404 });
   }
-  return NextResponse.json({ ok: true, booking: data });
+
+  const phone = String(data.customer_phone || "").trim();
+  let previous: {
+    id: string;
+    booking_date: string;
+    booking_time: string;
+    service_names: string[] | null;
+    artist_name: string | null;
+    status: string;
+  }[] = [];
+
+  if (phone) {
+    const history = await db.admin
+      .from("bookings")
+      .select("id, booking_date, booking_time, service_names, artist_name, status, customer_phone")
+      .eq("customer_phone", phone)
+      .order("booking_date", { ascending: false })
+      .order("booking_time", { ascending: false })
+      .limit(40);
+    if (!history.error && history.data) {
+      previous = history.data.filter((row) => {
+        if (row.id === data.id) return false;
+        if (row.status === "cancelled" || row.status === "noshow") return false;
+        if (row.booking_date < data.booking_date) return true;
+        if (row.booking_date > data.booking_date) return false;
+        return String(row.booking_time) < String(data.booking_time);
+      });
+    }
+  }
+
+  return NextResponse.json({
+    ok: true,
+    booking: data,
+    customer: {
+      priorCount: previous.length,
+      visitLabel: previous.length === 0 ? "첫 방문" : "단골",
+      previous: previous.slice(0, 5)
+    }
+  });
 }
 
 export async function PATCH(

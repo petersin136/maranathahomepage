@@ -5,7 +5,7 @@ import { aggregateCustomersDashboard } from "@/lib/admin/customers-data";
 export const preferredRegion = "icn1";
 
 const BOOKING_FIELDS =
-  "id, status, booking_date, booking_time, customer_name, customer_phone, artist_id, artist_name, service_ids, service_names, final_amount, deposit_paid";
+  "id, status, booking_date, booking_time, customer_name, customer_phone, artist_id, artist_name, service_ids, service_names, final_amount, deposit_paid, admin_memo";
 
 export async function GET() {
   const auth = await requireAdminUser();

@@ -44,12 +44,13 @@ export default function AdminTaxPage() {
   const disabled = !configured;
 
   return (
-    <div>
-      <h1 className="font-serif text-[28px] tracking-[0.06em] lg:text-[32px]">TAX</h1>
-      <p className="mt-2 font-sans-kr text-[13px] text-hu-muted">
-        세무 현황
-        {data?.today ? ` · ${data.today}` : ""}
-      </p>
+    <div className="font-sans-kr text-[#1C1C1C]">
+      <h1 className="mt-8 flex items-baseline gap-2 text-[30px] font-bold leading-none tracking-[-0.02em]">
+        세무
+        <span className="text-[15px] font-normal text-[#8A847C]">
+          {data?.today ? data.today : "세무 현황"}
+        </span>
+      </h1>
 
       <div className="mt-6 border border-[#9b4a4a]/30 bg-[#9b4a4a]/5 px-5 py-4 font-sans-kr text-[13px] leading-relaxed text-[#9b4a4a]">
         이 화면의 세액은 참고용 추정치입니다.
