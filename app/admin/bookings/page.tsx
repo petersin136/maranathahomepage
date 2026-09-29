@@ -383,7 +383,7 @@ export default function AdminBookingsPage() {
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             className="member-pager__arrow"
           >
-            <Icon src="/admin-icons/lnb/chevron-left.png" className="h-[16px] w-[16px]" />
+            <ArrowIcon dir="left" />
           </button>
           <div className="member-pager__pages">
             {pageButtons(safePage, pageCount).map((item, i) =>
@@ -410,11 +410,38 @@ export default function AdminBookingsPage() {
             onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
             className="member-pager__arrow"
           >
-            <Icon src="/admin-icons/lnb/chevron-right.png" className="h-[16px] w-[16px]" />
+            <ArrowIcon dir="right" />
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+function ArrowIcon({ dir }: { dir: "left" | "right" }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      className="h-[20px] w-[20px]"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {dir === "left" ? (
+        <>
+          <path d="m12 19-7-7 7-7" />
+          <path d="M19 12H5" />
+        </>
+      ) : (
+        <>
+          <path d="M5 12h14" />
+          <path d="m12 5 7 7-7 7" />
+        </>
+      )}
+    </svg>
   );
 }
 

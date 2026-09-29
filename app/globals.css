@@ -226,7 +226,7 @@ body {
   --dash-card-border: rgba(0,0,0,0.03);
   --dash-sidebar-date-today: #a4aab4;
   --dash-sidebar-date-value: #787f8c;
-  --dash-menubar-baseline: var(--color-deep-green);
+  --dash-menubar-baseline: #c5d4c9;
   --dash-indicator: var(--color-deep-green);
   --dash-float-shadow: 0 2px 12px rgba(17,17,26,0.05);
   --dash-section-title-size: 19px;
@@ -409,6 +409,8 @@ body {
   .pc-nav-tabs {
     position: relative;
     display: flex;
+    padding-left: 1cm;
+    padding-right: 1cm;
   }
   .pc-nav-tabs::after {
     content: "";
@@ -880,7 +882,7 @@ body {
   --member-pager-dot: #33343a;
   --member-pager-bar-w: 24px;
   --member-pager-bar-h: 3px;
-  --member-pager-arrow: #1f2937;
+  --member-pager-arrow: #111111;
   --member-pager-arrow-disabled: #d1d5db;
   --member-pager-size: 18px;
   --member-pager-gap: 20px;
@@ -1166,6 +1168,21 @@ body {
     opacity: 0.4;
     cursor: default;
     background: var(--member-activity-btn-bg);
+  }
+
+  .reminder-date {
+    width: 128px;
+    border: none;
+    border-bottom: 1px solid #d5d0ca;
+    background: transparent;
+    font: inherit;
+    color: inherit;
+  }
+  .member-table tbody tr.is-overdue td { color: #9b4a4a; }
+  .reminder-delete {
+    font-size: var(--pc-text-sm);
+    font-weight: 600;
+    color: var(--color-danger);
   }
 
   .booking-status-pending { color: #8a847c; }

@@ -328,7 +328,7 @@ function ArrowIcon({ dir }: { dir: "left" | "right" }) {
       className="h-[20px] w-[20px]"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.25}
+      strokeWidth={2.75}
       strokeLinecap="round"
       strokeLinejoin="round"
     >
