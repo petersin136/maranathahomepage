@@ -25,6 +25,169 @@ const STATUS_CLASS: Record<BookingStatus, string> = {
 
 function Icon({ src, className }: { src: string; className?: string }) {
   return (
+    <span
+      aria-hidden
+      className={clsx("inline-block shrink-0 bg-current", className)}
+      style={{
+        WebkitMaskImage: `url(${src})`,
+        maskImage: `url(${src})`,
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
+        WebkitMaskPosition: "center",
+        maskPosition: "center",
+        WebkitMaskSize: "contain",
+        maskSize: "contain"
+      }}
+    />
+  );
+}
+
+function formatPhone(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 11) return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+  if (digits.length === 10) return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  return phone;
+}
+
+function formatDate(ymd: string) {
+  const [y, m, d] = ymd.split("-");
+  if (!y || !m || !d) return ymd;
+  return `${y.slice(2)}. ${m}. ${d}`;
+}
+
+function shortTime(time: string) {
+  return time.length >= 5 ? time.slice(0, 5) : time;
+}
+
+export default function AdminBookingsPage() {
+  const router = useRouter();
+  const [bookings, setBookings] = useState<BookingRow[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const [statuses, setStatuses] = useState<BookingStatus[]>([]);
+  const [artists, setArtists] = useState<string[]>([]);
+  const [staff, setStaff] = useState<StaffCard[]>([]);
+  const [artistTab, setArtistTab] = useState<string | null>(null);
+  const [services, setServices] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+  const [openFilter, setOpenFilter] = useState<"status" | "artist" | "service" | null>(null);
+  const [sidebarSlot, setSidebarSlot] = useState<HTMLElement | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/bookings");
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || "로드 실패");
+      setBookings(data.bookings ?? []);
+    } catch (e) {
+      setBookings([]);
+      setError(e instanceof Error ? e.message : "로드 실패");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useEffect(() => {
+    fetch("/api/admin/artists")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d.ok || !Array.isArray(d.artists)) return;
+        setStaff(
+          d.artists.map((a: { id: string; name_kr?: string; name_en?: string }) => ({
+            id: a.id,
+            label: (a.name_kr || a.name_en || a.id).trim()
+          }))
+        );
+      })
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    setSidebarSlot(document.getElementById(ADMIN_SIDEBAR_SLOT_ID));
+  }, []);
+
+  useEffect(() => {
+    if (!openFilter) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenFilter(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openFilter]);
+
+  const artistOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const row of bookings) {
+      const name = row.artist_name || row.artist_id;
+      if (name) set.add(name);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, "ko"));
+  }, [bookings]);
+
+  const serviceOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const row of bookings) {
+      for (const name of row.service_names || []) if (name) set.add(name);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, "ko"));
+  }, [bookings]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return bookings.filter((row) => {
+      if (q) {
+        const phone = row.customer_phone.replace(/\D/g, "");
+        const qDigits = q.replace(/\D/g, "");
+        const hit =
+          row.customer_name.toLowerCase().includes(q) ||
+          row.customer_phone.toLowerCase().includes(q) ||
+          (qDigits.length > 0 && phone.includes(qDigits));
+        if (!hit) return false;
+      }
+      if (statuses.length && !statuses.includes(row.status)) return false;
+      if (artistTab) {
+        const person = staff.find((s) => s.id === artistTab);
+        const name = row.artist_name || "";
+        const hit =
+          row.artist_id === artistTab ||
+          (person != null && (name === person.label || name.startsWith(`${person.label} `)));
+        if (!hit) return false;
+      }
+      if (artists.length && !artists.includes(row.artist_name || row.artist_id)) return false;
+      if (services.length && !(row.service_names || []).some((name) => services.includes(name))) return false;
+      return true;
+    });
+  }, [bookings, query, statuses, artists, services, artistTab, staff]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, statuses, artists, services, artistTab]);
+
+  const resetFilters = () => {
+    setQuery("");
+    setStatuses([]);
+    setArtists([]);
+    setArtistTab(null);
+    setServices([]);
+    setOpenFilter(null);
+    void load();
+  };
+
+  const emptyDirectory = !loading && bookings.length === 0;
+  const noMatch = !loading && bookings.length > 0 && filtered.length === 0;
+
+  return (
     <div className="member-panel">
       <div className="member-toolbar">
         <label className="member-search member-search__box">
