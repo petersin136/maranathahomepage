@@ -5,15 +5,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { clsx } from "clsx";
 import { ADMIN_SIDEBAR_SLOT_ID } from "@/lib/admin/nav";
-import { BOOKING_STATUS_OPTIONS } from "@/lib/admin/booking-labels";
+import { BOOKING_STATUS_LABEL, BOOKING_STATUS_OPTIONS } from "@/lib/admin/booking-labels";
 import type { BookingRow, BookingStatus } from "@/lib/bookings/types";
-
-const PAGE_SIZE = 12;
-
-type StaffCard = {
-  id: string;
-  label: string;
-};
 
 const STATUS_CLASS: Record<BookingStatus, string> = {
   pending: "booking-status-pending",
@@ -21,6 +14,13 @@ const STATUS_CLASS: Record<BookingStatus, string> = {
   completed: "booking-status-ok",
   cancelled: "booking-status-bad",
   noshow: "booking-status-bad"
+};
+
+const PAGE_SIZE = 12;
+
+type StaffCard = {
+  id: string;
+  label: string;
 };
 
 function Icon({ src, className }: { src: string; className?: string }) {
@@ -323,8 +323,6 @@ export default function AdminBookingsPage() {
             {!emptyDirectory && !noMatch ? (
               <tbody>
                 {pageRows.map((row) => {
-                  const label =
-                    BOOKING_STATUS_OPTIONS.find((opt) => opt.value === row.status)?.label || row.status;
                   return (
                     <tr
                       key={row.id}
@@ -340,7 +338,7 @@ export default function AdminBookingsPage() {
                       <td>
                         <span className={clsx("inline-flex items-center gap-[6px]", STATUS_CLASS[row.status])}>
                           <span className="h-[7px] w-[7px] rounded-full bg-current" />
-                          {label}
+                          {BOOKING_STATUS_LABEL[row.status] || row.status}
                         </span>
                       </td>
                       <td>
@@ -414,6 +412,7 @@ export default function AdminBookingsPage() {
           </button>
         </div>
       </div>
+
     </div>
   );
 }

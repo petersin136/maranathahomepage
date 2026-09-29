@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { clsx } from "clsx";
+import { ReminderDateField } from "@/components/admin/ReminderDateField";
 import { ADMIN_SIDEBAR_SLOT_ID } from "@/lib/admin/nav";
 
 const PAGE_SIZE = 12;
@@ -240,12 +241,10 @@ export default function AdminRemindersPage() {
                 return (
                   <tr key={r.id} className={clsx(overdue && "is-overdue")}>
                     <td>
-                      <input
-                        type="date"
+                      <ReminderDateField
                         value={date}
-                        onChange={(e) => updateDate(r.id, e.target.value)}
-                        aria-label="연락 예정일"
-                        className="reminder-date"
+                        onChange={(next) => updateDate(r.id, next)}
+                        label="연락 예정일"
                       />
                     </td>
                     <td className="member-cell-name">{r.customer_name || "—"}</td>
