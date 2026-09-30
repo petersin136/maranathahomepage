@@ -412,9 +412,9 @@ export default function AdminCustomersPage() {
         ) : null}
       </div>
 
-      <div className="mt-auto flex shrink-0 items-center justify-end gap-1 pt-5 text-[14px] text-[#8A847C]">
+      <div className="mb-16 mt-auto flex shrink-0 items-center justify-end gap-2 pt-5 text-[14px] text-[#8A847C]">
         <PageBtn disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} label="이전">
-          <Icon src="/admin-icons/lnb/chevron-left.png" className="h-[14px] w-[14px]" />
+          <PagerChevron dir="left" />
         </PageBtn>
         {pageButtons(safePage, pageCount).map((item, i) =>
           item === "…" ? (
@@ -440,7 +440,7 @@ export default function AdminCustomersPage() {
           onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
           label="다음"
         >
-          <Icon src="/admin-icons/lnb/chevron-right.png" className="h-[14px] w-[14px]" />
+          <PagerChevron dir="right" strong />
         </PageBtn>
       </div>
     </div>
@@ -559,6 +559,23 @@ function FilterCheck({
   );
 }
 
+function PagerChevron({ dir, strong }: { dir: "left" | "right"; strong?: boolean }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 16 16"
+      className={clsx("h-[20px] w-[20px]", strong ? "text-[#111111]" : "text-[#C8C3BB]")}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strong ? 2.6 : 2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {dir === "left" ? <path d="M10.5 3.2 5.2 8l5.3 4.8" /> : <path d="M5.5 3.2 10.8 8 5.5 12.8" />}
+    </svg>
+  );
+}
+
 function PageBtn({
   disabled,
   onClick,
@@ -576,7 +593,7 @@ function PageBtn({
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className="flex h-[28px] w-[28px] items-center justify-center disabled:opacity-30"
+      className="flex h-[28px] w-[28px] items-center justify-center disabled:opacity-60"
     >
       {children}
     </button>

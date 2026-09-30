@@ -81,6 +81,9 @@ export type CustomerDirectoryRow = {
   lastVisitDate: string | null;
   daysSince: number | null;
   sendStatus: CustomerSendStatus;
+  visitCount: number;
+  lifetimeRevenue: number;
+  churnRisk: boolean;
 };
 
 export type CustomersDashboard = {
@@ -276,13 +279,15 @@ function primaryArtist(visits: CustomerVisit[]) {
 }
 
 export function buildCustomerDirectory(args: {
-  profiles: { phone: string; name: string; visits: CustomerVisit[] }[];
+  profiles: CustomerProfile[];
   today: string;
+  churnPhones?: Set<string>;
 }): CustomerDirectoryRow[] {
   const rows: CustomerDirectoryRow[] = [];
   for (const p of args.profiles) {
     if (!p.visits.length) continue;
     const last = p.visits[p.visits.length - 1];
+    const completed = p.completedVisits;
     rows.push({
       phone: p.phone,
       name: p.name,
@@ -290,7 +295,10 @@ export function buildCustomerDirectory(args: {
       services: last.serviceNames,
       lastVisitDate: last.bookingDate,
       daysSince: daysBetween(last.bookingDate, args.today),
-      sendStatus: "pending"
+      sendStatus: "pending",
+      visitCount: completed.length,
+      lifetimeRevenue: completed.reduce((sum, visit) => sum + visit.amount, 0),
+      churnRisk: args.churnPhones?.has(p.phone) ?? false
     });
   }
   rows.sort((a, b) => (b.lastVisitDate || "").localeCompare(a.lastVisitDate || "") || a.name.localeCompare(b.name, "ko"));
@@ -572,7 +580,11 @@ export function aggregateCustomersDashboard(args: {
   return {
     today,
     excludedNoPhoneCount,
-    directory: buildCustomerDirectory({ profiles, today }),
+    directory: buildCustomerDirectory({
+      profiles,
+      today,
+      churnPhones: new Set(churn.customers.map((customer) => customer.phone))
+    }),
     summary: {
       totalCustomers,
       returningCustomers,
