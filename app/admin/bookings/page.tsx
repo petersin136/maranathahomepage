@@ -1,26 +1,24 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clsx } from "clsx";
-import { ADMIN_SIDEBAR_SLOT_ID } from "@/lib/admin/nav";
-import { BOOKING_STATUS_LABEL, BOOKING_STATUS_OPTIONS } from "@/lib/admin/booking-labels";
+import { BOOKING_STATUS_OPTIONS } from "@/lib/admin/booking-labels";
 import type { BookingRow, BookingStatus } from "@/lib/bookings/types";
-
-const STATUS_CLASS: Record<BookingStatus, string> = {
-  pending: "booking-status-pending",
-  confirmed: "booking-status-ok",
-  completed: "booking-status-ok",
-  cancelled: "booking-status-bad",
-  noshow: "booking-status-bad"
-};
 
 const PAGE_SIZE = 12;
 
 type StaffCard = {
   id: string;
   label: string;
+};
+
+const STATUS_COLOR: Record<BookingStatus, string> = {
+  pending: "#8A847C",
+  confirmed: "#1F9D62",
+  completed: "#1F9D62",
+  cancelled: "#E24B4B",
+  noshow: "#E24B4B"
 };
 
 function Icon({ src, className }: { src: string; className?: string }) {
@@ -72,7 +70,7 @@ export default function AdminBookingsPage() {
   const [services, setServices] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [openFilter, setOpenFilter] = useState<"status" | "artist" | "service" | null>(null);
-  const [sidebarSlot, setSidebarSlot] = useState<HTMLElement | null>(null);
+  const filterRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -110,16 +108,12 @@ export default function AdminBookingsPage() {
   }, []);
 
   useEffect(() => {
-    setSidebarSlot(document.getElementById(ADMIN_SIDEBAR_SLOT_ID));
-  }, []);
-
-  useEffect(() => {
     if (!openFilter) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpenFilter(null);
+    const onDown = (e: MouseEvent) => {
+      if (!filterRef.current?.contains(e.target as Node)) setOpenFilter(null);
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
   }, [openFilter]);
 
   const artistOptions = useMemo(() => {
@@ -157,11 +151,14 @@ export default function AdminBookingsPage() {
         const name = row.artist_name || "";
         const hit =
           row.artist_id === artistTab ||
-          (person != null && (name === person.label || name.startsWith(`${person.label} `)));
+          (person != null &&
+            (name === person.label || name.startsWith(`${person.label} `)));
         if (!hit) return false;
       }
       if (artists.length && !artists.includes(row.artist_name || row.artist_id)) return false;
-      if (services.length && !(row.service_names || []).some((name) => services.includes(name))) return false;
+      if (services.length && !(row.service_names || []).some((name) => services.includes(name))) {
+        return false;
+      }
       return true;
     });
   }, [bookings, query, statuses, artists, services, artistTab, staff]);
@@ -188,301 +185,277 @@ export default function AdminBookingsPage() {
   const noMatch = !loading && bookings.length > 0 && filtered.length === 0;
 
   return (
-    <div className="member-panel">
-      <div className="member-toolbar">
-        <label className="member-search member-search__box">
+    <div className="flex flex-col font-sans-kr text-[#1C1C1C] min-[1440px]:h-[calc(100dvh-5rem)]">
+      <div className="flex items-center justify-between gap-6 pt-6">
+        <h1 className="flex items-baseline gap-2 text-[30px] font-bold leading-none tracking-[-0.02em]">
+          예약관리
+          <span className="text-[15px] font-normal text-[#8A847C]">
+            총 {bookings.length.toLocaleString("ko-KR")}건
+          </span>
+        </h1>
+        <label className="flex h-[36px] w-[300px] items-center gap-2 rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-3">
+          <Icon src="/admin-icons/lnb/search-bold.png" className="h-[16px] w-[16px] text-[#9A948C]" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="고객명, 연락처 검색"
-            aria-label="예약 검색"
-            className="member-search__input"
+            className="w-full bg-transparent text-[15px] font-bold text-[#9A948C] outline-none placeholder:text-[#9A948C]"
           />
-          <span className="member-search__toggle" aria-hidden>
-            <Icon src="/admin-icons/lnb/chevron-down.png" className="h-[16px] w-[16px]" />
-          </span>
         </label>
       </div>
 
-      {sidebarSlot
-        ? createPortal(
-            <div className="sidebar__filters">
-              <div className="sidebar__section-head">
-                <span className="sidebar__section-label">필터</span>
-                {query || statuses.length || artists.length || services.length || artistTab ? (
-                  <button type="button" onClick={resetFilters} className="sidebar__reset">
-                    <Icon src="/admin-icons/lnb/refresh.png" className="h-[12px] w-[12px]" />
-                    초기화
-                  </button>
-                ) : null}
-              </div>
-              <FilterGroup
-                label="예약 상태"
-                icon="/admin-icons/lnb/list-filter.png"
-                count={statuses.length}
-                open={openFilter === "status"}
-                onToggle={() => setOpenFilter((v) => (v === "status" ? null : "status"))}
-              >
-                {BOOKING_STATUS_OPTIONS.map((opt) => (
-                  <FilterCheck
-                    key={opt.value}
-                    label={opt.label}
-                    checked={statuses.includes(opt.value)}
-                    onChange={() =>
-                      setStatuses((cur) =>
-                        cur.includes(opt.value) ? cur.filter((x) => x !== opt.value) : [...cur, opt.value]
-                      )
-                    }
-                  />
-                ))}
-              </FilterGroup>
-              <FilterGroup
-                label="담당자"
-                icon="/admin-icons/lnb/user.png"
-                count={artists.length + (artistTab ? 1 : 0)}
-                open={openFilter === "artist"}
-                onToggle={() => setOpenFilter((v) => (v === "artist" ? null : "artist"))}
-              >
-                {staff.map((person) => (
-                  <FilterCheck
-                    key={person.id}
-                    label={person.label}
-                    checked={artistTab === person.id}
-                    onChange={() => setArtistTab((cur) => (cur === person.id ? null : person.id))}
-                  />
-                ))}
-                {artistOptions.length === 0 ? (
-                  <p className="sidebar__option-empty">담당자 없음</p>
-                ) : (
-                  artistOptions.map((name) => (
-                    <FilterCheck
-                      key={name}
-                      label={name}
-                      checked={artists.includes(name)}
-                      onChange={() =>
-                        setArtists((cur) => (cur.includes(name) ? cur.filter((x) => x !== name) : [...cur, name]))
-                      }
-                    />
-                  ))
-                )}
-              </FilterGroup>
-              <FilterGroup
-                label="시술명"
-                icon="/admin-icons/lnb/calendar.png"
-                count={services.length}
-                open={openFilter === "service"}
-                onToggle={() => setOpenFilter((v) => (v === "service" ? null : "service"))}
-              >
-                {serviceOptions.length === 0 ? (
-                  <p className="sidebar__option-empty">시술 없음</p>
-                ) : (
-                  serviceOptions.map((name) => (
-                    <FilterCheck
-                      key={name}
-                      label={name}
-                      checked={services.includes(name)}
-                      onChange={() =>
-                        setServices((cur) => (cur.includes(name) ? cur.filter((x) => x !== name) : [...cur, name]))
-                      }
-                    />
-                  ))
-                )}
-              </FilterGroup>
-            </div>,
-            sidebarSlot
-          )
-        : null}
+      {error ? <p className="mt-4 text-[13px] text-[#E24B4B]">{error}</p> : null}
 
-      {error ? <p className="mt-4 text-pc-base text-danger">{error}</p> : null}
-
-      <div className="member-card">
-        <div className="overflow-x-auto">
-          <table className="member-table min-w-[1040px]">
-            <colgroup>
-              <col className="w-[12%]" />
-              <col className="w-[8%]" />
-              <col className="w-[12%]" />
-              <col className="w-[14%]" />
-              <col className="w-[14%]" />
-              <col className="w-[22%]" />
-              <col className="w-[10%]" />
-              <col className="w-[8%]" />
-            </colgroup>
-            <thead>
-              <tr>
-                <th>예약일</th>
-                <th className="is-center">시간</th>
-                <th>고객명</th>
-                <th>연락처</th>
-                <th>담당</th>
-                <th>시술</th>
-                <th>상태</th>
-                <th>관리</th>
-              </tr>
-            </thead>
-            {!emptyDirectory && !noMatch ? (
-              <tbody>
-                {pageRows.map((row) => {
-                  return (
-                    <tr
-                      key={row.id}
-                      onClick={() => router.push(`/admin/bookings/${row.id}`)}
-                      className="cursor-pointer"
-                    >
-                      <td className="member-cell-content tabular-nums">{formatDate(row.booking_date)}</td>
-                      <td className="member-cell-content is-center tabular-nums">{shortTime(row.booking_time)}</td>
-                      <td className="member-cell-name">{row.customer_name}</td>
-                      <td className="member-cell-sub whitespace-nowrap tabular-nums">{formatPhone(row.customer_phone)}</td>
-                      <td className="member-cell-sub">{row.artist_name || "—"}</td>
-                      <td className="member-cell-content truncate">{(row.service_names || []).join(" / ") || "—"}</td>
-                      <td>
-                        <span className={clsx("inline-flex items-center gap-[6px]", STATUS_CLASS[row.status])}>
-                          <span className="h-[7px] w-[7px] rounded-full bg-current" />
-                          {BOOKING_STATUS_LABEL[row.status] || row.status}
-                        </span>
-                      </td>
-                      <td>
-                        <button
-                          type="button"
-                          aria-label={`${row.customer_name} 상세보기`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/admin/bookings/${row.id}`);
-                          }}
-                          className="member-action-btn"
-                        >
-                          <Icon src="/admin-icons/lnb/chevron-right.png" className="h-[14px] w-[14px]" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            ) : null}
-          </table>
+      <div ref={filterRef} className="mt-12 flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-2">
+        <FilterChip
+          icon="/admin-icons/lnb/filter.png"
+          label="예약 상태"
+          count={statuses.length}
+          open={openFilter === "status"}
+          onToggle={() => setOpenFilter((v) => (v === "status" ? null : "status"))}
+        >
+          {BOOKING_STATUS_OPTIONS.map((opt) => (
+            <FilterCheck
+              key={opt.value}
+              label={opt.label}
+              checked={statuses.includes(opt.value)}
+              onChange={() =>
+                setStatuses((cur) =>
+                  cur.includes(opt.value) ? cur.filter((x) => x !== opt.value) : [...cur, opt.value]
+                )
+              }
+            />
+          ))}
+        </FilterChip>
+        <FilterChip
+          icon="/admin-icons/lnb/filter.png"
+          label="담당자"
+          count={artists.length}
+          open={openFilter === "artist"}
+          onToggle={() => setOpenFilter((v) => (v === "artist" ? null : "artist"))}
+        >
+          {artistOptions.length === 0 ? (
+            <p className="px-5 py-2 text-[14px] text-[#8A847C]">담당자 없음</p>
+          ) : (
+            artistOptions.map((name) => (
+              <FilterCheck
+                key={name}
+                label={name}
+                checked={artists.includes(name)}
+                onChange={() =>
+                  setArtists((cur) =>
+                    cur.includes(name) ? cur.filter((x) => x !== name) : [...cur, name]
+                  )
+                }
+              />
+            ))
+          )}
+        </FilterChip>
+        <FilterChip
+          icon="/admin-icons/lnb/filter.png"
+          label="시술명"
+          count={services.length}
+          open={openFilter === "service"}
+          onToggle={() => setOpenFilter((v) => (v === "service" ? null : "service"))}
+        >
+          {serviceOptions.length === 0 ? (
+            <p className="px-5 py-2 text-[14px] text-[#8A847C]">시술 없음</p>
+          ) : (
+            serviceOptions.map((name) => (
+              <FilterCheck
+                key={name}
+                label={name}
+                checked={services.includes(name)}
+                onChange={() =>
+                  setServices((cur) =>
+                    cur.includes(name) ? cur.filter((x) => x !== name) : [...cur, name]
+                  )
+                }
+              />
+            ))
+          )}
+        </FilterChip>
+        <button
+          type="button"
+          aria-label="필터 초기화"
+          onClick={resetFilters}
+          className="flex h-[36px] w-[36px] items-center justify-center rounded-[8px] border-[1.5px] border-[#9A948C] text-[#9A948C] hover:bg-[#F6F4F0]"
+        >
+          <Icon src="/admin-icons/lnb/refresh.png" className="h-[16px] w-[16px]" />
+        </button>
         </div>
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {staff.map((person) => {
+            const on = artistTab === person.id;
+            return (
+              <button
+                key={person.id}
+                type="button"
+                onClick={() => setArtistTab((cur) => (cur === person.id ? null : person.id))}
+                className={clsx(
+                  "inline-flex h-[36px] items-center rounded-[8px] border-[1.5px] px-3 text-[14px] font-bold",
+                  on
+                    ? "border-[#2F3A2F] bg-[#2F3A2F] text-white"
+                    : "border-[#9A948C] bg-white text-[#1C1C1C]"
+                )}
+              >
+                {person.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-8 min-h-0 flex-1 min-[1440px]:overflow-auto">
+        <table className="w-full table-fixed text-left text-[16px] font-medium leading-[20px]">
+          <colgroup>
+            <col className="w-[12%]" />
+            <col className="w-[8%]" />
+            <col className="w-[12%]" />
+            <col className="w-[14%]" />
+            <col className="w-[14%]" />
+            <col className="w-[22%]" />
+            <col className="w-[10%]" />
+            <col className="w-[8%]" />
+          </colgroup>
+          <thead>
+            <tr className="border-b-[1.5px] border-[#C9C3BB] text-[15px] font-bold text-[#9A948C]">
+              <th className="py-3 font-bold">예약일</th>
+              <th className="py-3 font-bold">시간</th>
+              <th className="py-3 font-bold">고객명</th>
+              <th className="py-3 font-bold">연락처</th>
+              <th className="py-3 font-bold">담당</th>
+              <th className="py-3 font-bold">시술</th>
+              <th className="py-3 font-bold">상태</th>
+              <th className="py-3 text-right font-bold">관리</th>
+            </tr>
+          </thead>
+          {!emptyDirectory && !noMatch ? (
+            <tbody>
+              {pageRows.map((row) => {
+                const color = STATUS_COLOR[row.status] || "#8A847C";
+                const label =
+                  BOOKING_STATUS_OPTIONS.find((opt) => opt.value === row.status)?.label || row.status;
+                return (
+                  <tr
+                    key={row.id}
+                    onClick={() => router.push(`/admin/bookings/${row.id}`)}
+                    className="cursor-pointer border-b border-[#F3EFEA] bg-white hover:bg-[#F6F4F0]"
+                  >
+                    <td className="truncate py-[15px] pr-3">{formatDate(row.booking_date)}</td>
+                    <td className="truncate py-[15px] pr-3">{shortTime(row.booking_time)}</td>
+                    <td className="truncate py-[15px] pr-3">{row.customer_name}</td>
+                    <td className="truncate py-[15px] pr-3 text-[#3A3A3A]">{formatPhone(row.customer_phone)}</td>
+                    <td className="truncate py-[15px] pr-3">{row.artist_name || "—"}</td>
+                    <td className="truncate py-[15px] pr-3">{(row.service_names || []).join(" / ") || "—"}</td>
+                    <td className="py-[15px]">
+                      <span className="inline-flex items-center gap-1.5 font-medium" style={{ color }}>
+                        <span className="h-[7px] w-[7px] rounded-full" style={{ background: color }} />
+                        {label}
+                      </span>
+                    </td>
+                    <td className="py-[15px] text-right font-normal text-[#8A847C]">상세보기</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          ) : null}
+        </table>
+
         {loading && bookings.length === 0 ? (
-          <p className="py-16 text-center text-pc-md text-text3">불러오는 중…</p>
+          <p className="py-16 text-center text-[13px] text-[#8A847C]">불러오는 중…</p>
         ) : null}
         {emptyDirectory ? (
-          <p className="py-16 text-center text-pc-md font-semibold text-text1">등록된 예약이 없습니다.</p>
+          <p className="py-16 text-center text-[14px] font-medium text-[#8A847C]">등록된 예약이 없습니다.</p>
         ) : null}
         {noMatch ? (
-          <p className="py-16 text-center text-pc-md font-semibold text-text1">일치하는 예약이 없습니다.</p>
+          <p className="py-16 text-center text-[14px] font-medium text-[#8A847C]">일치하는 예약이 없습니다.</p>
         ) : null}
       </div>
 
-      <div className="member-pager-wrap">
-        <div className="member-pager">
-          <button
-            type="button"
-            aria-label="이전 페이지"
-            disabled={safePage <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="member-pager__arrow"
-          >
-            <ArrowIcon dir="left" />
-          </button>
-          <div className="member-pager__pages">
-            {pageButtons(safePage, pageCount).map((item, i) =>
-              item === "…" ? (
-                <span key={`gap-${i}`} className="member-pager__ellipsis">
-                  …
-                </span>
-              ) : (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setPage(item)}
-                  className={clsx("member-pager__page", item === safePage && "is-active")}
-                >
-                  {item}
-                </button>
-              )
-            )}
-          </div>
-          <button
-            type="button"
-            aria-label="다음 페이지"
-            disabled={safePage >= pageCount}
-            onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-            className="member-pager__arrow"
-          >
-            <ArrowIcon dir="right" />
-          </button>
-        </div>
+      <div className="mt-auto flex shrink-0 items-center justify-end gap-1 pt-5 text-[14px] text-[#8A847C]">
+        <PageBtn disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} label="이전">
+          <Icon src="/admin-icons/lnb/chevron-left.png" className="h-[14px] w-[14px]" />
+        </PageBtn>
+        {pageButtons(safePage, pageCount).map((item, i) =>
+          item === "…" ? (
+            <span key={`e-${i}`} className="px-1">
+              …
+            </span>
+          ) : (
+            <button
+              key={item}
+              type="button"
+              onClick={() => setPage(item)}
+              className={clsx(
+                "h-[28px] min-w-[28px] rounded-[6px] px-1",
+                item === safePage ? "font-medium text-[#1C1C1C]" : "hover:text-[#1C1C1C]"
+              )}
+            >
+              {item}
+            </button>
+          )
+        )}
+        <PageBtn
+          disabled={safePage >= pageCount}
+          onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+          label="다음"
+        >
+          <Icon src="/admin-icons/lnb/chevron-right.png" className="h-[14px] w-[14px]" />
+        </PageBtn>
       </div>
-
     </div>
-  );
-}
-
-function ArrowIcon({ dir }: { dir: "left" | "right" }) {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 24 24"
-      className="h-[20px] w-[20px]"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2.75}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      {dir === "left" ? (
-        <>
-          <path d="m12 19-7-7 7-7" />
-          <path d="M19 12H5" />
-        </>
-      ) : (
-        <>
-          <path d="M5 12h14" />
-          <path d="m12 5 7 7-7 7" />
-        </>
-      )}
-    </svg>
   );
 }
 
 function pageButtons(current: number, total: number): Array<number | "…"> {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-  if (current <= 4) return [1, 2, 3, 4, 5, "…", total];
-  if (current >= total - 3) return [1, "…", total - 4, total - 3, total - 2, total - 1, total];
-  return [1, "…", current - 1, current, current + 1, "…", total];
+  if (current > 5 && current < total) {
+    const around: Array<number | "…"> = [1, "…", current - 1, current, current + 1, "…", total];
+    return around.filter((n, i, arr) => n !== "…" || arr[i - 1] !== "…");
+  }
+  return [1, 2, 3, 4, 5, "…", total];
 }
 
-function FilterGroup({
-  label,
+function FilterChip({
   icon,
+  label,
   count,
   open,
   onToggle,
   children
 }: {
-  label: string;
   icon: string;
+  label: string;
   count: number;
   open: boolean;
   onToggle: () => void;
   children: React.ReactNode;
 }) {
   return (
-    <div>
+    <div className="relative w-max">
       <button
         type="button"
-        aria-expanded={open}
         onClick={onToggle}
-        className={clsx("sidebar__item", open && "is-active")}
+        className="flex h-[36px] w-max items-center gap-2 rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-3 text-[13px] font-semibold leading-none text-[#1C1C1C]"
       >
-        <Icon src={icon} className="h-[18px] w-[18px]" />
-        <span>{label}</span>
-        {count > 0 ? <span className="sidebar__filter-count">{count}</span> : null}
+        <Icon src={icon} className="h-[15px] w-[15px] text-[#9A948C]" />
+        <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">{label}</span>
+        <span className="inline-flex h-[20px] min-w-[20px] items-center justify-center rounded-[4px] bg-[#F3EFEA] px-1 text-[12px] font-semibold leading-none text-[#9A948C]">
+          <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">{count}</span>
+        </span>
+        <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both] text-[#1C1C1C]">선택</span>
         <Icon
-          src="/admin-icons/lnb/chevron-down.png"
-          className={clsx("ml-auto h-[14px] w-[14px] text-text3 transition-transform", open && "rotate-180")}
+          src={open || count > 0 ? "/admin-icons/lnb/chevron-down-bold.png" : "/admin-icons/lnb/chevron-down.png"}
+          className={clsx("h-[16px] w-[16px] text-[#9A948C]", open && "rotate-180")}
         />
       </button>
-      {open ? <div className="sidebar__options">{children}</div> : null}
+      {open ? (
+        <div className="absolute left-0 top-[42px] z-30 max-h-[280px] w-max min-w-full overflow-auto rounded-[12px] border border-[#EFEBE6] bg-white py-2 shadow-[0_8px_24px_rgba(28,28,28,0.08)]">
+          {children}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -497,11 +470,44 @@ function FilterCheck({
   onChange: () => void;
 }) {
   return (
-    <button type="button" role="checkbox" aria-checked={checked} onClick={onChange} className="sidebar__option">
-      <span className={clsx("sidebar__option-box", checked && "is-checked")}>
-        {checked ? <Icon src="/admin-icons/lnb/check.png" className="h-[9px] w-[9px]" /> : null}
+    <button
+      type="button"
+      onClick={onChange}
+      className="flex w-full items-center gap-4 px-5 py-2 text-left text-[14px] text-[#1C1C1C] hover:bg-[#F6F4F0]"
+    >
+      <span
+        className={clsx(
+          "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[3px] border",
+          checked ? "border-[#1C1C1C] bg-[#1C1C1C] text-white" : "border-[#D5D0CA]"
+        )}
+      >
+        {checked ? <Icon src="/admin-icons/lnb/check.png" className="h-[10px] w-[10px]" /> : null}
       </span>
-      <span className="truncate">{label}</span>
+      {label}
+    </button>
+  );
+}
+
+function PageBtn({
+  disabled,
+  onClick,
+  label,
+  children
+}: {
+  disabled: boolean;
+  onClick: () => void;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className="flex h-[28px] w-[28px] items-center justify-center disabled:opacity-30"
+    >
+      {children}
     </button>
   );
 }

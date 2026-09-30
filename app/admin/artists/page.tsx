@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { clsx } from "clsx";
+import SettingsNav from "@/components/admin/SettingsNav";
+
 type Artist = {
   id: string;
   name_kr: string;
@@ -87,6 +89,7 @@ export default function AdminArtistsPage() {
 
   return (
     <div className="font-sans-kr text-[#1C1C1C]">
+      <SettingsNav />
       <h1 className="mt-8 flex items-baseline gap-2 text-[30px] font-bold leading-none tracking-[-0.02em]">
         <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">디자이너</span>
         <span className="text-[15px] font-normal text-[#8A847C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">

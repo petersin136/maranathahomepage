@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import SettingsNav from "@/components/admin/SettingsNav";
 import type { TaxType } from "@/lib/admin/tax-data";
 
 const inputClass =
@@ -67,6 +68,7 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="font-sans-kr text-[#1C1C1C]">
+      <SettingsNav />
       <h1 className="mt-8 text-[30px] font-bold leading-none tracking-[-0.02em] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
         사업자 정보
       </h1>

@@ -1,17 +1,33 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clsx } from "clsx";
-import {
-  DAY_OPTIONS,
-  STATE_META,
-  customerProfileHref,
-  customerState,
-  useCustomerFilters
-} from "@/components/admin/CustomerFilters";
+import type {
+  CustomerDirectoryRow,
+  CustomerSendStatus,
+  CustomersDashboard
+} from "@/lib/admin/customers-data";
 
 const PAGE_SIZE = 12;
+
+const STATUS_META: Record<
+  CustomerSendStatus,
+  { label: string; color: string }
+> = {
+  pending: { label: "발송 대기", color: "#8A847C" },
+  sent: { label: "발송 완료", color: "#1F9D62" },
+  failed: { label: "발송 실패", color: "#E24B4B" },
+  alert: { label: "알림 발송", color: "#3B6FE0" }
+};
+
+const STATUS_ORDER: CustomerSendStatus[] = ["pending", "alert", "sent", "failed"];
+
+const DAY_OPTIONS = [
+  { id: "0-7", label: "7일 이내", min: 0, max: 7 },
+  { id: "8-30", label: "8–30일", min: 8, max: 30 },
+  { id: "31-60", label: "31–60일", min: 31, max: 60 },
+  { id: "61+", label: "61일 이상", min: 61, max: 99999 }
+] as const;
 
 function Icon({ src, className }: { src: string; className?: string }) {
   return (
@@ -40,7 +56,7 @@ function formatPhone(phone: string) {
 }
 
 function formatVisit(date: string | null, days: number | null) {
-  if (!date) return null;
+  if (!date) return "—";
   const [y, m, d] = date.split("-");
   const head = `${y.slice(2)}. ${m}. ${d}`;
   if (days == null) return head;
@@ -49,16 +65,56 @@ function formatVisit(date: string | null, days: number | null) {
   return `${head} (D${days})`;
 }
 
-function Empty() {
-  return <span className="member-cell-empty">-</span>;
-}
-
 export default function AdminCustomersPage() {
-  const router = useRouter();
-  const { rows, loading, error, query, setQuery, artists, dayIds, states } = useCustomerFilters();
+  const [rows, setRows] = useState<CustomerDirectoryRow[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const [services, setServices] = useState<string[]>([]);
+  const [dayIds, setDayIds] = useState<string[]>([]);
+  const [statuses, setStatuses] = useState<CustomerSendStatus[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const [sortKey, setSortKey] = useState<"name" | "date">("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [openFilter, setOpenFilter] = useState<"service" | "day" | "status" | null>(null);
+  const filterRef = useRef<HTMLDivElement>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/customers");
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "로드 실패");
+      const data = json as CustomersDashboard;
+      setRows(data.directory ?? []);
+    } catch (e) {
+      setRows([]);
+      setError(e instanceof Error ? e.message : "로드 실패");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useEffect(() => {
+    if (!openFilter) return;
+    const onDown = (e: MouseEvent) => {
+      if (!filterRef.current?.contains(e.target as Node)) setOpenFilter(null);
+    };
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [openFilter]);
+
+  const serviceOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const row of rows) for (const name of row.services) if (name) set.add(name);
+    return [...set].sort((a, b) => a.localeCompare(b, "ko"));
+  }, [rows]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -69,11 +125,10 @@ export default function AdminCustomersPage() {
         const hit =
           row.name.toLowerCase().includes(q) ||
           row.phone.toLowerCase().includes(q) ||
-          row.artistName.toLowerCase().includes(q) ||
           (qDigits.length > 0 && phone.includes(qDigits));
         if (!hit) return false;
       }
-      if (artists.length && !artists.includes(row.artistName)) return false;
+      if (services.length && !row.services.some((name) => services.includes(name))) return false;
       if (dayIds.length) {
         const days = row.daysSince ?? -1;
         const ok = DAY_OPTIONS.some(
@@ -81,10 +136,7 @@ export default function AdminCustomersPage() {
         );
         if (!ok) return false;
       }
-      if (states.length) {
-        const state = customerState(row);
-        if (!state || !states.includes(state)) return false;
-      }
+      if (statuses.length && !statuses.includes(row.sendStatus)) return false;
       return true;
     });
     list.sort((a, b) => {
@@ -93,15 +145,17 @@ export default function AdminCustomersPage() {
       return (a.lastVisitDate || "").localeCompare(b.lastVisitDate || "") * dir;
     });
     return list;
-  }, [rows, query, artists, dayIds, states, sortKey, sortDir]);
+  }, [rows, query, services, dayIds, statuses, sortKey, sortDir]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
   const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const allPageSelected = pageRows.length > 0 && pageRows.every((row) => selected.has(row.phone));
+  const somePageSelected = pageRows.some((row) => selected.has(row.phone));
 
   useEffect(() => {
     setPage(1);
-  }, [query, artists, dayIds, states, sortKey, sortDir]);
+  }, [query, services, dayIds, statuses, sortKey, sortDir]);
 
   const toggleSort = (key: "name" | "date") => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -111,263 +165,420 @@ export default function AdminCustomersPage() {
     }
   };
 
+  const togglePage = () => {
+    setSelected((cur) => {
+      const next = new Set(cur);
+      if (allPageSelected) pageRows.forEach((row) => next.delete(row.phone));
+      else pageRows.forEach((row) => next.add(row.phone));
+      return next;
+    });
+  };
+
+  const toggleRow = (phone: string) => {
+    setSelected((cur) => {
+      const next = new Set(cur);
+      if (next.has(phone)) next.delete(phone);
+      else next.add(phone);
+      return next;
+    });
+  };
+
+  const resetFilters = () => {
+    setQuery("");
+    setServices([]);
+    setDayIds([]);
+    setStatuses([]);
+    setOpenFilter(null);
+    void load();
+  };
+
   const emptyDirectory = !loading && rows.length === 0;
   const noMatch = !loading && rows.length > 0 && filtered.length === 0;
 
   return (
-    <div className="member-panel">
-      <div className="member-toolbar">
-        <label className="member-search member-search__box">
+    <div className="flex flex-col font-sans-kr text-[#1C1C1C] min-[1440px]:h-[calc(100dvh-5rem)]">
+      <div className="flex items-center justify-between gap-6 pt-6">
+        <h1 className="flex items-baseline gap-2 text-[30px] font-bold leading-none tracking-[-0.02em]">
+          고객관리
+          <span className="text-[15px] font-normal text-[#8A847C]">
+            총 {rows.length.toLocaleString("ko-KR")}명
+          </span>
+        </h1>
+        <label className="flex h-[36px] w-[300px] items-center gap-2 rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-3">
+          <Icon src="/admin-icons/lnb/search-bold.png" className="h-[16px] w-[16px] text-[#9A948C]" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="고객명, 연락처 검색"
-            aria-label="고객 검색"
-            className="member-search__input"
+            className="w-full bg-transparent text-[15px] font-bold text-[#9A948C] outline-none placeholder:text-[#9A948C]"
           />
-          <span className="member-search__toggle" aria-hidden>
-            <ChevronDown open={false} />
-          </span>
         </label>
-
-        <button type="button" className="member-register-btn">
-          <Icon src="/admin-icons/lnb/plus.png" className="h-[16px] w-[16px]" />
-          신규 등록
-        </button>
       </div>
 
-      {error ? <p className="mt-4 text-pc-base text-danger">{error}</p> : null}
+      {error ? <p className="mt-4 text-[13px] text-[#9b4a4a]">{error}</p> : null}
 
-      <div className="member-card">
-        <div className="overflow-x-auto">
-        <table className="member-table min-w-[1040px]">
+      <div ref={filterRef} className="mt-12 flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <FilterChip
+            icon="/admin-icons/lnb/filter.png"
+            label="시술명"
+            count={services.length}
+            open={openFilter === "service"}
+            onToggle={() => setOpenFilter((v) => (v === "service" ? null : "service"))}
+          >
+            {serviceOptions.length === 0 ? (
+              <p className="px-3 py-2 text-[13px] text-[#8A847C]">시술 없음</p>
+            ) : (
+              serviceOptions.map((name) => (
+                <FilterCheck
+                  key={name}
+                  label={name}
+                  checked={services.includes(name)}
+                  onChange={() =>
+                    setServices((cur) =>
+                      cur.includes(name) ? cur.filter((x) => x !== name) : [...cur, name]
+                    )
+                  }
+                />
+              ))
+            )}
+          </FilterChip>
+          <FilterChip
+            icon="/admin-icons/lnb/filter.png"
+            label="시술후 경과일"
+            count={dayIds.length}
+            open={openFilter === "day"}
+            onToggle={() => setOpenFilter((v) => (v === "day" ? null : "day"))}
+          >
+            {DAY_OPTIONS.map((opt) => (
+              <FilterCheck
+                key={opt.id}
+                label={opt.label}
+                checked={dayIds.includes(opt.id)}
+                onChange={() =>
+                  setDayIds((cur) =>
+                    cur.includes(opt.id) ? cur.filter((x) => x !== opt.id) : [...cur, opt.id]
+                  )
+                }
+              />
+            ))}
+          </FilterChip>
+          <FilterChip
+            icon="/admin-icons/lnb/filter.png"
+            label="발송 상태"
+            count={statuses.length}
+            open={openFilter === "status"}
+            onToggle={() => setOpenFilter((v) => (v === "status" ? null : "status"))}
+          >
+            {STATUS_ORDER.map((key) => (
+              <FilterCheck
+                key={key}
+                label={STATUS_META[key].label}
+                checked={statuses.includes(key)}
+                onChange={() =>
+                  setStatuses((cur) =>
+                    cur.includes(key) ? cur.filter((x) => x !== key) : [...cur, key]
+                  )
+                }
+              />
+            ))}
+          </FilterChip>
+          <button
+            type="button"
+            aria-label="필터 초기화"
+            onClick={resetFilters}
+            className="flex h-[36px] w-[36px] items-center justify-center rounded-[8px] border-[1.5px] border-[#9A948C] text-[#9A948C] hover:bg-[#F6F4F0]"
+          >
+            <Icon src="/admin-icons/lnb/refresh.png" className="h-[16px] w-[16px]" />
+          </button>
+        </div>
+        <div className="flex w-[300px] items-center gap-2">
+          <button
+            type="button"
+            className="inline-flex h-[40px] flex-1 items-center justify-center rounded-[8px] border border-[#E4E0DA] bg-white px-3 text-[14px] font-bold text-[#3A3A3A]"
+          >
+            메시지 발송
+          </button>
+          <button
+            type="button"
+            className="inline-flex h-[40px] flex-1 items-center justify-center gap-1.5 rounded-[8px] bg-[#2F3A2F] px-3 text-[14px] font-bold text-white"
+          >
+            <Icon src="/admin-icons/lnb/plus.png" className="h-[14px] w-[14px]" />
+            신규 등록
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-8 min-h-0 flex-1 min-[1440px]:overflow-auto">
+        <table className="w-full table-fixed text-left text-[16px] font-medium leading-[20px]">
           <colgroup>
-            <col className="w-[5%]" />
-            <col className="w-[8%]" />
-            <col className="w-[14%]" />
-            <col className="w-[12%]" />
-            <col className="w-[14%]" />
-            <col className="w-[22%]" />
-            <col className="w-[6%]" />
-            <col className="w-[8%]" />
-            <col className="w-[6%]" />
-            <col className="w-[5%]" />
+            <col className="w-[5.7%]" />
+            <col className="w-[8.7%]" />
+            <col className="w-[14.4%]" />
+            <col className="w-[16%]" />
+            <col className="w-[18.2%]" />
+            <col className="w-[16.2%]" />
+            <col className="w-[11.5%]" />
+            <col className="w-[9.3%]" />
           </colgroup>
           <thead>
-            <tr>
-              <th className="is-center">번호</th>
-              <th>
-                <SortButton label="고객명" active={sortKey === "name"} dir={sortDir} onClick={() => toggleSort("name")} />
-              </th>
-              <th>연락처</th>
-              <th>담당 디자이너</th>
-              <th>최근 시술</th>
-              <th className="is-visit">
-                <SortButton
-                  label="최근 방문일"
-                  active={sortKey === "date"}
-                  dir={sortDir}
-                  onClick={() => toggleSort("date")}
+            <tr className="border-b-[1.5px] border-[#C9C3BB] text-[15px] font-bold text-[#9A948C]">
+              <th className="py-3 pl-1 font-bold">
+                <CheckBox
+                  checked={allPageSelected}
+                  mixed={!allPageSelected && somePageSelected}
+                  onChange={togglePage}
+                  label="현재 페이지 전체 선택"
                 />
               </th>
-              <th className="is-center">방문 횟수</th>
-              <th>누적 매출</th>
-              <th>상태</th>
-              <th>관리</th>
+              <th className="py-3 font-bold">
+                <button type="button" onClick={() => toggleSort("name")} className="inline-flex items-center gap-1">
+                  고객명
+                  <Icon src="/admin-icons/lnb/chevron-down.png" className="h-[12px] w-[12px]" />
+                </button>
+              </th>
+              <th className="py-3 font-bold">연락처</th>
+              <th className="py-3 font-bold">담당자</th>
+              <th className="py-3 font-bold">최근 시술</th>
+              <th className="py-3 font-bold">
+                <button type="button" onClick={() => toggleSort("date")} className="inline-flex items-center gap-1">
+                  최근 시술일
+                  <Icon src="/admin-icons/lnb/chevron-down.png" className="h-[12px] w-[12px]" />
+                </button>
+              </th>
+              <th className="py-3 font-bold">발송 상태</th>
+              <th className="py-3 text-right font-bold">관리</th>
             </tr>
           </thead>
           {!emptyDirectory && !noMatch ? (
             <tbody>
-              {pageRows.map((row, idx) => {
-                const state = customerState(row);
-                const visit = formatVisit(row.lastVisitDate, row.daysSince);
-                const serviceText = row.services.filter(Boolean).join(" / ");
+              {pageRows.map((row) => {
+                const on = selected.has(row.phone);
+                const status = STATUS_META[row.sendStatus];
                 return (
                   <tr
                     key={row.phone}
-                    onClick={() => router.push(customerProfileHref(row.phone))}
-                    className="cursor-pointer"
+                    className={clsx(
+                      "border-b border-[#F3EFEA]",
+                      on ? "bg-[#F4EFE9]" : "bg-white"
+                    )}
                   >
-                    <td className="member-cell-num is-center">{idx + 1}</td>
-                    <td className="member-cell-name">{row.name || <Empty />}</td>
-                    <td className="member-cell-sub whitespace-nowrap tabular-nums">
-                      {row.phone ? formatPhone(row.phone) : <Empty />}
+                    <td className="py-[15px] pl-1">
+                      <CheckBox
+                        checked={on}
+                        onChange={() => toggleRow(row.phone)}
+                        label={`${row.name} 선택`}
+                      />
                     </td>
-                    <td className="member-cell-sub">{row.artistName || <Empty />}</td>
-                    <td className="member-cell-content truncate">{serviceText || <Empty />}</td>
-                    <td className="member-cell-visit is-visit whitespace-nowrap tabular-nums">{visit ?? <Empty />}</td>
-                    <td className="member-cell-content is-center tabular-nums">
-                      {row.visitCount.toLocaleString("ko-KR")}회
+                    <td className="truncate py-[15px] pr-3 font-medium">{row.name}</td>
+                    <td className="truncate py-[15px] pr-3 font-medium text-[#3A3A3A]">{formatPhone(row.phone)}</td>
+                    <td className="truncate py-[15px] pr-3 font-medium">{row.artistName}</td>
+                    <td className="truncate py-[15px] pr-3 font-medium">{row.services.join(" / ") || "—"}</td>
+                    <td className="truncate py-[15px] pr-3 font-medium">{formatVisit(row.lastVisitDate, row.daysSince)}</td>
+                    <td className="py-[15px]">
+                      <span className="inline-flex items-center gap-1.5 font-medium" style={{ color: status.color }}>
+                        <span className="h-[7px] w-[7px] rounded-full" style={{ background: status.color }} />
+                        {status.label}
+                      </span>
                     </td>
-                    <td className="member-cell-content tabular-nums">
-                      {row.lifetimeRevenue.toLocaleString("ko-KR")}원
-                    </td>
-                    <td>
-                      {state ? (
-                        <span className={clsx("inline-flex items-center gap-[6px]", STATE_META[state].className)}>
-                          <span className={clsx("h-[7px] w-[7px] rounded-full", STATE_META[state].dotClass)} />
-                          {STATE_META[state].label}
-                        </span>
-                      ) : (
-                        <Empty />
-                      )}
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        aria-label={`${row.name} 고객 분석 보기`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(customerProfileHref(row.phone));
-                        }}
-                        className="member-action-btn"
-                      >
-                        <Icon src="/admin-icons/lnb/chevron-right.png" className="h-[14px] w-[14px]" />
-                      </button>
-                    </td>
+                    <td className="py-[15px] text-right font-normal text-[#8A847C]">상세보기</td>
                   </tr>
                 );
               })}
             </tbody>
           ) : null}
         </table>
-        </div>
 
         {loading && rows.length === 0 ? (
-          <p className="py-16 text-center text-pc-md text-text3">불러오는 중…</p>
+          <p className="py-16 text-center text-[13px] text-[#8A847C]">불러오는 중…</p>
         ) : null}
 
         {emptyDirectory ? (
           <div className="py-16 text-center">
-            <p className="text-pc-md font-semibold text-text1">등록된 고객이 없습니다.</p>
-            <p className="mt-1 text-pc-base text-text3">우측 상단의 신규 등록을 눌러 첫 고객을 추가해 보세요.</p>
+            <p className="text-[14px] font-medium">등록된 고객이 없습니다.</p>
+            <p className="mt-1 text-[13px] text-[#8A847C]">
+              우측 상단의 신규 등록을 눌러 첫 고객을 추가해 보세요.
+            </p>
           </div>
         ) : null}
 
         {noMatch ? (
           <div className="py-16 text-center">
-            <p className="text-pc-md font-semibold text-text1">일치하는 고객이 없습니다.</p>
-            <p className="mt-1 text-pc-base text-text3">검색어를 확인하거나 필터를 초기화해 보세요.</p>
+            <p className="text-[14px] font-medium">일치하는 고객이 없습니다.</p>
+            <p className="mt-1 text-[13px] text-[#8A847C]">
+              검색어를 확인하거나 필터를 초기화해 보세요.
+            </p>
           </div>
         ) : null}
       </div>
 
-      <div className="member-pager-wrap">
-        <div className="member-pager">
-          <button
-            type="button"
-            aria-label="이전 페이지"
-            disabled={safePage <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="member-pager__arrow"
-          >
-            <ArrowIcon dir="left" />
-          </button>
-          <div className="member-pager__pages">
-            {buildPageList(safePage, pageCount).map((item, i) =>
-              item === "…" ? (
-                <span key={`gap-${i}`} className="member-pager__ellipsis">
-                  …
-                </span>
-              ) : (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setPage(item)}
-                  className={clsx("member-pager__page", item === safePage && "is-active")}
-                >
-                  {item}
-                </button>
-              )
-            )}
-          </div>
-          <button
-            type="button"
-            aria-label="다음 페이지"
-            disabled={safePage >= pageCount}
-            onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-            className="member-pager__arrow"
-          >
-            <ArrowIcon dir="right" />
-          </button>
-        </div>
+      <div className="mt-auto flex shrink-0 items-center justify-end gap-1 pt-5 text-[14px] text-[#8A847C]">
+        <PageBtn disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} label="이전">
+          <Icon src="/admin-icons/lnb/chevron-left.png" className="h-[14px] w-[14px]" />
+        </PageBtn>
+        {pageButtons(safePage, pageCount).map((item, i) =>
+          item === "…" ? (
+            <span key={`e-${i}`} className="px-1">
+              …
+            </span>
+          ) : (
+            <button
+              key={item}
+              type="button"
+              onClick={() => setPage(item)}
+              className={clsx(
+                "h-[28px] min-w-[28px] rounded-[6px] px-1",
+                item === safePage ? "font-medium text-[#1C1C1C]" : "hover:text-[#1C1C1C]"
+              )}
+            >
+              {item}
+            </button>
+          )
+        )}
+        <PageBtn
+          disabled={safePage >= pageCount}
+          onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+          label="다음"
+        >
+          <Icon src="/admin-icons/lnb/chevron-right.png" className="h-[14px] w-[14px]" />
+        </PageBtn>
       </div>
     </div>
   );
 }
 
-function buildPageList(current: number, total: number): Array<number | "…"> {
+function pageButtons(current: number, total: number): Array<number | "…"> {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-  if (current <= 4) return [1, 2, 3, 4, 5, "…", total];
-  if (current >= total - 3) return [1, "…", total - 4, total - 3, total - 2, total - 1, total];
-  return [1, "…", current - 1, current, current + 1, "…", total];
+  if (current > 5 && current < total) {
+    const around: Array<number | "…"> = [1, "…", current - 1, current, current + 1, "…", total];
+    return around.filter((n, i, arr) => n !== "…" || arr[i - 1] !== "…");
+  }
+  const items: Array<number | "…"> = [1, 2, 3, 4, 5, "…", total];
+  return items;
 }
 
-function ChevronDown({ open }: { open: boolean }) {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 24 24"
-      className={clsx("h-[18px] w-[18px] transition-transform", open && "rotate-180")}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  );
-}
-
-function ArrowIcon({ dir }: { dir: "left" | "right" }) {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 24 24"
-      className="h-[20px] w-[20px]"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2.75}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      {dir === "left" ? (
-        <>
-          <path d="m12 19-7-7 7-7" />
-          <path d="M19 12H5" />
-        </>
-      ) : (
-        <>
-          <path d="M5 12h14" />
-          <path d="m12 5 7 7-7 7" />
-        </>
-      )}
-    </svg>
-  );
-}
-
-function SortButton({
-  label,
-  active,
-  dir,
-  onClick
+function CheckBox({
+  checked,
+  mixed,
+  onChange,
+  label
 }: {
+  checked: boolean;
+  mixed?: boolean;
+  onChange: () => void;
   label: string;
-  active: boolean;
-  dir: "asc" | "desc";
-  onClick: () => void;
 }) {
   return (
-    <button type="button" onClick={onClick} className="relative inline-flex items-center">
-      {label}
-      <Icon
-        src="/admin-icons/lnb/chevron-down.png"
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={mixed ? "mixed" : checked}
+      aria-label={label}
+      onClick={onChange}
+      className={clsx(
+        "flex h-[18px] w-[18px] items-center justify-center rounded-[3px] border",
+        checked || mixed ? "border-[#1C1C1C] bg-[#1C1C1C] text-white" : "border-[#D5D0CA] bg-white"
+      )}
+    >
+      {checked ? <Icon src="/admin-icons/lnb/check.png" className="h-[12px] w-[12px]" /> : null}
+      {mixed && !checked ? <span className="h-[2px] w-[8px] bg-white" /> : null}
+    </button>
+  );
+}
+
+function FilterChip({
+  icon,
+  label,
+  count,
+  open,
+  onToggle,
+  children
+}: {
+  icon: string;
+  label: string;
+  count: number;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="relative w-max">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex h-[36px] w-max items-center gap-2 rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-3 text-[13px] font-semibold leading-none text-[#1C1C1C]"
+      >
+        <Icon src={icon} className="h-[15px] w-[15px] text-[#9A948C]" />
+        <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">{label}</span>
+        <span className="inline-flex h-[20px] min-w-[20px] items-center justify-center rounded-[4px] bg-[#F3EFEA] px-1 text-[12px] font-semibold leading-none text-[#9A948C]">
+          <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">{count}</span>
+        </span>
+        <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both] text-[#1C1C1C]">선택</span>
+        <Icon
+          src={open || count > 0 ? "/admin-icons/lnb/chevron-down-bold.png" : "/admin-icons/lnb/chevron-down.png"}
+          className={clsx(
+            "h-[16px] w-[16px] text-[#9A948C]",
+            open && "rotate-180"
+          )}
+        />
+      </button>
+      {open ? (
+        <div className="absolute left-0 top-[42px] z-30 w-max min-w-full overflow-auto rounded-[12px] border border-[#EFEBE6] bg-white py-2 shadow-[0_8px_24px_rgba(28,28,28,0.08)]">
+          {children}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function FilterCheck({
+  label,
+  checked,
+  onChange
+}: {
+  label: string;
+  checked: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      className="flex w-full items-center gap-4 px-5 py-2 text-left text-[14px] text-[#1C1C1C] hover:bg-[#F6F4F0]"
+    >
+      <span
         className={clsx(
-          "absolute left-full top-1/2 ml-1 h-[12px] w-[12px] -translate-y-1/2",
-          active && dir === "asc" && "rotate-180"
+          "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[3px] border",
+          checked ? "border-[#1C1C1C] bg-[#1C1C1C] text-white" : "border-[#D5D0CA]"
         )}
-      />
+      >
+        {checked ? <Icon src="/admin-icons/lnb/check.png" className="h-[10px] w-[10px]" /> : null}
+      </span>
+      {label}
+    </button>
+  );
+}
+
+function PageBtn({
+  disabled,
+  onClick,
+  label,
+  children
+}: {
+  disabled: boolean;
+  onClick: () => void;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className="flex h-[28px] w-[28px] items-center justify-center disabled:opacity-30"
+    >
+      {children}
     </button>
   );
 }

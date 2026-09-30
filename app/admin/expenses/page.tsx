@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { clsx } from "clsx";
+import FinanceNav from "@/components/admin/FinanceNav";
 import { EXPENSE_CATEGORIES, expenseCategoryLabel } from "@/lib/admin/expense-categories";
 import type {
   ExpenseRow,
@@ -248,6 +249,7 @@ export default function AdminExpensesPage() {
 
   return (
     <div className="font-sans-kr text-[#1C1C1C]">
+      <FinanceNav />
       <h1 className="mt-8 flex items-baseline gap-2 text-[30px] font-bold leading-none tracking-[-0.02em]">
         비용
         <span className="text-[15px] font-normal text-[#8A847C]">

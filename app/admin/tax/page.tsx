@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { clsx } from "clsx";
+import FinanceNav from "@/components/admin/FinanceNav";
 import type { TaxDashboard } from "@/lib/admin/tax-data";
 
 function won(value: number) {
@@ -45,6 +46,7 @@ export default function AdminTaxPage() {
 
   return (
     <div className="font-sans-kr text-[#1C1C1C]">
+      <FinanceNav />
       <h1 className="mt-8 flex items-baseline gap-2 text-[30px] font-bold leading-none tracking-[-0.02em]">
         세무
         <span className="text-[15px] font-normal text-[#8A847C]">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import FinanceNav from "@/components/admin/FinanceNav";
 import { todayKst } from "@/lib/admin/sales-data";
 
 function parseYmdParts(ymd: string) {
@@ -77,6 +78,7 @@ export default function AdminExportPage() {
 
   return (
     <div className="font-sans-kr text-[#1C1C1C]">
+      <FinanceNav />
       <h1 className="mt-8 flex items-baseline gap-2 text-[30px] font-bold leading-none tracking-[-0.02em]">
         내보내기
         <span className="text-[15px] font-normal text-[#8A847C]">월 마감 · 세무 대리인 전달용</span>

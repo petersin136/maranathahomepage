@@ -11,14 +11,6 @@ import { BOOKING_STATUS_OPTIONS, cancelReasonLabel } from "@/lib/admin/booking-l
 import { useBookingActions } from "@/lib/admin/useBookingActions";
 import type { BookingRow, BookingStatus, PaymentMethod } from "@/lib/bookings/types";
 
-const STATUS_TONE: Record<BookingStatus, string> = {
-  pending: "booking-status-pending",
-  confirmed: "booking-status-ok",
-  completed: "booking-status-ok",
-  cancelled: "booking-status-bad",
-  noshow: "booking-status-bad"
-};
-
 const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
   card: "카드",
   cash: "현금",
@@ -110,48 +102,117 @@ export default function AdminBookingDetailPage() {
       ? `${booking.payment_method ? PAYMENT_METHOD_LABEL[booking.payment_method] : "결제"} · ${booking.final_amount.toLocaleString("ko-KR")}원`
       : "없음";
 
-  const pickStatus = (next: BookingStatus) => {
-    if (next === booking.status || busy) return;
-    void patch({ status: next });
-  };
-
   return (
-    <div className={clsx("member-panel booking-detail", booking.status === "cancelled" && "is-cancelled")}>
-      <div className="member-toolbar booking-detail__bar">
-        <Link href="/admin/bookings" className="booking-detail__back">
-          ← 목록
-        </Link>
-        <h1 className="booking-detail__title">
-          예약 상세
-          <span className="booking-detail__name">{booking.customer_name}</span>
-        </h1>
-        <div className="booking-status-picks" role="group" aria-label="예약 상태">
-          {BOOKING_STATUS_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              disabled={busy}
-              onClick={() => pickStatus(opt.value)}
-              className={clsx(
-                "booking-status-picks__btn",
-                STATUS_TONE[opt.value],
-                booking.status === opt.value && "is-on"
-              )}
-            >
-              <span className="booking-status__dot" />
-              {opt.label}
-            </button>
-          ))}
+    <div className="font-sans-kr text-[#1C1C1C]">
+      <Link href="/admin/bookings" className="text-[15px] text-[#8A847C]">
+        ← 목록
+      </Link>
+      <h1 className="mt-6 flex items-baseline gap-2 text-[30px] font-bold leading-none tracking-[-0.02em]">
+        예약 상세
+        <span className="text-[15px] font-normal text-[#8A847C]">{booking.customer_name}</span>
+      </h1>
+
+      {error ? <p className="mt-4 text-[13px] text-[#E24B4B]">{error}</p> : null}
+
+      <div className={clsx("mt-10", booking.status === "cancelled" && "opacity-70")}>
+        <dl>
+          <Field label="예약일" value={booking.booking_date} />
+          <Field label="시간" value={booking.booking_time} />
+          <Field label="담당" value={booking.artist_name || booking.artist_id} />
+          <Field label="시술" value={(booking.service_names || []).join(", ") || "—"} />
+          <Field label="고객" value={booking.customer_name} />
+          <Field
+            label="성별"
+            value={booking.customer_gender === "W" ? "여" : booking.customer_gender === "M" ? "남" : "—"}
+          />
+          <Field label="연락처" value={booking.customer_phone} />
+          <Field
+            label="예상 금액"
+            value={booking.total_amount != null ? `${booking.total_amount.toLocaleString("ko-KR")}원` : "—"}
+          />
+          <Field
+            label="예약금"
+            value={booking.deposit_amount != null ? `${booking.deposit_amount.toLocaleString("ko-KR")}원` : "—"}
+          />
+          <Field label="결제" value={payment} />
+          <Field label="고객 메모" value={request || "없음"} />
+        </dl>
+        {booking.status === "cancelled" ? (
+          <p className="mt-3 text-[15px] leading-[24px]">
+            <span className="mr-3 font-bold text-[#9A948C]">취소 사유</span>
+            {reason || "—"}
+          </p>
+        ) : null}
+
+        <div className="mt-8 border-t border-[#F3EFEA] pt-6">
+          <p className="text-[15px] font-bold text-[#9A948C]">상태</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {BOOKING_STATUS_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  if (opt.value === booking.status) return;
+                  if (opt.value === "cancelled") {
+                    actions.openCancel(booking);
+                    return;
+                  }
+                  if (opt.value === "completed") {
+                    actions.openPayment(booking);
+                    return;
+                  }
+                  void actions.updateStatus(booking, opt.value as BookingStatus);
+                }}
+                className={clsx(
+                  "inline-flex h-[36px] items-center rounded-[8px] border-[1.5px] px-3 text-[14px] font-bold",
+                  booking.status === opt.value
+                    ? "border-[#2F3A2F] bg-[#2F3A2F] text-white"
+                    : "border-[#9A948C] bg-white text-[#1C1C1C]"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="booking-detail__tools">
+
+        <div className="mt-6 flex items-center justify-between border-t border-[#F3EFEA] pt-6">
+          <p className="text-[15px] font-bold text-[#9A948C]">예약금 입금</p>
           <button
             type="button"
             disabled={busy}
             onClick={() => patch({ deposit_paid: !booking.deposit_paid })}
-            className={clsx("booking-detail__deposit", booking.deposit_paid && "is-paid")}
+            className={clsx(
+              "inline-flex h-[36px] items-center rounded-[8px] border-[1.5px] px-3 text-[14px] font-bold",
+              booking.deposit_paid
+                ? "border-[#2F3A2F] bg-[#2F3A2F] text-white"
+                : "border-[#9A948C] bg-white text-[#1C1C1C]"
+            )}
           >
             {booking.deposit_paid ? "입금 완료" : "미입금"}
           </button>
+        </div>
+
+        <div className="mt-6 border-t border-[#F3EFEA] pt-6">
+          <p className="text-[15px] font-bold text-[#9A948C]">관리 메모</p>
+          <textarea
+            value={memo}
+            onChange={(e) => setMemo(e.target.value)}
+            rows={4}
+            className="mt-3 w-full rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-3 py-2 text-[15px] outline-none"
+          />
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => patch({ admin_memo: memo })}
+            className="mt-3 inline-flex h-[40px] items-center rounded-[8px] bg-[#2F3A2F] px-4 text-[14px] font-bold text-white disabled:opacity-40"
+          >
+            {saving ? "저장 중..." : "메모 저장"}
+          </button>
+        </div>
+
+        <div className="mt-6 flex items-center justify-end border-t border-[#F3EFEA] pt-6">
           <BookingActionButtons
             booking={booking}
             busy={busy}
@@ -160,71 +221,6 @@ export default function AdminBookingDetailPage() {
             onDelete={actions.openDelete}
           />
         </div>
-      </div>
-
-      {error ? <p className="text-[13px] text-[#E24B4B]">{error}</p> : null}
-
-      <div className="member-card">
-        <table className="member-table booking-detail-table">
-          <colgroup>
-            <col className="w-[14%]" />
-            <col className="w-[36%]" />
-            <col className="w-[14%]" />
-            <col className="w-[36%]" />
-          </colgroup>
-          <tbody>
-            <tr>
-              <td className="booking-detail-table__k">예약일</td>
-              <td className="member-cell-content tabular-nums">{booking.booking_date}</td>
-              <td className="booking-detail-table__k">고객</td>
-              <td className="member-cell-name">{booking.customer_name}</td>
-            </tr>
-            <tr>
-              <td className="booking-detail-table__k">시간</td>
-              <td className="member-cell-content tabular-nums">{booking.booking_time.slice(0, 5)}</td>
-              <td className="booking-detail-table__k">성별</td>
-              <td className="member-cell-content">
-                {booking.customer_gender === "W" ? "여" : booking.customer_gender === "M" ? "남" : "—"}
-              </td>
-            </tr>
-            <tr>
-              <td className="booking-detail-table__k">담당</td>
-              <td className="member-cell-content">{booking.artist_name || booking.artist_id}</td>
-              <td className="booking-detail-table__k">연락처</td>
-              <td className="member-cell-sub tabular-nums">{formatPhone(booking.customer_phone)}</td>
-            </tr>
-            <tr>
-              <td className="booking-detail-table__k">시술</td>
-              <td className="member-cell-content">{(booking.service_names || []).join(", ") || "—"}</td>
-              <td className="booking-detail-table__k">고객 메모</td>
-              <td className="member-cell-content">{request || "없음"}</td>
-            </tr>
-            <tr>
-              <td className="booking-detail-table__k">예상 금액</td>
-              <td className="member-cell-content tabular-nums">
-                {booking.total_amount != null ? `${booking.total_amount.toLocaleString("ko-KR")}원` : "—"}
-              </td>
-              <td className="booking-detail-table__k">예약금</td>
-              <td className="member-cell-content tabular-nums">
-                {booking.deposit_amount != null ? `${booking.deposit_amount.toLocaleString("ko-KR")}원` : "—"}
-              </td>
-            </tr>
-            <tr>
-              <td className="booking-detail-table__k">결제</td>
-              <td className="member-cell-content">{payment}</td>
-              <td className="booking-detail-table__k">{booking.status === "cancelled" ? "취소 사유" : ""}</td>
-              <td className="member-cell-content">{booking.status === "cancelled" ? reason || "—" : ""}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div className="booking-detail__memo">
-        <p className="booking-detail__label">관리 메모</p>
-        <textarea value={memo} onChange={(e) => setMemo(e.target.value)} aria-label="관리 메모" />
-        <button type="button" disabled={busy} onClick={() => patch({ admin_memo: memo })} className="booking-detail__save">
-          {saving ? "저장 중" : "메모 저장"}
-        </button>
       </div>
 
       {actions.confirm ? (
@@ -251,10 +247,11 @@ export default function AdminBookingDetailPage() {
   );
 }
 
-function formatPhone(phone: string) {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.length === 11) return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
-  if (digits.length === 10) return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
-  return phone;
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline gap-8 border-b border-[#F3EFEA] py-[15px]">
+      <dt className="w-[120px] shrink-0 text-[15px] font-bold text-[#9A948C]">{label}</dt>
+      <dd className="min-w-0 text-[16px] font-medium">{value}</dd>
+    </div>
+  );
 }
-
