@@ -258,7 +258,7 @@ function FieldTrigger({
   display: string;
   icon: "calendar" | "chevron";
   onClick: () => void;
-  buttonRef: RefObject<HTMLButtonElement | null>;
+  buttonRef: RefObject<HTMLButtonElement>;
 }) {
   return (
     <button
@@ -284,8 +284,8 @@ function FieldTrigger({
 
 function useMenuPlace(
   open: boolean,
-  anchorRef: RefObject<HTMLButtonElement | null>,
-  popRef: RefObject<HTMLDivElement | null>,
+  anchorRef: RefObject<HTMLButtonElement>,
+  popRef: RefObject<HTMLDivElement>,
   onClose: () => void,
   width?: number
 ) {
