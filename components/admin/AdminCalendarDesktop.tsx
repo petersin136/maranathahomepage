@@ -5,9 +5,9 @@ import Link from "next/link";
 import { clsx } from "clsx";
 import type { CalendarTone } from "@/lib/admin/calendar-tone";
 import { CANDIDATE_TIMES } from "@/lib/booking/slots";
+import { CLOSING_MINUTES, OPEN_MINUTES } from "@/lib/booking/business-hours";
 import {
   BLOCKING_STATUSES,
-  CLOSING_MINUTES,
   filterAvailableTimes,
   parseTimeToMinutes,
   type OccupiedInterval
@@ -39,7 +39,6 @@ export type CalDayBooking = {
   memo: string;
 };
 
-const OPEN_MINUTES = 10 * 60;
 const SLOT_MINUTES = 30;
 const SLOT_HEIGHT = 48;
 const SLOT_COUNT = (CLOSING_MINUTES - OPEN_MINUTES) / SLOT_MINUTES;

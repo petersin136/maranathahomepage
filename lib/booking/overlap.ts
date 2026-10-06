@@ -1,6 +1,7 @@
-/** 마감 시각 — 예약은 start + duration <= 20:00 인 경우만 허용 */
-export const CLOSING_TIME = "20:00";
-export const CLOSING_MINUTES = 20 * 60;
+import { CLOSING_MINUTES } from "./business-hours";
+
+/** 마감 시각 — 예약은 start + duration <= CLOSING_TIME 인 경우만 허용 */
+export { CLOSING_TIME, CLOSING_MINUTES } from "./business-hours";
 
 /** duration 컬럼이 없을 때 시술 합에서 빼는 버퍼(시술당 분) */
 export const PER_SERVICE_BUFFER_MINUTES = 10;
