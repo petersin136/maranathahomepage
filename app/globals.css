@@ -22,6 +22,18 @@
   --hu-content: 1178px;
   --hu-side: 131px;
 
+  --booking-col-check: 40px;
+  --booking-col-date: 132px;
+  --booking-col-name: 88px;
+  --booking-col-phone: 128px;
+  --booking-col-artist: 96px;
+  --booking-col-pay: 128px;
+  --booking-col-reason: 168px;
+  --booking-col-status: 104px;
+  --booking-col-manage: 64px;
+  --booking-cell-padx: 12px;
+  --booking-table-inset: 24px;
+
   --font-serif: var(--font-bodoni), "Times New Roman", serif;
   --font-sans-en: var(--font-montserrat), system-ui, sans-serif;
   --font-sans-kr: "Pretendard Variable", "Pretendard", system-ui, sans-serif;
@@ -32,7 +44,7 @@
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
-  src: url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable.woff2")
+  src: url("https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/woff2/PretendardVariable.woff2")
     format("woff2-variations");
 }
 

@@ -1,0 +1,716 @@
+/* 캘린더 PC(≥1440) — 1024 시안 × 1.40625 */
+
+.ADMIN-CALENDAR {
+  padding-left: 6px;
+  padding-right: 8px;
+  padding-bottom: 40px;
+  font-family: "Pretendard Variable", "Pretendard", system-ui, sans-serif;
+  letter-spacing: -0.02em;
+  color: #1c1a19;
+}
+
+.ADMIN-CALENDAR .cal-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.ADMIN-CALENDAR .cal-kr,
+.ADMIN-CALENDAR .cal-title,
+.ADMIN-CALENDAR .cal-tab-label,
+.ADMIN-CALENDAR .cal-staff-label,
+.ADMIN-CALENDAR .cal-staff-select,
+.ADMIN-CALENDAR .cal-new-label,
+.ADMIN-CALENDAR .cal-avatar-char,
+.ADMIN-CALENDAR .cal-artist-name,
+.ADMIN-CALENDAR .cal-artist-role,
+.ADMIN-CALENDAR .cal-closed-badge-label,
+.ADMIN-CALENDAR .cal-booking-name,
+.ADMIN-CALENDAR .cal-booking-svc,
+.ADMIN-CALENDAR .cal-booking-memo,
+.ADMIN-CALENDAR .cal-lunch-label,
+.ADMIN-CALENDAR .cal-empty-title,
+.ADMIN-CALENDAR .cal-empty-desc,
+.ADMIN-CALENDAR .cal-empty-btn-label {
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+.ADMIN-CALENDAR .cal-date-text,
+.ADMIN-CALENDAR .cal-staff-count-num,
+.ADMIN-CALENDAR .cal-time-label,
+.ADMIN-CALENDAR .cal-booking-new,
+.ADMIN-CALENDAR .cal-booking-time {
+  text-box-trim: trim-both;
+  text-box-edge: text alphabetic;
+}
+
+/* ── 헤더 ───────────────────────────── */
+.ADMIN-CALENDAR .cal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.ADMIN-CALENDAR .cal-title {
+  margin-top: 31px;
+  font-size: 27px;
+  font-weight: 600;
+  line-height: 27px;
+  color: #131313;
+}
+
+.ADMIN-CALENDAR .cal-search {
+  display: flex;
+  align-items: center;
+  width: 280px;
+  height: 34px;
+  margin-top: 25px;
+  padding-left: 14px;
+  padding-right: 14px;
+  border: 1px solid #bbb8b1;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.ADMIN-CALENDAR .cal-search-icon {
+  width: 14px;
+  height: 14px;
+  color: #5c5c5c;
+}
+
+.ADMIN-CALENDAR .cal-search-input {
+  min-width: 0;
+  flex: 1;
+  margin-left: 7px;
+  height: 20px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: 400 14px/20px "Pretendard Variable", "Pretendard", system-ui, sans-serif;
+  letter-spacing: -0.02em;
+  color: #1c1a19;
+}
+
+.ADMIN-CALENDAR .cal-search-input::placeholder {
+  color: #6f6e6a;
+}
+
+/* ── 탭 ─────────────────────────────── */
+.ADMIN-CALENDAR .cal-tabs {
+  display: flex;
+  margin-top: 64px;
+  border-bottom: 1px solid #e3e3ce;
+}
+
+.ADMIN-CALENDAR .cal-tab {
+  display: flex;
+  justify-content: center;
+  position: relative;
+  width: 76px;
+  padding-bottom: 19px;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 15px;
+  color: #807f7b;
+}
+
+.ADMIN-CALENDAR .cal-tab.is-active {
+  font-weight: 600;
+  color: #272727;
+}
+
+.ADMIN-CALENDAR .cal-tab.is-active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1.5px;
+  background: #181818;
+}
+
+/* ── 툴바 ───────────────────────────── */
+.ADMIN-CALENDAR .cal-toolbar {
+  display: flex;
+  align-items: center;
+  margin-top: 32px;
+}
+
+.ADMIN-CALENDAR .cal-chip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 34px;
+  border: 1px solid #c4c3b8;
+  border-radius: 4px;
+  background: #fff;
+  color: #1c1a19;
+}
+
+.ADMIN-CALENDAR .cal-date-chip {
+  width: 202px;
+  padding-left: 14px;
+  padding-right: 11px;
+}
+
+.ADMIN-CALENDAR .cal-date-icon {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  color: #8e8b86;
+}
+
+.ADMIN-CALENDAR .cal-date-text {
+  margin-left: 8px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 14px;
+  color: #1c1a19;
+}
+
+.ADMIN-CALENDAR .cal-chip-chevron {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-left: auto;
+  color: #939391;
+}
+
+.ADMIN-CALENDAR .cal-date-input {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ADMIN-CALENDAR .cal-staff-wrap {
+  position: relative;
+  margin-left: 7px;
+}
+
+.ADMIN-CALENDAR .cal-staff-chip {
+  width: 186px;
+  padding-left: 16px;
+  padding-right: 13px;
+}
+
+.ADMIN-CALENDAR .cal-staff-chip.is-selected {
+  border-color: #81786d;
+}
+
+.ADMIN-CALENDAR .cal-filter-icon {
+  width: 15px;
+  height: 15px;
+  color: #777672;
+}
+
+.ADMIN-CALENDAR .cal-staff-label {
+  margin-left: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 14px;
+  color: #31302d;
+}
+
+.ADMIN-CALENDAR .cal-staff-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-left: 8px;
+  background: #f4efe9;
+}
+
+.ADMIN-CALENDAR .cal-staff-count-num {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 14px;
+  color: #9a948c;
+}
+
+.ADMIN-CALENDAR .cal-staff-chip.is-selected .cal-staff-count-num {
+  color: #1c1a19;
+}
+
+.ADMIN-CALENDAR .cal-staff-select {
+  margin-left: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 14px;
+  color: #31302d;
+}
+
+.ADMIN-CALENDAR .cal-staff-chevron {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-left: auto;
+  color: #939391;
+}
+
+.ADMIN-CALENDAR .cal-staff-chip.is-selected .cal-staff-chevron {
+  color: #1c1a19;
+}
+
+.ADMIN-CALENDAR .cal-staff-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.ADMIN-CALENDAR .cal-staff-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  min-width: 100%;
+  padding: 6px 0;
+  border: 1px solid #c4c0ba;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.ADMIN-CALENDAR .cal-staff-option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px 15px;
+  font-size: 14px;
+  line-height: 18px;
+  white-space: nowrap;
+  color: #1c1a19;
+  text-align: left;
+}
+
+.ADMIN-CALENDAR .cal-staff-option:hover {
+  background: #f8f7f3;
+}
+
+.ADMIN-CALENDAR .cal-staff-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-right: 10px;
+  border: 1px solid #c4c0ba;
+  border-radius: 2px;
+  color: #fff;
+}
+
+.ADMIN-CALENDAR .cal-staff-check.is-checked {
+  border-color: #2c3a2e;
+  background: #2c3a2e;
+}
+
+.ADMIN-CALENDAR .cal-staff-check-icon {
+  width: 10px;
+  height: 10px;
+}
+
+.ADMIN-CALENDAR .cal-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  margin-left: 7px;
+  border: 1px solid #e0ded4;
+  border-radius: 4px;
+  background: #fff;
+  color: #8c8c8a;
+}
+
+.ADMIN-CALENDAR .cal-refresh-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.ADMIN-CALENDAR .cal-new {
+  display: flex;
+  align-items: center;
+  width: 136px;
+  padding-left: 37px;
+  height: 34px;
+  margin-left: auto;
+  border-radius: 4px;
+  background: #2c3a2e;
+  color: #fff;
+  cursor: default;
+}
+
+.ADMIN-CALENDAR .cal-new.is-disabled {
+  background: #e4ddd3;
+  color: #8a8379;
+}
+
+.ADMIN-CALENDAR .cal-new-icon {
+  width: 11px;
+  height: 11px;
+}
+
+.ADMIN-CALENDAR .cal-new-label {
+  margin-left: 9px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 14px;
+}
+
+/* ── 빈 상태 ─────────────────────────── */
+.ADMIN-CALENDAR .cal-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 218px;
+}
+
+.ADMIN-CALENDAR .cal-empty-title {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 16px;
+  color: #1c1a19;
+}
+
+.ADMIN-CALENDAR .cal-empty-desc {
+  margin-top: 13px;
+  letter-spacing: 0;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 21px;
+  text-align: center;
+  color: #807b77;
+}
+
+.ADMIN-CALENDAR .cal-empty-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 186px;
+  height: 45px;
+  margin-top: 35px;
+  border-radius: 4px;
+  background: #2c3a2e;
+  color: #fff;
+}
+
+.ADMIN-CALENDAR .cal-empty-btn-label {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 15px;
+}
+
+/* ── 일간 그리드 ─────────────────────── */
+.ADMIN-CALENDAR .cal-grid {
+  margin-top: 35px;
+  border-top: 1px solid #c0bbb0;
+}
+
+.ADMIN-CALENDAR .cal-grid-head {
+  display: flex;
+  height: 69px;
+}
+
+.ADMIN-CALENDAR .cal-time-head {
+  width: 83px;
+  flex-shrink: 0;
+}
+
+.ADMIN-CALENDAR .cal-artist-head {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1 1 0;
+  padding-top: 2px;
+  padding-left: 20px;
+  border-left: 1px solid #f2f2ee;
+}
+
+.ADMIN-CALENDAR .cal-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #7f726a;
+}
+
+.ADMIN-CALENDAR .cal-avatar-char {
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 18px;
+  color: #fff;
+}
+
+.ADMIN-CALENDAR .cal-artist-name {
+  margin-left: 11px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 15px;
+  white-space: nowrap;
+  color: #141414;
+}
+
+.ADMIN-CALENDAR .cal-artist-role {
+  margin-left: 7px;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 15px;
+  white-space: nowrap;
+  color: #777672;
+}
+
+.ADMIN-CALENDAR .cal-closed-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 21px;
+  margin-left: 10px;
+  padding-left: 8px;
+  padding-right: 8px;
+  border-radius: 11px;
+  background: #2c3a2e;
+}
+
+.ADMIN-CALENDAR .cal-closed-badge-label {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 12px;
+  color: #fff;
+}
+
+.ADMIN-CALENDAR .cal-grid-body {
+  position: relative;
+  display: flex;
+}
+
+.ADMIN-CALENDAR .cal-slot-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  pointer-events: none;
+}
+
+.ADMIN-CALENDAR .cal-slot-line.is-hour {
+  background: #dcdccf;
+}
+
+.ADMIN-CALENDAR .cal-slot-line.is-half {
+  background: #f2f2f0;
+}
+
+.ADMIN-CALENDAR .cal-slot-line:first-child {
+  background: #cecec0;
+}
+
+.ADMIN-CALENDAR .cal-time-col {
+  position: relative;
+  width: 83px;
+  flex-shrink: 0;
+}
+
+.ADMIN-CALENDAR .cal-time-label {
+  position: absolute;
+  right: 7px;
+  letter-spacing: 0;
+  margin-top: 5px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 14px;
+  color: #3d3c3a;
+}
+
+.ADMIN-CALENDAR .cal-col {
+  position: relative;
+  min-width: 0;
+  flex: 1 1 0;
+  border-left: 1px solid #f2f2ee;
+}
+
+.ADMIN-CALENDAR .cal-cell {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  height: 48px;
+  padding-top: 3px;
+  padding-bottom: 2px;
+}
+
+.ADMIN-CALENDAR .cal-cell-add {
+  display: none;
+}
+
+.ADMIN-CALENDAR .cal-cell:hover::before {
+  content: "";
+  position: absolute;
+  inset: 3px 0 2px;
+  border-radius: 4px;
+  background: #f8f7f3;
+}
+
+.ADMIN-CALENDAR .cal-cell:hover .cal-cell-add {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin-top: 0.5px;
+  border-radius: 4px;
+  background: #2c3a2e;
+  color: #fff;
+  transform: translate(-50%, -50%);
+  cursor: default;
+}
+
+.ADMIN-CALENDAR .cal-cell-add-icon {
+  width: 12px;
+  height: 12px;
+}
+
+.ADMIN-CALENDAR .cal-lunch {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+
+.ADMIN-CALENDAR .cal-lunch-label {
+  position: absolute;
+  top: 9px;
+  left: 18px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 14px;
+  white-space: nowrap;
+  color: #2e2d2b;
+}
+
+.ADMIN-CALENDAR .cal-booking {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  display: block;
+  padding-top: 3px;
+  padding-bottom: 2px;
+  text-align: left;
+}
+
+.ADMIN-CALENDAR .cal-booking-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  height: 100%;
+  padding-top: 18px;
+  padding-left: 16px;
+  padding-right: 16px;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.ADMIN-CALENDAR .cal-booking.is-short .cal-booking-inner {
+  justify-content: center;
+  padding-top: 0;
+}
+
+.ADMIN-CALENDAR .cal-booking.is-pending .cal-booking-inner {
+  border: 1px dashed currentColor;
+}
+
+.ADMIN-CALENDAR .cal-booking-head {
+  display: flex;
+  align-items: flex-end;
+}
+
+.ADMIN-CALENDAR .cal-booking-name {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 13px;
+  white-space: nowrap;
+  color: #191814;
+}
+
+.ADMIN-CALENDAR .cal-booking-new {
+  margin-left: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 11px;
+}
+
+.ADMIN-CALENDAR .cal-booking-svc {
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 13px;
+  white-space: nowrap;
+  color: #262523;
+}
+
+.ADMIN-CALENDAR .cal-booking-time {
+  margin-top: 9px;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 13px;
+  white-space: nowrap;
+  color: #828385;
+}
+
+.ADMIN-CALENDAR .cal-booking-memo {
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 13px;
+  white-space: nowrap;
+  color: #7c6f68;
+}
+
+.ADMIN-CALENDAR .cal-booking.tone-cut .cal-booking-inner { background: #f5f4f0; }
+.ADMIN-CALENDAR .cal-booking.tone-cut { color: #7c7a76; }
+.ADMIN-CALENDAR .cal-booking.tone-clinic .cal-booking-inner { background: #eef5fb; }
+.ADMIN-CALENDAR .cal-booking.tone-clinic { color: #4c7ca2; }
+.ADMIN-CALENDAR .cal-booking.tone-consult .cal-booking-inner { background: #f7f0f7; }
+.ADMIN-CALENDAR .cal-booking.tone-consult { color: #786676; }
+.ADMIN-CALENDAR .cal-booking.tone-perm .cal-booking-inner { background: #fdf2ee; }
+.ADMIN-CALENDAR .cal-booking.tone-perm { color: #bc7a64; }
+.ADMIN-CALENDAR .cal-booking.tone-color .cal-booking-inner { background: #edf6f3; }
+.ADMIN-CALENDAR .cal-booking.tone-color { color: #4f756a; }
+
+.ADMIN-CALENDAR .cal-booking-new {
+  color: inherit;
+}
+
+.ADMIN-CALENDAR .cal-now {
+  position: absolute;
+  left: 83px;
+  right: 0;
+  height: 1px;
+  background: #bc5f38;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.ADMIN-CALENDAR .cal-now-dot {
+  position: absolute;
+  top: -4px;
+  left: -4.5px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #bc5f38;
+}
+
+.ADMIN-CALENDAR .cal-legacy {
+  margin-top: 33px;
+}

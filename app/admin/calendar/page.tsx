@@ -8,7 +8,9 @@ import BookingConfirmModal from "@/components/admin/BookingConfirmModal";
 import { BOOKING_STATUS_LABEL, cancelReasonLabel } from "@/lib/admin/booking-labels";
 import { splitIntlPhone } from "@/lib/admin/booking-display";
 import { useBookingActions, type BookingActionTarget } from "@/lib/admin/useBookingActions";
+import { useAdminViewport } from "@/lib/admin/use-admin-viewport";
 import type { BookingRow } from "@/lib/bookings/types";
+import AdminCalendarDesktop, { type CalTab } from "@/components/admin/AdminCalendarDesktop";
 
 type CalBooking = {
   id: string;
@@ -116,21 +118,115 @@ function phoneText(phone: string) {
   return parts.countryCode ? `${parts.countryCode} ${parts.national}` : parts.national;
 }
 
+function useBookingDetail(detailId: string | null, tick: number) {
+  const [detail, setDetail] = useState<BookingRow | null>(null);
+  const [customer, setCustomer] = useState<CustomerSnapshot | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!detailId) {
+      setDetail(null);
+      setCustomer(null);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/admin/bookings/${detailId}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        if (d.ok) {
+          setDetail(d.booking as BookingRow);
+          setCustomer(
+            d.customer ?? { priorCount: 0, visitLabel: "첫 방문", previous: [] }
+          );
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [detailId, tick]);
+
+  return { detail, customer, loading };
+}
+
 export default function AdminCalendarPage() {
+  const mode = useAdminViewport();
+  const [tab, setTab] = useState<CalTab>("day");
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [detailTick, setDetailTick] = useState(0);
+  const [reloadKey, setReloadKey] = useState(0);
+  const { detail, customer, loading } = useBookingDetail(detailId, detailTick);
+  const actions = useBookingActions({
+    onSuccess: () => {
+      setReloadKey((n) => n + 1);
+      setDetailTick((n) => n + 1);
+    }
+  });
+
+  if (mode === null) return null;
+  if (mode === "mobile") return <LegacyCalendar />;
+
+  return (
+    <>
+      <AdminCalendarDesktop
+        tab={tab}
+        onTab={setTab}
+        onOpenBooking={setDetailId}
+        reloadKey={reloadKey}
+        legacy={<LegacyCalendar key={tab} forcedView={tab === "week" ? "week" : "month"} />}
+      />
+      {tab === "day" && detailId ? (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setDetailId(null);
+          }}
+        >
+          <div className="w-[880px] font-sans-kr text-[#1C1C1C]">
+            <DetailCard
+              detail={detail}
+              customer={customer}
+              loading={loading}
+              onClose={() => setDetailId(null)}
+              busyId={actions.busyId}
+              onCancel={actions.openCancel}
+              onDelete={actions.openDelete}
+            />
+          </div>
+        </div>
+      ) : null}
+      {tab === "day" && actions.confirm ? (
+        <BookingConfirmModal
+          action={actions.confirm.action}
+          booking={actions.confirm.booking}
+          busy={!!actions.busyId}
+          onClose={actions.closeConfirm}
+          onConfirm={actions.runConfirm}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function LegacyCalendar({ forcedView }: { forcedView?: "month" | "week" }) {
   const now = new Date();
   const today = toYmd(now);
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
-  const [view, setView] = useState<"month" | "week">("month");
+  const [viewState, setView] = useState<"month" | "week">("month");
+  const view = forcedView ?? viewState;
   const [artistId, setArtistId] = useState("");
   const [artists, setArtists] = useState<Artist[]>([]);
   const [bookings, setBookings] = useState<CalBooking[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(today);
   const [detailId, setDetailId] = useState<string | null>(null);
-  const [detail, setDetail] = useState<BookingRow | null>(null);
-  const [customer, setCustomer] = useState<CustomerSnapshot | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [detailTick, setDetailTick] = useState(0);
+  const { detail, customer, loading: detailLoading } = useBookingDetail(detailId, detailTick);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const cells = useMemo(() => buildMonthCells(year, month), [year, month]);
@@ -187,34 +283,6 @@ export default function AdminCalendarPage() {
     });
   }, [loadBookings]);
 
-  useEffect(() => {
-    if (!detailId) {
-      setDetail(null);
-      setCustomer(null);
-      return;
-    }
-    let cancelled = false;
-    setDetailLoading(true);
-    fetch(`/api/admin/bookings/${detailId}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (cancelled) return;
-        if (d.ok) {
-          setDetail(d.booking as BookingRow);
-          setCustomer(
-            d.customer ?? { priorCount: 0, visitLabel: "첫 방문", previous: [] }
-          );
-        }
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (!cancelled) setDetailLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [detailId, detailTick]);
-
   const visibleCells = view === "week" ? cells.slice(weekStart, weekStart + 7) : cells;
   const weekRows = Math.max(1, Math.ceil(visibleCells.length / 7));
   const selectedList = selectedDate ? byDate.get(selectedDate) || [] : [];
@@ -239,13 +307,19 @@ export default function AdminCalendarPage() {
 
   return (
     <div className="flex flex-col font-sans-kr text-[#1C1C1C] min-[1440px]:h-[calc(100dvh-5rem)]">
-      <div className="flex flex-wrap items-end justify-between gap-4 pt-6">
-        <h1 className="flex items-baseline gap-2 text-[30px] font-bold leading-none tracking-[-0.02em]">
-          캘린더
-          <span className="text-[15px] font-normal text-[#8A847C]">
+      <div className={clsx("flex flex-wrap items-end justify-between gap-4", !forcedView && "pt-6")}>
+        {forcedView ? (
+          <p className="text-[15px] font-normal text-[#8A847C]">
             {year}. {String(month + 1).padStart(2, "0")}
-          </span>
-        </h1>
+          </p>
+        ) : (
+          <h1 className="flex items-baseline gap-2 text-[30px] font-bold leading-none tracking-[-0.02em]">
+            캘린더
+            <span className="text-[15px] font-normal text-[#8A847C]">
+              {year}. {String(month + 1).padStart(2, "0")}
+            </span>
+          </h1>
+        )}
         <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
           <button
             type="button"
@@ -273,7 +347,7 @@ export default function AdminCalendarPage() {
               </option>
             ))}
           </select>
-          <div className="flex gap-2">
+          <div className={clsx("flex gap-2", forcedView && "hidden")}>
             {(["month", "week"] as const).map((key) => (
               <button
                 key={key}

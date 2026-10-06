@@ -112,6 +112,8 @@ export type CustomersDashboard = {
   };
 };
 
+export type CustomerBookingRow = BookingRow;
+
 type BookingRow = {
   id: string;
   status: string;
@@ -212,7 +214,7 @@ function maxRevisitDaysForServices(
   return Math.max(...days);
 }
 
-function buildProfiles(bookings: BookingRow[]): {
+export function buildProfiles(bookings: BookingRow[]): {
   profiles: CustomerProfile[];
   excludedNoPhoneCount: number;
 } {

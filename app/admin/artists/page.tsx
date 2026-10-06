@@ -13,6 +13,8 @@ type Artist = {
   instagram_url: string | null;
   sort_order: number;
   is_published: boolean;
+  lunch_start: string | null;
+  lunch_minutes: number | null;
 };
 
 const emptyForm = {
@@ -23,7 +25,9 @@ const emptyForm = {
   image_url: "",
   instagram_url: "",
   sort_order: 0,
-  is_published: true
+  is_published: true,
+  lunch_start: "",
+  lunch_minutes: 30
 };
 
 export default function AdminArtistsPage() {
@@ -56,7 +60,9 @@ export default function AdminArtistsPage() {
       ...form,
       image_url: form.image_url || null,
       instagram_url: form.instagram_url || null,
-      sort_order: Number(form.sort_order) || 0
+      sort_order: Number(form.sort_order) || 0,
+      lunch_start: form.lunch_start || null,
+      lunch_minutes: Number(form.lunch_minutes) || 30
     };
 
     const res = await fetch(
@@ -142,7 +148,9 @@ export default function AdminArtistsPage() {
                             image_url: a.image_url || "",
                             instagram_url: a.instagram_url || "",
                             sort_order: a.sort_order,
-                            is_published: a.is_published
+                            is_published: a.is_published,
+                            lunch_start: a.lunch_start ? a.lunch_start.slice(0, 5) : "",
+                            lunch_minutes: a.lunch_minutes ?? 30
                           });
                         }}
                         className="text-[16px] font-normal text-[#8A847C]"
@@ -204,6 +212,16 @@ export default function AdminArtistsPage() {
               label="정렬"
               value={String(form.sort_order)}
               onChange={(v) => setForm((f) => ({ ...f, sort_order: Number(v) || 0 }))}
+            />
+            <Field
+              label="점심 시작 (예: 12:00, 비우면 없음)"
+              value={form.lunch_start}
+              onChange={(v) => setForm((f) => ({ ...f, lunch_start: v }))}
+            />
+            <Field
+              label="점심 시간(분)"
+              value={String(form.lunch_minutes)}
+              onChange={(v) => setForm((f) => ({ ...f, lunch_minutes: Number(v) || 0 }))}
             />
             <label className="flex items-center gap-2 text-[15px] font-bold text-[#1C1C1C]">
               <input

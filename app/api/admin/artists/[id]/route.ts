@@ -24,7 +24,9 @@ export async function PATCH(
     "image_url",
     "instagram_url",
     "sort_order",
-    "is_published"
+    "is_published",
+    "lunch_start",
+    "lunch_minutes"
   ];
   const patch: Record<string, unknown> = {};
   for (const key of allowed) {

@@ -32,6 +32,8 @@ export async function POST(request: Request) {
     instagram_url?: string | null;
     sort_order?: number;
     is_published?: boolean;
+    lunch_start?: string | null;
+    lunch_minutes?: number;
   };
 
   try {
@@ -59,7 +61,9 @@ export async function POST(request: Request) {
       image_url: body.image_url || null,
       instagram_url: body.instagram_url || null,
       sort_order: body.sort_order ?? 0,
-      is_published: body.is_published ?? true
+      is_published: body.is_published ?? true,
+      lunch_start: body.lunch_start || null,
+      lunch_minutes: body.lunch_minutes ?? 30
     })
     .select("*")
     .single();

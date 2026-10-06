@@ -13,6 +13,7 @@ const STATUSES: BookingStatus[] = [
 const PAYMENT_METHODS: PaymentMethod[] = ["card", "cash", "transfer"];
 
 const ADMIN_CANCEL_REASON = "admin_cancel";
+const CANCEL_REASONS = [ADMIN_CANCEL_REASON, "customer_request"];
 
 export async function GET(
   _request: Request,
@@ -108,7 +109,7 @@ export async function PATCH(
     patch.status = body.status;
     if (body.status === "cancelled") {
       const reason = body.cancel_reason;
-      if (reason != null && reason !== ADMIN_CANCEL_REASON) {
+      if (reason != null && !CANCEL_REASONS.includes(reason)) {
         return NextResponse.json({ ok: false, error: "취소 사유가 올바르지 않습니다." }, { status: 400 });
       }
       patch.cancel_reason = reason ?? ADMIN_CANCEL_REASON;
