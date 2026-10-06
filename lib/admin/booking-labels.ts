@@ -14,7 +14,7 @@ export const BOOKING_STATUS_LABEL: Record<string, string> = Object.fromEntries(
 
 export function cancelReasonLabel(reason: string | null | undefined) {
   if (reason === "admin_cancel") return "관리자 취소";
-  if (reason === "deposit_timeout") return "입금기한 초과";
-  if (reason === "customer_request") return "고객 요청 취소";
+  if (reason === "deposit_timeout") return "입금기한 만료";
+  if (reason === "customer_request") return "고객 요청";
   return reason || null;
 }

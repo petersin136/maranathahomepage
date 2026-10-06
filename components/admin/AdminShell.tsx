@@ -4,13 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { clsx } from "clsx";
-import {
-  ADMIN_MENUS,
-  adminSubTabs,
-  findAdminMenu,
-  isAdminNavItemActive,
-  type AdminHref
-} from "@/lib/admin/nav";
+import { type AdminHref } from "@/lib/admin/nav";
 import { createClient } from "@/lib/supabase/browser";
 
 /**
@@ -87,8 +81,6 @@ export default function AdminShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const activeMenu = findAdminMenu(pathname) ?? ADMIN_MENUS[0];
-  const subTabs = adminSubTabs(activeMenu);
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileName, setProfileName] = useState("관리자");
   const [pendingCount, setPendingCount] = useState<number | null>(null);
@@ -140,79 +132,8 @@ export default function AdminShell({
   };
 
   return (
-    <div className="min-h-screen bg-[#faf8f6] text-hu-black min-[1440px]:bg-white">
-      <header className="sticky top-0 z-50 bg-hu-black text-hu-white min-[1440px]:hidden">
-        <div className="mx-auto flex max-w-[1200px] items-center justify-between px-5 py-2.5 lg:px-8">
-          <div className="flex items-baseline gap-2 lg:gap-3">
-            <Link href="/" className="font-serif text-[17px] tracking-[0.08em] lg:text-[18px]">
-              HAIR UP
-            </Link>
-            <span className="font-sans-kr text-[11px] text-white/50">Admin</span>
-          </div>
-          <div className="flex items-center gap-3 lg:gap-4">
-            {email ? (
-              <span className="hidden max-w-[220px] truncate font-sans-kr text-[12px] text-white/50 sm:inline">
-                {email}
-              </span>
-            ) : null}
-            <Link
-              href="/"
-              className="font-sans-kr text-[12px] tracking-[0.06em] text-white/75 transition hover:text-white"
-            >
-              홈으로
-            </Link>
-            <button
-              type="button"
-              onClick={logout}
-              className="font-sans-kr text-[12px] tracking-[0.06em] text-white/75 transition hover:text-white"
-            >
-              로그아웃
-            </button>
-          </div>
-        </div>
-        <nav className="mx-auto flex max-w-[1200px] border-t border-white/10 px-5 py-2.5 lg:px-8">
-          {ADMIN_MENUS.map((menu) => {
-            const active = menu.id === activeMenu.id;
-            return (
-              <Link
-                key={menu.id}
-                href={menu.href}
-                prefetch={false}
-                className={clsx(
-                  "flex-1 text-center font-sans-kr text-[14px] font-medium tracking-[0.02em] transition sm:text-[15px]",
-                  active ? "text-white" : "text-white/70 hover:text-white"
-                )}
-              >
-                {menu.label}
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="border-t border-white/10 bg-[#faf8f6]">
-          <nav className="mx-auto flex max-w-[1200px] gap-5 overflow-x-auto px-5 [scrollbar-width:none] lg:gap-6 lg:px-8 [&::-webkit-scrollbar]:hidden">
-            {subTabs.map((item) => {
-              const active = isAdminNavItemActive(pathname, item);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  prefetch={false}
-                  className={clsx(
-                    "shrink-0 whitespace-nowrap pb-3 pt-3 font-serif text-[13px] tracking-[0.1em]",
-                    active
-                      ? "border-b-2 border-hu-black text-hu-black"
-                      : "text-hu-muted"
-                  )}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-      </header>
-
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[242px] flex-col bg-[#F9F8F4] min-[1440px]:flex">
+    <div className="min-h-screen bg-white text-hu-black">
+      <aside className="fixed inset-y-0 left-0 z-30 flex w-[242px] flex-col bg-[#F9F8F4]">
         <Link href="/" className="block px-[27px] pt-[36px]">
           <img src="/admin-icons/hair-up-logo.png" alt="hair up" className="h-[42px] w-auto" />
         </Link>
@@ -300,8 +221,14 @@ export default function AdminShell({
         </div>
       </aside>
 
-      <div className="min-w-0 overflow-x-hidden min-[1440px]:pl-[242px]">
-        <main className="mx-auto min-h-[calc(100vh-160px)] max-w-[1200px] px-5 py-6 lg:px-8 lg:py-8 min-[1440px]:max-w-none min-[1440px]:px-10 min-[1440px]:py-10">
+      <div
+        className={
+          pathname.startsWith("/admin/calendar")
+            ? "min-w-0 pl-[242px]"
+            : "min-w-0 overflow-x-auto pl-[242px]"
+        }
+      >
+        <main className="min-h-screen w-full min-w-[1198px] px-10 py-10">
           {children}
         </main>
       </div>

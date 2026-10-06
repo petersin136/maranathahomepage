@@ -2,25 +2,21 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clsx } from "clsx";
-import type {
-  CustomerDirectoryRow,
-  CustomerSendStatus,
-  CustomersDashboard
-} from "@/lib/admin/customers-data";
+import {
+  STATE_META,
+  STATE_ORDER,
+  customerState,
+  type CustomerState
+} from "@/components/admin/CustomerFilters";
+import type { CustomerDirectoryRow, CustomersDashboard } from "@/lib/admin/customers-data";
 
 const PAGE_SIZE = 12;
 
-const STATUS_META: Record<
-  CustomerSendStatus,
-  { label: string; color: string }
-> = {
-  pending: { label: "발송 대기", color: "#8A847C" },
-  sent: { label: "발송 완료", color: "#1F9D62" },
-  failed: { label: "발송 실패", color: "#E24B4B" },
-  alert: { label: "알림 발송", color: "#3B6FE0" }
+const STATE_COLOR: Record<CustomerState, string> = {
+  churn: "var(--danger)",
+  returning: "var(--ink)",
+  new: "var(--muted)"
 };
-
-const STATUS_ORDER: CustomerSendStatus[] = ["pending", "alert", "sent", "failed"];
 
 const DAY_OPTIONS = [
   { id: "0-7", label: "7일 이내", min: 0, max: 7 },
@@ -72,7 +68,7 @@ export default function AdminCustomersPage() {
   const [query, setQuery] = useState("");
   const [services, setServices] = useState<string[]>([]);
   const [dayIds, setDayIds] = useState<string[]>([]);
-  const [statuses, setStatuses] = useState<CustomerSendStatus[]>([]);
+  const [states, setStates] = useState<CustomerState[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const [sortKey, setSortKey] = useState<"name" | "date">("date");
@@ -136,7 +132,8 @@ export default function AdminCustomersPage() {
         );
         if (!ok) return false;
       }
-      if (statuses.length && !statuses.includes(row.sendStatus)) return false;
+      const state = customerState(row);
+      if (states.length && (!state || !states.includes(state))) return false;
       return true;
     });
     list.sort((a, b) => {
@@ -145,7 +142,7 @@ export default function AdminCustomersPage() {
       return (a.lastVisitDate || "").localeCompare(b.lastVisitDate || "") * dir;
     });
     return list;
-  }, [rows, query, services, dayIds, statuses, sortKey, sortDir]);
+  }, [rows, query, services, dayIds, states, sortKey, sortDir]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
@@ -155,7 +152,7 @@ export default function AdminCustomersPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [query, services, dayIds, statuses, sortKey, sortDir]);
+  }, [query, services, dayIds, states, sortKey, sortDir]);
 
   const toggleSort = (key: "name" | "date") => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -187,7 +184,7 @@ export default function AdminCustomersPage() {
     setQuery("");
     setServices([]);
     setDayIds([]);
-    setStatuses([]);
+    setStates([]);
     setOpenFilter(null);
     void load();
   };
@@ -204,7 +201,7 @@ export default function AdminCustomersPage() {
             총 {rows.length.toLocaleString("ko-KR")}명
           </span>
         </h1>
-        <label className="flex h-[36px] w-[300px] items-center gap-2 rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-3">
+        <label className="flex h-[36px] w-[300px] items-center gap-2 rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white px-3">
           <Icon src="/admin-icons/lnb/search-bold.png" className="h-[16px] w-[16px] text-[#9A948C]" />
           <input
             value={query}
@@ -265,18 +262,18 @@ export default function AdminCustomersPage() {
           </FilterChip>
           <FilterChip
             icon="/admin-icons/lnb/filter.png"
-            label="발송 상태"
-            count={statuses.length}
+            label="상태"
+            count={states.length}
             open={openFilter === "status"}
             onToggle={() => setOpenFilter((v) => (v === "status" ? null : "status"))}
           >
-            {STATUS_ORDER.map((key) => (
+            {STATE_ORDER.map((key) => (
               <FilterCheck
                 key={key}
-                label={STATUS_META[key].label}
-                checked={statuses.includes(key)}
+                label={STATE_META[key].label}
+                checked={states.includes(key)}
                 onChange={() =>
-                  setStatuses((cur) =>
+                  setStates((cur) =>
                     cur.includes(key) ? cur.filter((x) => x !== key) : [...cur, key]
                   )
                 }
@@ -287,7 +284,7 @@ export default function AdminCustomersPage() {
             type="button"
             aria-label="필터 초기화"
             onClick={resetFilters}
-            className="flex h-[36px] w-[36px] items-center justify-center rounded-[8px] border-[1.5px] border-[#9A948C] text-[#9A948C] hover:bg-[#F6F4F0]"
+            className="flex h-[36px] w-[36px] items-center justify-center rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] text-[#9A948C] hover:bg-[#F6F4F0]"
           >
             <Icon src="/admin-icons/lnb/refresh.png" className="h-[16px] w-[16px]" />
           </button>
@@ -346,7 +343,7 @@ export default function AdminCustomersPage() {
                   <Icon src="/admin-icons/lnb/chevron-down.png" className="h-[12px] w-[12px]" />
                 </button>
               </th>
-              <th className="py-3 font-bold">발송 상태</th>
+              <th className="py-3 font-bold">상태</th>
               <th className="py-3 text-right font-bold">관리</th>
             </tr>
           </thead>
@@ -354,7 +351,7 @@ export default function AdminCustomersPage() {
             <tbody>
               {pageRows.map((row) => {
                 const on = selected.has(row.phone);
-                const status = STATUS_META[row.sendStatus];
+                const state = customerState(row);
                 return (
                   <tr
                     key={row.phone}
@@ -376,10 +373,17 @@ export default function AdminCustomersPage() {
                     <td className="truncate py-[15px] pr-3 font-medium">{row.services.join(" / ") || "—"}</td>
                     <td className="truncate py-[15px] pr-3 font-medium">{formatVisit(row.lastVisitDate, row.daysSince)}</td>
                     <td className="py-[15px]">
-                      <span className="inline-flex items-center gap-1.5 font-medium" style={{ color: status.color }}>
-                        <span className="h-[7px] w-[7px] rounded-full" style={{ background: status.color }} />
-                        {status.label}
-                      </span>
+                      {state ? (
+                        <span
+                          className="inline-flex items-center gap-[6px] font-medium"
+                          style={{ color: STATE_COLOR[state] }}
+                        >
+                          <span className="h-[7px] w-[7px] shrink-0 rounded-full bg-current" />
+                          {STATE_META[state].label}
+                        </span>
+                      ) : (
+                        <span className="font-medium">—</span>
+                      )}
                     </td>
                     <td className="py-[15px] text-right font-normal text-[#8A847C]">상세보기</td>
                   </tr>
@@ -506,7 +510,7 @@ function FilterChip({
       <button
         type="button"
         onClick={onToggle}
-        className="flex h-[36px] w-max items-center gap-2 rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-3 text-[13px] font-semibold leading-none text-[#1C1C1C]"
+        className="flex h-[36px] w-max items-center gap-2 rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white px-3 text-[13px] font-semibold leading-none text-[#1C1C1C]"
       >
         <Icon src={icon} className="h-[15px] w-[15px] text-[#9A948C]" />
         <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">{label}</span>

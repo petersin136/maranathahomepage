@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clsx } from "clsx";
-import { BOOKING_STATUS_OPTIONS } from "@/lib/admin/booking-labels";
+import { BOOKING_STATUS_OPTIONS, cancelReasonLabel } from "@/lib/admin/booking-labels";
 import type { BookingRow, BookingStatus } from "@/lib/bookings/types";
 import BookingCreateModal from "@/components/admin/BookingCreateModal";
 
@@ -64,10 +64,21 @@ const CANCEL_REASONS: { value: CancelReason; label: string }[] = [
 
 function reasonLabel(row: BookingRow) {
   if (row.status === "noshow") return "당일 노쇼";
-  if (row.cancel_reason === "deposit_timeout") return "입금기한 만료";
-  if (row.cancel_reason === "customer_request") return "고객 요청 취소";
-  if (row.cancel_reason === "admin_cancel") return "관리자 취소";
-  return row.cancel_reason || "취소";
+  return cancelReasonLabel(row.cancel_reason) || "취소";
+}
+
+function ServiceCell({ names }: { names: string[] | null }) {
+  const list = (names ?? []).map((name) => name.trim()).filter(Boolean);
+  if (!list.length) return <span className={CELL}>—</span>;
+  const extra = list.length - 1;
+  return (
+    <span className={CELL} title={list.join(" / ")}>
+      {list[0]}
+      {extra > 0 ? (
+        <span className="text-[12px] text-[color:var(--muted)]"> +{extra}</span>
+      ) : null}
+    </span>
+  );
 }
 
 const PAYMENT_LABEL: Record<string, string> = { card: "카드결제", transfer: "계좌이체", cash: "현금결제" };
@@ -245,9 +256,10 @@ export default function AdminBookingsPage() {
   const artistById = useMemo(() => new Map(artists.map((a) => [a.id, a])), [artists]);
 
   const artistLabel = (row: BookingRow) => {
-    const a = artistById.get(row.artist_id);
-    const name = row.artist_name || a?.name || "";
-    return [name, a?.role].filter(Boolean).join(" ") || "—";
+    const linked = row.artist_id ? artistById.get(row.artist_id) : undefined;
+    if (linked?.name) return linked.name;
+    const hangul = (row.artist_name || "").trim().match(/^[\uAC00-\uD7A3]+/);
+    return hangul?.[0] || "—";
   };
 
   const base = useMemo(() => {
@@ -370,9 +382,9 @@ export default function AdminBookingsPage() {
 
   return (
     <div className="flex flex-col pl-[6px] pr-[8px] font-sans-kr text-[#1C1C1C] min-[1440px]:h-[calc(100dvh-5rem)]">
-      <div className="flex items-center justify-between pt-6">
+      <div className="flex items-center justify-between gap-6 pt-6">
         <h1 className="text-[30px] font-bold leading-none tracking-[-0.02em]">예약관리</h1>
-        <label className="flex h-[35px] w-[280px] items-center gap-2 rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-3">
+        <label className="-mr-[8px] flex h-[36px] w-[300px] items-center gap-2 rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white px-3">
           <Icon src="/admin-icons/lnb/search-bold.png" className="h-[16px] w-[16px] text-[#9A948C]" />
           <input
             value={query}
@@ -412,7 +424,7 @@ export default function AdminBookingsPage() {
           <button
             type="button"
             onClick={() => setOpenFilter((v) => (v === "period" ? null : "period"))}
-            className="flex h-[34px] w-[202px] items-center rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-3 text-[13px] font-semibold leading-none text-[#1C1C1C]"
+            className="flex h-[34px] w-[202px] items-center rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white px-3 text-[13px] font-semibold leading-none text-[#1C1C1C]"
           >
             <CalendarIcon />
             {period === "day" ? (
@@ -463,7 +475,7 @@ export default function AdminBookingsPage() {
           <button
             type="button"
             onClick={() => setOpenFilter((v) => (v === "artist" ? null : "artist"))}
-            className="flex h-[34px] w-[186px] items-center rounded-[8px] border-[1.5px] border-[#9A948C] bg-white pl-3 pr-3 text-[13px] font-semibold leading-none text-[#1C1C1C]"
+            className="flex h-[34px] w-[186px] items-center rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white pl-3 pr-3 text-[13px] font-semibold leading-none text-[#1C1C1C]"
           >
             <Icon src="/admin-icons/lnb/filter.png" className="h-[15px] w-[15px] text-[#9A948C]" />
             <span className={clsx(TRIM_KR, "ml-2")}>담당자</span>
@@ -510,7 +522,7 @@ export default function AdminBookingsPage() {
           type="button"
           aria-label="필터 초기화"
           onClick={resetFilters}
-          className="ml-[7px] flex h-[34px] w-[34px] items-center justify-center rounded-[8px] border-[1.5px] border-[#9A948C] text-[#9A948C] hover:bg-[#F6F4F0]"
+          className="ml-[7px] flex h-[34px] w-[34px] items-center justify-center rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] text-[#9A948C] hover:bg-[#F6F4F0]"
         >
           <Icon src="/admin-icons/lnb/refresh.png" className="h-[16px] w-[16px]" />
         </button>
@@ -544,7 +556,6 @@ export default function AdminBookingsPage() {
       </div>
 
       <div className="mt-[33px] min-h-0 flex-1 pt-[4px] min-[1440px]:overflow-auto">
-        <div className="px-[var(--booking-table-inset)]">
         <table className="w-full table-fixed text-left text-[16px] font-medium">
           <colgroup>
             <col className="w-[var(--booking-col-check)]" />
@@ -552,14 +563,18 @@ export default function AdminBookingsPage() {
             <col className="w-[var(--booking-col-name)]" />
             <col className="w-[var(--booking-col-phone)]" />
             <col className="w-[var(--booking-col-artist)]" />
-            <col className="w-[var(--booking-col-service)]" />
-            <col className="w-[var(--booking-col-pay)]" />
+            <col />
+            <col
+              className={
+                tab === "cancelled_noshow" ? "w-[var(--booking-col-reason)]" : "w-[var(--booking-col-pay)]"
+              }
+            />
             <col className="w-[var(--booking-col-status)]" />
             <col className="w-[var(--booking-col-manage)]" />
           </colgroup>
           <thead>
             <tr className="border-b-[1.5px] border-[#C9C3BB] text-[15px] font-bold leading-none text-[#9A948C]">
-              <th className="px-[var(--booking-cell-padx)] pt-0 pb-[14px] text-left align-bottom font-bold">
+              <th className="w-[var(--booking-col-check)] min-w-[var(--booking-col-check)] pl-[calc(var(--booking-cell-padx)+var(--booking-table-inset))] pr-[var(--booking-cell-padx)] pt-0 pb-[14px] text-left align-bottom font-bold">
                 <div className="flex h-[10px] items-center">
                 <CheckBox
                   checked={allPageSelected}
@@ -609,7 +624,7 @@ export default function AdminBookingsPage() {
               <th className="px-[var(--booking-cell-padx)] pt-0 pb-[14px] text-center align-bottom font-bold">
                 <span className={CELL}>상태변경</span>
               </th>
-              <th className="px-[var(--booking-cell-padx)] pt-0 pb-[14px] text-center align-bottom font-bold">
+              <th className="pl-[var(--booking-cell-padx)] pr-0 pt-0 pb-[14px] text-right align-bottom font-bold">
                 <span className={CELL}>관리</span>
               </th>
             </tr>
@@ -626,7 +641,7 @@ export default function AdminBookingsPage() {
                     onClick={() => router.push(`/admin/bookings/${row.id}`)}
                     className="cursor-pointer border-b border-[#F3EFEA] bg-white hover:bg-[#F6F4F0]"
                   >
-                    <td className="h-[73px] px-[var(--booking-cell-padx)] py-0 text-left align-middle" onClick={(e) => e.stopPropagation()}>
+                    <td className="h-[73px] w-[var(--booking-col-check)] min-w-[var(--booking-col-check)] py-0 pl-[calc(var(--booking-cell-padx)+var(--booking-table-inset))] pr-[var(--booking-cell-padx)] text-left align-middle" onClick={(e) => e.stopPropagation()}>
                       <CheckBox
                         checked={checked}
                         onChange={() =>
@@ -652,7 +667,7 @@ export default function AdminBookingsPage() {
                       <span className={CELL}>{artistLabel(row)}</span>
                     </td>
                     <td className="h-[73px] px-[var(--booking-cell-padx)] py-0 text-left align-middle">
-                      <span className={CELL}>{(row.service_names || []).join(" / ") || "—"}</span>
+                      <ServiceCell names={row.service_names} />
                     </td>
                     <td
                       className={clsx(
@@ -681,7 +696,7 @@ export default function AdminBookingsPage() {
                         <PillChevron up={open} className="ml-[8px]" />
                       </button>
                     </td>
-                    <td className="h-[73px] px-[var(--booking-cell-padx)] py-0 text-center align-middle text-[14px] font-normal text-[#8A847C]">
+                    <td className="h-[73px] py-0 pl-[var(--booking-cell-padx)] pr-0 text-right align-middle text-[14px] font-normal text-[#8A847C]">
                       <span className={CELL}>상세보기</span>
                     </td>
                   </tr>
@@ -690,7 +705,6 @@ export default function AdminBookingsPage() {
             </tbody>
           ) : null}
         </table>
-        </div>
 
         {loading && bookings.length === 0 ? (
           <p className={clsx(TRIM_KR, "pt-[156px] text-center text-[13px] text-[#8A847C]")}>불러오는 중…</p>
@@ -876,7 +890,7 @@ function CheckBox({
       aria-label={label}
       onClick={onChange}
       className={clsx(
-        "flex h-[18px] w-[18px] items-center justify-center rounded-[3px] border",
+        "flex h-[18px] w-[18px] min-h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-[3px] border",
         checked || mixed ? "border-[#1C1C1C] bg-[#1C1C1C] text-white" : "border-[#D5D0CA] bg-white"
       )}
     >

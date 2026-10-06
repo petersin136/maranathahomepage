@@ -163,7 +163,7 @@ export function CalendarDesktopView({
       <div className="cal-head">
         <h1 className="cal-title">캘린더</h1>
         <label className="cal-search">
-          <CalIcon src="/admin-icons/lnb/search.png" className="cal-search-icon" />
+          <CalIcon src="/admin-icons/lnb/search-bold.png" className="cal-search-icon" />
           <input
             value={query}
             onChange={(e) => onQuery(e.target.value)}
@@ -314,15 +314,30 @@ function DayGrid({
   );
 
   const slots = Array.from({ length: SLOT_COUNT }, (_, i) => OPEN_MINUTES + i * SLOT_MINUTES);
+  const headTrackRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const nowTop =
     nowMinutes != null && nowMinutes >= OPEN_MINUTES && nowMinutes <= CLOSING_MINUTES
       ? ((nowMinutes - OPEN_MINUTES) / SLOT_MINUTES) * SLOT_HEIGHT
       : null;
 
+  const syncHead = (scrollLeft: number) => {
+    if (headTrackRef.current) headTrackRef.current.style.transform = `translateX(${-scrollLeft}px)`;
+  };
+
   return (
-    <div className="cal-grid">
-      <div className="cal-grid-head">
+    <div className="cal-grid" style={{ ["--cal-cols" as string]: columns.length }}>
+      <div
+        className="cal-grid-head-bar"
+        onWheel={(e) => {
+          const scroller = scrollRef.current;
+          if (!scroller || Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+          scroller.scrollLeft += e.deltaX;
+        }}
+      >
         <div className="cal-time-head" />
+        <div className="cal-head-clip">
+          <div ref={headTrackRef} className="cal-head-track">
         {columns.map((artist) => {
           const occupied: OccupiedInterval[] = bookings
             .filter((b) => b.artist_id === artist.id && isBlocking(b.status))
@@ -348,8 +363,15 @@ function DayGrid({
             </div>
           );
         })}
+          </div>
+        </div>
       </div>
 
+      <div
+        ref={scrollRef}
+        className="cal-hscroll"
+        onScroll={(e) => syncHead(e.currentTarget.scrollLeft)}
+      >
       <div className="cal-grid-body" style={{ height: SLOT_COUNT * SLOT_HEIGHT }}>
         {slots.map((m, i) => (
           <div
@@ -454,6 +476,7 @@ function DayGrid({
             <span className="cal-now-dot" />
           </div>
         ) : null}
+      </div>
       </div>
     </div>
   );

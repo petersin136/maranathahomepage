@@ -8,7 +8,6 @@ import BookingConfirmModal from "@/components/admin/BookingConfirmModal";
 import { BOOKING_STATUS_LABEL, cancelReasonLabel } from "@/lib/admin/booking-labels";
 import { splitIntlPhone } from "@/lib/admin/booking-display";
 import { useBookingActions, type BookingActionTarget } from "@/lib/admin/useBookingActions";
-import { useAdminViewport } from "@/lib/admin/use-admin-viewport";
 import type { BookingRow } from "@/lib/bookings/types";
 import AdminCalendarDesktop, { type CalTab } from "@/components/admin/AdminCalendarDesktop";
 
@@ -155,7 +154,6 @@ function useBookingDetail(detailId: string | null, tick: number) {
 }
 
 export default function AdminCalendarPage() {
-  const mode = useAdminViewport();
   const [tab, setTab] = useState<CalTab>("day");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detailTick, setDetailTick] = useState(0);
@@ -167,9 +165,6 @@ export default function AdminCalendarPage() {
       setDetailTick((n) => n + 1);
     }
   });
-
-  if (mode === null) return null;
-  if (mode === "mobile") return <LegacyCalendar />;
 
   return (
     <>
