@@ -563,7 +563,13 @@ export default function AdminBookingsPage() {
             <col className="w-[var(--booking-col-name)]" />
             <col className="w-[var(--booking-col-phone)]" />
             <col className="w-[var(--booking-col-artist)]" />
-            <col />
+            <col
+              className={
+                tab === "cancelled_noshow"
+                  ? "w-[var(--booking-col-service-cancelled)]"
+                  : "w-[var(--booking-col-service)]"
+              }
+            />
             <col
               className={
                 tab === "cancelled_noshow" ? "w-[var(--booking-col-reason)]" : "w-[var(--booking-col-pay)]"
@@ -574,7 +580,7 @@ export default function AdminBookingsPage() {
           </colgroup>
           <thead>
             <tr className="border-b-[1.5px] border-[#C9C3BB] text-[15px] font-bold leading-none text-[#9A948C]">
-              <th className="w-[var(--booking-col-check)] min-w-[var(--booking-col-check)] pl-[calc(var(--booking-cell-padx)+var(--booking-table-inset))] pr-[var(--booking-cell-padx)] pt-0 pb-[14px] text-left align-bottom font-bold">
+              <th className="w-[var(--booking-col-check)] min-w-[66px] pl-[calc(var(--booking-cell-padx)+var(--booking-table-inset))] pr-[var(--booking-cell-padx)] pt-0 pb-[14px] text-left align-bottom font-bold">
                 <div className="flex h-[10px] items-center">
                 <CheckBox
                   checked={allPageSelected}
@@ -641,7 +647,7 @@ export default function AdminBookingsPage() {
                     onClick={() => router.push(`/admin/bookings/${row.id}`)}
                     className="cursor-pointer border-b border-[#F3EFEA] bg-white hover:bg-[#F6F4F0]"
                   >
-                    <td className="h-[73px] w-[var(--booking-col-check)] min-w-[var(--booking-col-check)] py-0 pl-[calc(var(--booking-cell-padx)+var(--booking-table-inset))] pr-[var(--booking-cell-padx)] text-left align-middle" onClick={(e) => e.stopPropagation()}>
+                    <td className="h-[73px] w-[var(--booking-col-check)] min-w-[66px] py-0 pl-[calc(var(--booking-cell-padx)+var(--booking-table-inset))] pr-[var(--booking-cell-padx)] text-left align-middle" onClick={(e) => e.stopPropagation()}>
                       <CheckBox
                         checked={checked}
                         onChange={() =>

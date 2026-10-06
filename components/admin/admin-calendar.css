@@ -363,7 +363,7 @@ html:has(.ADMIN-CALENDAR) {
   border-radius: 4px;
   background: #2c3a2e;
   color: #fff;
-  cursor: default;
+  cursor: pointer;
 }
 
 .ADMIN-CALENDAR .cal-new.is-disabled {
@@ -438,8 +438,20 @@ html:has(.ADMIN-CALENDAR) {
   display: grid;
   grid-template-columns: 83px minmax(0, 1fr);
   height: 69px;
-  border-top: 1px solid #c0bbb0;
+  border-top: 1px solid #b8b0a8;
   background: #fff;
+}
+
+.ADMIN-CALENDAR .cal-grid-head-bar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  height: 1px;
+  background: #b8b0a8;
+  pointer-events: none;
 }
 
 .ADMIN-CALENDAR .cal-head-clip {
@@ -451,7 +463,7 @@ html:has(.ADMIN-CALENDAR) {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(200px, 1fr);
-  height: 69px;
+  height: 100%;
   width: max(100%, calc(var(--cal-cols) * 200px));
 }
 
@@ -461,7 +473,7 @@ html:has(.ADMIN-CALENDAR) {
 
 .ADMIN-CALENDAR .cal-time-head {
   width: 83px;
-  height: 69px;
+  height: 100%;
   background: #fff;
 }
 
@@ -554,10 +566,6 @@ html:has(.ADMIN-CALENDAR) {
   background: var(--rule);
 }
 
-.ADMIN-CALENDAR .cal-slot-line:first-child {
-  background: #cecec0;
-}
-
 .ADMIN-CALENDAR .cal-time-col {
   position: sticky;
   left: 0;
@@ -568,6 +576,7 @@ html:has(.ADMIN-CALENDAR) {
 
 .ADMIN-CALENDAR .cal-time-label {
   position: absolute;
+  z-index: 1;
   right: 7px;
   letter-spacing: 0;
   margin-top: 5px;

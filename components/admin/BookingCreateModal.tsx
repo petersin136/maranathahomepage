@@ -17,6 +17,7 @@ type ServiceOption = {
 
 type Props = {
   artists: CreateModalArtist[];
+  initialDate?: string;
   onClose: () => void;
   onCreated: () => void;
 };
@@ -32,9 +33,9 @@ function todayYmd() {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-export default function BookingCreateModal({ artists, onClose, onCreated }: Props) {
+export default function BookingCreateModal({ artists, initialDate, onClose, onCreated }: Props) {
   const [services, setServices] = useState<ServiceOption[]>([]);
-  const [date, setDate] = useState(todayYmd);
+  const [date, setDate] = useState(initialDate || todayYmd);
   const [time, setTime] = useState<string>(CANDIDATE_TIMES[0] ?? "10:00");
   const [artistId, setArtistId] = useState(artists[0]?.id ?? "");
   const [serviceIds, setServiceIds] = useState<string[]>([]);

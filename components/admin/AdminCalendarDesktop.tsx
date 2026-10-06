@@ -12,6 +12,7 @@ import {
   parseTimeToMinutes,
   type OccupiedInterval
 } from "@/lib/booking/overlap";
+import BookingCreateModal from "@/components/admin/BookingCreateModal";
 import "./admin-calendar.css";
 
 export type CalTab = "day" | "week" | "month";
@@ -143,6 +144,7 @@ export function CalendarDesktopView({
   legacy
 }: ViewProps) {
   const [staffOpen, setStaffOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const staffRef = useRef<HTMLDivElement>(null);
   const dateRef = useRef<HTMLInputElement>(null);
   const empty = artists.length === 0;
@@ -254,7 +256,12 @@ export function CalendarDesktopView({
               <CalIcon src="/admin-icons/lnb/refresh.png" className="cal-refresh-icon" />
             </button>
 
-            <button type="button" className={clsx("cal-new", empty && "is-disabled")}>
+            <button
+              type="button"
+              disabled={empty}
+              onClick={() => setCreateOpen(true)}
+              className={clsx("cal-new", empty && "is-disabled")}
+            >
               <CalIcon src="/admin-icons/lnb/plus.png" className="cal-new-icon" />
               <span className="cal-new-label">새 예약</span>
             </button>
@@ -283,6 +290,17 @@ export function CalendarDesktopView({
           )}
         </>
       )}
+      {createOpen ? (
+        <BookingCreateModal
+          artists={artists.map((a) => ({ id: a.id, label: [a.name_kr, a.role].filter(Boolean).join(" ") }))}
+          initialDate={date}
+          onClose={() => setCreateOpen(false)}
+          onCreated={() => {
+            setCreateOpen(false);
+            onRefresh();
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -373,15 +391,26 @@ function DayGrid({
         onScroll={(e) => syncHead(e.currentTarget.scrollLeft)}
       >
       <div className="cal-grid-body" style={{ height: SLOT_COUNT * SLOT_HEIGHT }}>
-        {slots.map((m, i) => (
-          <div
-            key={m}
-            className={clsx("cal-slot-line", m % 60 === 0 ? "is-hour" : "is-half")}
-            style={{ top: i * SLOT_HEIGHT }}
-          />
-        ))}
+        {slots.map((m, i) =>
+          i === 0 ? null : (
+            <div
+              key={m}
+              className={clsx("cal-slot-line", m % 60 === 0 ? "is-hour" : "is-half")}
+              style={{ top: i * SLOT_HEIGHT }}
+            />
+          )
+        )}
 
         <div className="cal-time-col">
+          {slots.map((m, i) =>
+            i === 0 ? null : (
+              <div
+                key={`line-${m}`}
+                className={clsx("cal-slot-line", m % 60 === 0 ? "is-hour" : "is-half")}
+                style={{ top: i * SLOT_HEIGHT }}
+              />
+            )
+          )}
           {slots
             .filter((m) => m % 60 === 0)
             .map((m) => (

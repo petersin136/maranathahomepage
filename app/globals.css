@@ -37,13 +37,15 @@
   --row-select: #F4EFE9;
   --danger: #E24B4B;
 
-  --booking-col-check: 66px;
+  --booking-col-check: 6%;
   --booking-col-date: 12.5%;
   --booking-col-name: 8.5%;
   --booking-col-phone: 13.5%;
-  --booking-col-artist: 96px;
+  --booking-col-artist: 8.7%;
+  --booking-col-service: 20.8%;
+  --booking-col-service-cancelled: 17.6%;
   --booking-col-pay: 12%;
-  --booking-col-reason: 168px;
+  --booking-col-reason: 15.2%;
   --booking-col-status: 10%;
   --booking-col-manage: 8%;
   --booking-cell-padx: 12px;
