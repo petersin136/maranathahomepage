@@ -1,12 +1,24 @@
 /* 캘린더 PC(≥1440) — 1024 시안 × 1.40625 */
 
+html:has(.ADMIN-CALENDAR) {
+  scrollbar-gutter: stable;
+}
+
 .ADMIN-CALENDAR {
   padding-left: 6px;
   padding-right: 8px;
   padding-bottom: 40px;
-  font-family: "Pretendard Variable", "Pretendard", system-ui, sans-serif;
+  font-family: var(--font-sans-kr);
   letter-spacing: -0.02em;
   color: #1c1a19;
+
+  --cal-hour-rule: #dcdccf;
+  --cal-now: #bc5f38;
+  --cal-tone-cut-bg: #f5f4f0;
+  --cal-tone-clinic-bg: #eef5fb;
+  --cal-tone-consult-bg: #f7f0f7;
+  --cal-tone-perm-bg: #fdf2ee;
+  --cal-tone-color-bg: #edf6f3;
 }
 
 .ADMIN-CALENDAR .cal-icon {
@@ -60,10 +72,10 @@
 
 .ADMIN-CALENDAR .cal-title {
   margin-top: 31px;
-  font-size: 27px;
-  font-weight: 600;
-  line-height: 27px;
-  color: #131313;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 24px;
+  color: var(--ink);
 }
 
 .ADMIN-CALENDAR .cal-search {
@@ -74,7 +86,7 @@
   margin-top: 25px;
   padding-left: 14px;
   padding-right: 14px;
-  border: 1px solid #bbb8b1;
+  border: 1px solid var(--label);
   border-radius: 4px;
   background: #fff;
 }
@@ -93,7 +105,7 @@
   border: none;
   outline: none;
   background: transparent;
-  font: 400 14px/20px "Pretendard Variable", "Pretendard", system-ui, sans-serif;
+  font: 400 14px/20px var(--font-sans-kr);
   letter-spacing: -0.02em;
   color: #1c1a19;
 }
@@ -133,7 +145,7 @@
   right: 0;
   bottom: 0;
   height: 1.5px;
-  background: #181818;
+  background: var(--ink);
 }
 
 /* ── 툴바 ───────────────────────────── */
@@ -415,7 +427,10 @@
 }
 
 .ADMIN-CALENDAR .cal-grid-head {
-  display: flex;
+  display: grid;
+  grid-template-columns: 83px;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   height: 69px;
 }
 
@@ -428,10 +443,9 @@
   display: flex;
   align-items: center;
   min-width: 0;
-  flex: 1 1 0;
   padding-top: 2px;
   padding-left: 20px;
-  border-left: 1px solid #f2f2ee;
+  border-left: 1px solid var(--rule);
 }
 
 .ADMIN-CALENDAR .cal-avatar {
@@ -479,7 +493,7 @@
   padding-left: 8px;
   padding-right: 8px;
   border-radius: 11px;
-  background: #2c3a2e;
+  background: var(--accent);
 }
 
 .ADMIN-CALENDAR .cal-closed-badge-label {
@@ -491,7 +505,10 @@
 
 .ADMIN-CALENDAR .cal-grid-body {
   position: relative;
-  display: flex;
+  display: grid;
+  grid-template-columns: 83px;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
 }
 
 .ADMIN-CALENDAR .cal-slot-line {
@@ -503,11 +520,11 @@
 }
 
 .ADMIN-CALENDAR .cal-slot-line.is-hour {
-  background: #dcdccf;
+  background: var(--cal-hour-rule);
 }
 
 .ADMIN-CALENDAR .cal-slot-line.is-half {
-  background: #f2f2f0;
+  background: var(--rule);
 }
 
 .ADMIN-CALENDAR .cal-slot-line:first-child {
@@ -534,8 +551,7 @@
 .ADMIN-CALENDAR .cal-col {
   position: relative;
   min-width: 0;
-  flex: 1 1 0;
-  border-left: 1px solid #f2f2ee;
+  border-left: 1px solid var(--rule);
 }
 
 .ADMIN-CALENDAR .cal-cell {
@@ -595,7 +611,7 @@
   font-weight: 400;
   line-height: 14px;
   white-space: nowrap;
-  color: #2e2d2b;
+  color: var(--ink-sub);
 }
 
 .ADMIN-CALENDAR .cal-booking {
@@ -676,15 +692,15 @@
   color: #7c6f68;
 }
 
-.ADMIN-CALENDAR .cal-booking.tone-cut .cal-booking-inner { background: #f5f4f0; }
+.ADMIN-CALENDAR .cal-booking.tone-cut .cal-booking-inner { background: var(--cal-tone-cut-bg); }
 .ADMIN-CALENDAR .cal-booking.tone-cut { color: #7c7a76; }
-.ADMIN-CALENDAR .cal-booking.tone-clinic .cal-booking-inner { background: #eef5fb; }
+.ADMIN-CALENDAR .cal-booking.tone-clinic .cal-booking-inner { background: var(--cal-tone-clinic-bg); }
 .ADMIN-CALENDAR .cal-booking.tone-clinic { color: #4c7ca2; }
-.ADMIN-CALENDAR .cal-booking.tone-consult .cal-booking-inner { background: #f7f0f7; }
+.ADMIN-CALENDAR .cal-booking.tone-consult .cal-booking-inner { background: var(--cal-tone-consult-bg); }
 .ADMIN-CALENDAR .cal-booking.tone-consult { color: #786676; }
-.ADMIN-CALENDAR .cal-booking.tone-perm .cal-booking-inner { background: #fdf2ee; }
+.ADMIN-CALENDAR .cal-booking.tone-perm .cal-booking-inner { background: var(--cal-tone-perm-bg); }
 .ADMIN-CALENDAR .cal-booking.tone-perm { color: #bc7a64; }
-.ADMIN-CALENDAR .cal-booking.tone-color .cal-booking-inner { background: #edf6f3; }
+.ADMIN-CALENDAR .cal-booking.tone-color .cal-booking-inner { background: var(--cal-tone-color-bg); }
 .ADMIN-CALENDAR .cal-booking.tone-color { color: #4f756a; }
 
 .ADMIN-CALENDAR .cal-booking-new {
@@ -696,7 +712,7 @@
   left: 83px;
   right: 0;
   height: 1px;
-  background: #bc5f38;
+  background: var(--cal-now);
   pointer-events: none;
   z-index: 5;
 }
@@ -708,7 +724,7 @@
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: #bc5f38;
+  background: var(--cal-now);
 }
 
 .ADMIN-CALENDAR .cal-legacy {

@@ -44,6 +44,14 @@ const SLOT_HEIGHT = 48;
 const SLOT_COUNT = (CLOSING_MINUTES - OPEN_MINUTES) / SLOT_MINUTES;
 const WEEKDAY_EN = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"] as const;
 
+const TONE_CLASS: Record<CalendarTone, string> = {
+  cut: "tone-cut",
+  clinic: "tone-clinic",
+  consult: "tone-consult",
+  perm: "tone-perm",
+  color: "tone-color"
+};
+
 const TABS: { key: CalTab; label: string }[] = [
   { key: "day", label: "일간" },
   { key: "week", label: "주간" },
@@ -412,7 +420,7 @@ function DayGrid({
                     onClick={() => onOpenBooking(b.id)}
                     className={clsx(
                       "cal-booking",
-                      `tone-${b.tone}`,
+                      TONE_CLASS[b.tone],
                       short && "is-short",
                       b.status === "pending" && "is-pending"
                     )}

@@ -552,12 +552,8 @@ export default function AdminBookingsPage() {
             <col className="w-[var(--booking-col-name)]" />
             <col className="w-[var(--booking-col-phone)]" />
             <col className="w-[var(--booking-col-artist)]" />
-            <col />
-            <col
-              className={
-                tab === "cancelled_noshow" ? "w-[var(--booking-col-reason)]" : "w-[var(--booking-col-pay)]"
-              }
-            />
+            <col className="w-[var(--booking-col-service)]" />
+            <col className="w-[var(--booking-col-pay)]" />
             <col className="w-[var(--booking-col-status)]" />
             <col className="w-[var(--booking-col-manage)]" />
           </colgroup>
