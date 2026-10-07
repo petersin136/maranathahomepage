@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Bodoni_Moda, Montserrat } from "next/font/google";
 import "./globals.css";
+import "./pretendard-variable.css";
 
 const bodoni = Bodoni_Moda({
   subsets: ["latin"],

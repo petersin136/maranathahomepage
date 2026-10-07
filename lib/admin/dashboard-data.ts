@@ -66,6 +66,30 @@ function weekStartMonday(ymd: string) {
   return addDays(ymd, -back);
 }
 
+/** Pending rows for the dashboard list. Shared with the shell badge on /admin. */
+export const getPendingBookings = cache(async () => {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from("bookings")
+    .select(BOOKING_FIELDS)
+    .eq("status", "pending")
+    .order("booking_date", { ascending: true })
+    .order("booking_time", { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as DashBooking[];
+});
+
+/** Badge count only. No row body. */
+export const getPendingCount = cache(async () => {
+  const admin = getSupabaseAdmin();
+  const { count, error } = await admin
+    .from("bookings")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "pending");
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+});
+
 /**
  * Dashboard bookings — DB-filtered queries in parallel.
  * Auth is assumed already enforced by middleware (page) or requireAdminUser (API).
@@ -79,7 +103,7 @@ export async function fetchDashboardData(): Promise<DashboardData> {
   const monthStart = formatYmd(y, m, 1);
   const monthEnd = formatYmd(y, m, new Date(Date.UTC(y, m, 0)).getUTCDate());
 
-  const [todayRes, weekRes, monthRes, pendingListRes] = await Promise.all([
+  const [todayRes, weekRes, monthRes, pendingBookings] = await Promise.all([
     admin
       .from("bookings")
       .select(BOOKING_FIELDS)
@@ -104,16 +128,10 @@ export async function fetchDashboardData(): Promise<DashboardData> {
       .not("status", "in", EXCLUDED_STATUSES)
       .order("booking_date", { ascending: true })
       .order("booking_time", { ascending: true }),
-    admin
-      .from("bookings")
-      .select(BOOKING_FIELDS)
-      .eq("status", "pending")
-      .order("booking_date", { ascending: true })
-      .order("booking_time", { ascending: true })
+    getPendingBookings()
   ]);
 
   const todayBookings = (todayRes.data ?? []) as DashBooking[];
-  const pendingBookings = (pendingListRes.data ?? []) as DashBooking[];
 
   return {
     today,

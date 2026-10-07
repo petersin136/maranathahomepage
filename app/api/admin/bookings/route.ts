@@ -129,6 +129,19 @@ export async function GET(request: Request) {
   const status = searchParams.get("status"); // pending|confirmed|completed|cancelled_noshow|all
   const admin = getSupabaseAdmin();
 
+  if (searchParams.get("count") === "1") {
+    let countQuery = admin.from("bookings").select("*", { count: "exact", head: true });
+    if (status === "pending") countQuery = countQuery.eq("status", "pending");
+    else if (status === "confirmed") countQuery = countQuery.eq("status", "confirmed");
+    else if (status === "completed") countQuery = countQuery.eq("status", "completed");
+    else if (status === "cancelled_noshow") countQuery = countQuery.in("status", ["cancelled", "noshow"]);
+    const { count, error } = await countQuery;
+    if (error) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true, count: count ?? 0 });
+  }
+
   let query = admin.from("bookings").select("*").order("booking_date", { ascending: false }).order("booking_time", { ascending: true });
 
   if (status === "pending") query = query.eq("status", "pending");

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { clsx } from "clsx";
+import { useRefreshPendingCount } from "@/components/admin/pending-count";
 import { CANDIDATE_TIMES } from "@/lib/booking/slots";
 
 export type CreateModalArtist = { id: string; label: string };
@@ -43,6 +44,7 @@ export default function BookingCreateModal({
   onClose,
   onCreated
 }: Props) {
+  const refreshPendingCount = useRefreshPendingCount();
   const [services, setServices] = useState<ServiceOption[]>([]);
   const [date, setDate] = useState(initialDate || todayYmd);
   const [time, setTime] = useState<string>(initialTime || CANDIDATE_TIMES[0] || "10:00");
@@ -97,6 +99,7 @@ export default function BookingCreateModal({
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || "예약 등록에 실패했습니다.");
+      refreshPendingCount();
       onCreated();
     } catch (e) {
       setError(e instanceof Error ? e.message : "예약 등록에 실패했습니다.");

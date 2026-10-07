@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import type { PaymentSavePayload } from "@/components/admin/BookingPaymentModal";
+import { useRefreshPendingCount } from "@/components/admin/pending-count";
 import type { BookingRow, BookingStatus } from "@/lib/bookings/types";
 
 export type BookingActionTarget = {
@@ -30,6 +31,7 @@ async function parseJson(res: Response) {
 
 export function useBookingActions(options: Options = {}) {
   const { onSuccess } = options;
+  const refreshPendingCount = useRefreshPendingCount();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{
@@ -88,6 +90,7 @@ export function useBookingActions(options: Options = {}) {
       setError(null);
       try {
         const next = await requestStatus(booking.id, status);
+        refreshPendingCount();
         await onSuccess?.({ action: "status", booking: next });
       } catch (e) {
         console.error("[booking] status", e);
@@ -97,7 +100,7 @@ export function useBookingActions(options: Options = {}) {
         setBusyId(null);
       }
     },
-    [busyId, onSuccess, openCancel, requestStatus]
+    [busyId, onSuccess, openCancel, refreshPendingCount, requestStatus]
   );
 
   const savePayment = useCallback(
@@ -122,6 +125,7 @@ export function useBookingActions(options: Options = {}) {
           throw new Error(data.error || "결제 정보 저장에 실패했습니다.");
         }
         setPaymentTarget(null);
+        refreshPendingCount();
         await onSuccess?.({ action: "payment", booking: data.booking as BookingRow });
       } catch (e) {
         console.error("[booking] payment", e);
@@ -130,7 +134,7 @@ export function useBookingActions(options: Options = {}) {
         setBusyId(null);
       }
     },
-    [busyId, onSuccess, paymentTarget]
+    [busyId, onSuccess, paymentTarget, refreshPendingCount]
   );
 
   const runConfirm = useCallback(async () => {
@@ -142,6 +146,7 @@ export function useBookingActions(options: Options = {}) {
       if (action === "cancel") {
         const next = await requestStatus(booking.id, "cancelled", "admin_cancel");
         setConfirm(null);
+        refreshPendingCount();
         await onSuccess?.({ action: "cancel", booking: next });
       } else {
         const res = await fetch(`/api/admin/bookings/${booking.id}`, { method: "DELETE" });
@@ -150,6 +155,7 @@ export function useBookingActions(options: Options = {}) {
           throw new Error(data.error || "삭제에 실패했습니다.");
         }
         setConfirm(null);
+        refreshPendingCount();
         await onSuccess?.({ action: "delete", booking: null });
       }
     } catch (e) {
@@ -158,7 +164,7 @@ export function useBookingActions(options: Options = {}) {
     } finally {
       setBusyId(null);
     }
-  }, [busyId, confirm, onSuccess, requestStatus]);
+  }, [busyId, confirm, onSuccess, refreshPendingCount, requestStatus]);
 
   return {
     busyId,

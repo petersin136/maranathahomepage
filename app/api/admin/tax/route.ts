@@ -62,12 +62,8 @@ export async function GET() {
     const prevYearStart = formatYmd(year - 1, 1, 1);
     const prevYearEnd = formatYmd(year - 1, 12, 31);
 
-    const settings = await loadShopSettings(admin);
-    const taxType: TaxType =
-      settings?.tax_type === "simplified" ? "simplified" : "general";
-    const vatPeriod = resolveVatPeriod(taxType, today);
-
-    const [bookingsRes, prevBookingsRes, expensesRes, artistsRes] = await Promise.all([
+    const [settings, bookingsRes, prevBookingsRes, expensesRes, artistsRes] = await Promise.all([
+      loadShopSettings(admin),
       admin
         .from("bookings")
         .select("paid_at, final_amount, payment_method, cash_receipt_issued, artist_id")
@@ -92,6 +88,9 @@ export async function GET() {
         .limit(10000),
       admin.from("artists").select("id, employment_type, commission_rate")
     ]);
+    const taxType: TaxType =
+      settings?.tax_type === "simplified" ? "simplified" : "general";
+    const vatPeriod = resolveVatPeriod(taxType, today);
 
     if (bookingsRes.error) throw new Error(bookingsRes.error.message);
     if (prevBookingsRes.error) throw new Error(prevBookingsRes.error.message);

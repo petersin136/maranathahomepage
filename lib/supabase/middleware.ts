@@ -13,8 +13,14 @@ function copyAuthCookies(from: NextResponse, to: NextResponse) {
   return to;
 }
 
+function nextWithPathname(request: NextRequest) {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", request.nextUrl.pathname);
+  return NextResponse.next({ request: { headers: requestHeaders } });
+}
+
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+  let supabaseResponse = nextWithPathname(request);
   const url = getSupabaseUrl();
   const anon = getSupabaseAnonKey();
 
@@ -39,7 +45,7 @@ export async function updateSession(request: NextRequest) {
 
         if (!changed) return;
 
-        supabaseResponse = NextResponse.next({ request });
+        supabaseResponse = nextWithPathname(request);
         cookiesToSet.forEach(({ name, value, options }) => {
           supabaseResponse.cookies.set(name, value, options);
         });

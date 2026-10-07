@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { clsx } from "clsx";
 import { type AdminHref } from "@/lib/admin/nav";
+import { usePendingCount } from "@/components/admin/pending-count";
 import { createClient } from "@/lib/supabase/browser";
 
 /**
@@ -83,7 +84,7 @@ export default function AdminShell({
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileName, setProfileName] = useState("관리자");
-  const [pendingCount, setPendingCount] = useState<number | null>(null);
+  const pendingCount = usePendingCount();
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -106,15 +107,6 @@ export default function AdminShell({
       else if (user?.email) setProfileName(user.email.split("@")[0]);
     });
   }, [email]);
-
-  useEffect(() => {
-    fetch("/api/admin/bookings?status=pending")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data?.ok && Array.isArray(data.bookings)) setPendingCount(data.bookings.length);
-      })
-      .catch(() => undefined);
-  }, [pathname]);
 
   useEffect(() => {
     if (!menuOpen) return;

@@ -6,6 +6,7 @@ import { clsx } from "clsx";
 import { BOOKING_STATUS_LABEL, BOOKING_STATUS_OPTIONS, cancelReasonLabel } from "@/lib/admin/booking-labels";
 import type { BookingRow, BookingStatus } from "@/lib/bookings/types";
 import BookingCreateModal from "@/components/admin/BookingCreateModal";
+import { useRefreshPendingCount } from "@/components/admin/pending-count";
 
 const PAGE_SIZE = 12;
 const DEPOSIT_WINDOW_MS = 3 * 60 * 60 * 1000;
@@ -166,6 +167,7 @@ type StatusMenu = {
 
 export default function AdminBookingsPage() {
   const router = useRouter();
+  const refreshPendingCount = useRefreshPendingCount();
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -371,6 +373,7 @@ export default function AdminBookingsPage() {
     setBookings((cur) => cur.map((row) => (done.has(row.id) ? (done.get(row.id) ?? { ...row, status, cancel_reason: cancelReason ?? null }) : row)));
     setSelected((cur) => cur.filter((id) => !done.has(id)));
     setStatusMenu(null);
+    if (done.size > 0) refreshPendingCount();
   };
 
   const resetFilters = () => {
