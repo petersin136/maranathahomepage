@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -28,14 +29,19 @@ export function requireSupabaseAdmin():
   }
 }
 
-export async function requireAdminUser(): Promise<
-  { ok: true; user: User } | { ok: false; response: NextResponse }
-> {
+const loadAdminUser = cache(async () => {
   const supabase = await createClient();
   const {
     data: { user },
     error
   } = await supabase.auth.getUser();
+  return { user: user ?? null, error };
+});
+
+export async function requireAdminUser(): Promise<
+  { ok: true; user: User } | { ok: false; response: NextResponse }
+> {
+  const { user, error } = await loadAdminUser();
 
   if (error || !user) {
     return {

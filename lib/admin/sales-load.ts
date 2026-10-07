@@ -1,12 +1,4 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-
-export class SalesQueryError extends Error {
-  status: number;
-  constructor(message: string, status: number) {
-    super(message);
-    this.status = status;
-  }
-}
 import {
   aggregateSales,
   kstDayEndExclusiveIso,
@@ -15,6 +7,14 @@ import {
   type SalesDashboard,
   type SalesPreset
 } from "@/lib/admin/sales-data";
+
+export class SalesQueryError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
 
 const SALE_FIELDS =
   "id, status, paid_at, final_amount, payment_method, cash_receipt_issued, artist_id, artist_name, service_names, booking_date";

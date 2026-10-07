@@ -1,7 +1,17 @@
 import { NextResponse } from "next/server";
 import { requireAdminUser, getSupabaseAdmin } from "@/lib/admin/auth";
-import { normalizeExpenseInput, resolveExpenseMonth } from "@/lib/admin/expenses-data";
-import { ExpensesQueryError, loadExpensesDashboard } from "@/lib/admin/expenses-load";
+import {
+  buildRecurringImportPreview,
+  normalizeExpenseInput,
+  previousExpenseMonth,
+  resolveExpenseMonth
+} from "@/lib/admin/expenses-data";
+import {
+  EXPENSE_FIELDS,
+  ExpensesQueryError,
+  fetchMonthExpenses,
+  loadExpensesDashboard
+} from "@/lib/admin/expenses-load";
 
 export const preferredRegion = "icn1";
 
@@ -80,7 +90,7 @@ export async function POST(request: Request) {
         receipt_url: null
       }));
 
-      const { data, error } = await admin.from("expenses").insert(rows).select(FIELDS);
+      const { data, error } = await admin.from("expenses").insert(rows).select(EXPENSE_FIELDS);
       if (error) throw new Error(error.message);
 
       return NextResponse.json({
@@ -107,7 +117,7 @@ export async function POST(request: Request) {
     const { data, error } = await admin
       .from("expenses")
       .insert(normalized)
-      .select(FIELDS)
+      .select(EXPENSE_FIELDS)
       .single();
     if (error || !data) throw new Error(error?.message || "등록에 실패했습니다.");
     return NextResponse.json({ ok: true, expense: data });

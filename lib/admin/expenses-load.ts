@@ -16,17 +16,17 @@ export class ExpensesQueryError extends Error {
   }
 }
 
-const FIELDS =
+export const EXPENSE_FIELDS =
   "id, expense_date, category, amount, vendor, memo, has_tax_invoice, receipt_url, is_recurring, created_at";
 
-async function fetchMonthExpenses(
+export async function fetchMonthExpenses(
   admin: ReturnType<typeof getSupabaseAdmin>,
   from: string,
   to: string
 ) {
   const { data, error } = await admin
     .from("expenses")
-    .select(FIELDS)
+    .select(EXPENSE_FIELDS)
     .gte("expense_date", from)
     .lte("expense_date", to)
     .order("expense_date", { ascending: false })

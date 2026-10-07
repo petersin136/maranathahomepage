@@ -126,7 +126,7 @@ export default function AdminShell({
   return (
     <div className="min-h-screen bg-white text-hu-black">
       <aside className="fixed inset-y-0 left-0 z-30 flex w-[242px] flex-col bg-[#F9F8F4]">
-        <Link href="/" className="block px-[27px] pt-[36px]">
+        <Link href="/" prefetch={false} className="block px-[27px] pt-[36px]">
           <img src="/admin-icons/hair-up-logo.png" alt="hair up" className="h-[42px] w-auto" />
         </Link>
 
