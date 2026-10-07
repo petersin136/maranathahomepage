@@ -20,9 +20,16 @@ type CalendarRow = {
   duration_minutes: number | null;
   customer_request: string | null;
   admin_memo: string | null;
+  final_amount: number | null;
 };
 
-type ServiceMeta = { id: string; category: string; name: string; duration_minutes: number | null };
+type ServiceMeta = {
+  id: string;
+  category: string;
+  name: string;
+  duration_minutes: number | null;
+  price: number | null;
+};
 
 export async function GET(request: Request) {
   const auth = await requireAdminUser();
@@ -46,7 +53,7 @@ export async function GET(request: Request) {
   let query = db.admin
     .from("bookings")
     .select(
-      "id, booking_date, booking_time, artist_id, artist_name, customer_name, customer_phone, status, service_ids, service_names, cancel_reason, duration_minutes, customer_request, admin_memo"
+      "id, booking_date, booking_time, artist_id, artist_name, customer_name, customer_phone, status, service_ids, service_names, cancel_reason, duration_minutes, customer_request, admin_memo, final_amount"
     )
     .gte("booking_date", from)
     .lte("booking_date", to)
@@ -62,12 +69,19 @@ export async function GET(request: Request) {
   }
   const rows = (data ?? []) as CalendarRow[];
 
-  const { data: serviceData } = await db.admin
-    .from("services")
-    .select("id, category, name, duration_minutes");
+  const [{ data: serviceData }, { data: priceData }] = await Promise.all([
+    db.admin.from("services").select("id, category, name, duration_minutes, price"),
+    db.admin.from("service_prices").select("service_id, artist_id, price")
+  ]);
   const services = (serviceData ?? []) as ServiceMeta[];
   const serviceById = new Map(services.map((s) => [String(s.id), s]));
   const serviceByName = new Map(services.map((s) => [s.name.trim(), s]));
+  const artistPrice = new Map(
+    ((priceData ?? []) as { service_id: string; artist_id: string; price: number }[]).map((p) => [
+      `${p.service_id}:${p.artist_id}`,
+      Number(p.price)
+    ])
+  );
 
   const phones = Array.from(
     new Set(rows.map((r) => (r.customer_phone || "").trim()).filter(Boolean))
@@ -101,6 +115,12 @@ export async function GET(request: Request) {
         name: m?.name ?? String(names[i] ?? "")
       }))
     );
+    const listPrice = metas.reduce((sum, m) => {
+      if (!m) return sum;
+      const own = artistPrice.get(`${m.id}:${row.artist_id}`);
+      return sum + (own ?? (Number(m.price) || 0));
+    }, 0);
+    const paid = row.status === "completed" && row.final_amount != null ? Number(row.final_amount) : null;
     const phone = (row.customer_phone || "").trim();
     const prior = phone ? completedByPhone.get(phone) ?? [] : [];
     const isNew = !prior.some(
@@ -123,7 +143,8 @@ export async function GET(request: Request) {
       duration_minutes: durationMinutes,
       tone,
       is_new: isNew,
-      memo: resolveCustomerRequestText(row.customer_request, row.admin_memo)
+      memo: resolveCustomerRequestText(row.customer_request, row.admin_memo),
+      expected_amount: paid ?? listPrice
     };
   });
 

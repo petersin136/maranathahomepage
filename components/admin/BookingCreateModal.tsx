@@ -109,17 +109,20 @@ export default function BookingCreateModal({
     }
   };
 
+  const backdropDown = useRef(false);
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 font-sans-kr text-[#1C1C1C]"
-      onClick={() => {
-        if (!busy) onClose();
+      onMouseDown={(e) => {
+        backdropDown.current = e.target === e.currentTarget;
+      }}
+      onMouseUp={(e) => {
+        if (backdropDown.current && e.target === e.currentTarget && !busy) onClose();
+        backdropDown.current = false;
       }}
     >
-      <div
-        className="max-h-[90dvh] w-full max-w-[560px] overflow-auto rounded-[12px] bg-white p-8 shadow-[0_8px_24px_rgba(28,28,28,0.08)]"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="max-h-[90dvh] w-full max-w-[560px] overflow-auto rounded-[12px] bg-white p-8 shadow-[0_8px_24px_rgba(28,28,28,0.08)]">
         <h2 className="text-[22px] font-bold tracking-[-0.02em] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
           새 예약
         </h2>

@@ -173,9 +173,9 @@ export default function AdminCalendarPage() {
         onTab={setTab}
         onOpenBooking={setDetailId}
         reloadKey={reloadKey}
-        legacy={<LegacyCalendar key={tab} forcedView={tab === "week" ? "week" : "month"} />}
+        legacy={<LegacyCalendar forcedView="month" />}
       />
-      {tab === "day" && detailId ? (
+      {tab !== "month" && detailId ? (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30"
           onClick={(e) => {
@@ -195,7 +195,7 @@ export default function AdminCalendarPage() {
           </div>
         </div>
       ) : null}
-      {tab === "day" && actions.confirm ? (
+      {tab !== "month" && actions.confirm ? (
         <BookingConfirmModal
           action={actions.confirm.action}
           booking={actions.confirm.booking}
