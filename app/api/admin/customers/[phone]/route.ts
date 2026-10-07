@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminUser, requireSupabaseAdmin } from "@/lib/admin/auth";
+import { normalizePhone } from "@/lib/admin/customers-data";
 import { todayKst } from "@/lib/admin/sales-data";
 
 export const preferredRegion = "icn1";
@@ -27,7 +28,7 @@ export async function GET(
   if (!db.ok) return db.response;
 
   const { phone: raw } = await context.params;
-  const phone = decodeURIComponent(raw).trim();
+  const phone = normalizePhone(decodeURIComponent(raw));
   if (!phone) {
     return NextResponse.json({ ok: false, error: "연락처가 없습니다." }, { status: 400 });
   }
@@ -78,7 +79,7 @@ export async function PUT(
   if (!db.ok) return db.response;
 
   const { phone: raw } = await context.params;
-  const phone = decodeURIComponent(raw).trim();
+  const phone = normalizePhone(decodeURIComponent(raw));
   if (!phone) {
     return NextResponse.json({ ok: false, error: "연락처가 없습니다." }, { status: 400 });
   }

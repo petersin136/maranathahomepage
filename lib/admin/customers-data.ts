@@ -157,8 +157,10 @@ function daysBetween(fromYmd: string, toYmd: string) {
   return Math.round((end - start) / 86_400_000);
 }
 
-function normalizePhone(raw: string | null | undefined) {
-  return (raw || "").trim();
+export function normalizePhone(raw: string | null | undefined) {
+  let value = (raw || "").trim();
+  if (value.startsWith("+82")) value = `0${value.slice(3)}`;
+  return value.replace(/\D/g, "");
 }
 
 function parseHour(bookingTime: string) {

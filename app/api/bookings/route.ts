@@ -9,6 +9,7 @@ import {
   loadOccupiedIntervals,
   resolveServiceDurations
 } from "@/lib/booking/occupied";
+import { normalizePhone } from "@/lib/admin/customers-data";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^\d{1,2}:\d{2}$/;
@@ -110,7 +111,7 @@ export async function POST(request: Request) {
           : null,
       customer_name: customerName,
       customer_gender: gender ?? null,
-      customer_phone: customerPhone,
+      customer_phone: normalizePhone(customerPhone),
       customer_request: customerRequest,
       privacy_agreed: true,
       status: "pending" as const,

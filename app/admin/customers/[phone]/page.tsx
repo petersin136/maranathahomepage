@@ -261,6 +261,7 @@ export default function AdminCustomerDetailPage() {
   const name = row?.name || summary.name || phone;
   const next = upcoming[0] ?? null;
   const memoDirty = memo !== savedMemo;
+  const memoSaved = !saving && !memoDirty && Boolean(memoUpdatedAt);
 
   if (!data && !loadError) {
     return <p className="pt-6 font-sans-kr text-[13px] text-[#8A847C]">불러오는 중…</p>;
@@ -356,9 +357,12 @@ export default function AdminCustomerDetailPage() {
               type="button"
               disabled={saving || !memoDirty}
               onClick={() => void saveMemo()}
-              className="inline-flex h-[40px] items-center rounded-[8px] bg-[#2F3A2F] px-4 text-[14px] font-bold text-white disabled:opacity-40"
+              className={clsx(
+                "inline-flex h-[40px] items-center rounded-[8px] px-4 text-[14px] font-bold text-white",
+                memoSaved ? "bg-[#8A847C]" : "bg-[#2F3A2F] disabled:opacity-40"
+              )}
             >
-              {saving ? "저장 중..." : "메모 저장"}
+              {saving ? "저장 중..." : memoSaved ? "저장됨" : "메모 저장"}
             </button>
           </div>
 
