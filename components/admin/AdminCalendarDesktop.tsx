@@ -5,6 +5,7 @@ import Link from "next/link";
 import { clsx } from "clsx";
 import type { CalendarTone } from "@/lib/admin/calendar-tone";
 import { CANDIDATE_TIMES } from "@/lib/booking/slots";
+import { BOOKING_STATUS_LABEL } from "@/lib/admin/booking-labels";
 import { CLOSING_MINUTES, OPEN_MINUTES } from "@/lib/booking/business-hours";
 import {
   BLOCKING_STATUSES,
@@ -82,6 +83,10 @@ function formatChipDate(ymd: string) {
   return `${y}. ${String(m).padStart(2, "0")}. ${String(d).padStart(2, "0")}. ${WEEKDAY_EN[dow]}`;
 }
 
+function formatSearchWhen(ymd: string, time: string) {
+  return `${formatChipDate(ymd)} ${time.slice(0, 5)}`;
+}
+
 function minutesLabel(total: number) {
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 }
@@ -110,6 +115,33 @@ function isBlocking(status: string) {
   return (BLOCKING_STATUSES as readonly string[]).includes(status);
 }
 
+export type SearchHit = {
+  id: string;
+  booking_date: string;
+  booking_time: string;
+  artist_id: string;
+  artist_name: string | null;
+  customer_name: string;
+  customer_phone: string | null;
+  service_names: string[] | null;
+  status: string;
+};
+
+function searchBlob(hit: SearchHit, artistLabel: string) {
+  return [hit.customer_name, hit.customer_phone || "", artistLabel, hit.artist_name || "", ...(hit.service_names || [])]
+    .join(" ")
+    .toLowerCase();
+}
+
+function hitMatches(hit: SearchHit, query: string, artistLabel: string) {
+  const q = query.trim().toLowerCase();
+  if (!q) return false;
+  const digits = q.replace(/\D/g, "");
+  const phone = (hit.customer_phone || "").replace(/\D/g, "");
+  if (searchBlob(hit, artistLabel).includes(q)) return true;
+  return digits.length > 0 && phone.includes(digits);
+}
+
 type ViewProps = {
   tab: CalTab;
   onTab: (tab: CalTab) => void;
@@ -119,9 +151,11 @@ type ViewProps = {
   selectedIds: string[];
   onToggleArtist: (id: string) => void;
   bookings: CalDayBooking[];
+  catalog: SearchHit[];
   nowMinutes: number | null;
   query: string;
   onQuery: (q: string) => void;
+  onPickSearch: (hit: SearchHit) => void;
   onRefresh: () => void;
   onOpenBooking: (id: string) => void;
   legacy?: ReactNode;
@@ -136,16 +170,20 @@ export function CalendarDesktopView({
   selectedIds,
   onToggleArtist,
   bookings,
+  catalog,
   nowMinutes,
   query,
   onQuery,
+  onPickSearch,
   onRefresh,
   onOpenBooking,
   legacy
 }: ViewProps) {
   const [staffOpen, setStaffOpen] = useState(false);
-  const [createOpen, setCreateOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [createSlot, setCreateSlot] = useState<{ time?: string; artistId?: string } | null>(null);
   const staffRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
   const dateRef = useRef<HTMLInputElement>(null);
   const empty = artists.length === 0;
 
@@ -158,21 +196,81 @@ export function CalendarDesktopView({
     return () => document.removeEventListener("mousedown", close);
   }, [staffOpen]);
 
+  useEffect(() => {
+    if (!searchOpen) return;
+    const close = (e: MouseEvent) => {
+      if (!searchRef.current?.contains(e.target as Node)) setSearchOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [searchOpen]);
+
+  const artistLabelOf = (id: string, fallback: string | null) => {
+    const artist = artists.find((a) => a.id === id);
+    return [artist?.name_kr || fallback, artist?.role].filter(Boolean).join(" ");
+  };
+
+  const searchHits = useMemo(() => {
+    const q = query.trim();
+    if (!q) return [];
+    return catalog
+      .filter((hit) => hitMatches(hit, q, artistLabelOf(hit.artist_id, hit.artist_name)))
+      .slice(0, 12);
+  }, [catalog, query, artists]);
+
   const columns = artists.filter((a) => selectedIds.includes(a.id));
 
   return (
     <div className="ADMIN-CALENDAR">
       <div className="cal-head">
         <h1 className="cal-title">캘린더</h1>
-        <label className="cal-search">
-          <CalIcon src="/admin-icons/lnb/search-bold.png" className="cal-search-icon" />
-          <input
-            value={query}
-            onChange={(e) => onQuery(e.target.value)}
-            placeholder="고객명, 연락처 검색"
-            className="cal-search-input"
-          />
-        </label>
+        <div ref={searchRef} className="cal-search-wrap">
+          <label className="cal-search">
+            <CalIcon src="/admin-icons/lnb/search-bold.png" className="cal-search-icon" />
+            <input
+              value={query}
+              onChange={(e) => {
+                onQuery(e.target.value);
+                setSearchOpen(true);
+              }}
+              onFocus={() => setSearchOpen(true)}
+              placeholder="고객명, 연락처 검색"
+              className="cal-search-input"
+            />
+          </label>
+          {searchOpen && query.trim() ? (
+            <div className="cal-search-panel">
+              {searchHits.length === 0 ? (
+                <p className="cal-search-empty">검색 결과가 없습니다.</p>
+              ) : (
+                searchHits.map((hit) => (
+                  <button
+                    key={hit.id}
+                    type="button"
+                    className="cal-search-item"
+                    onClick={() => {
+                      setSearchOpen(false);
+                      onPickSearch(hit);
+                    }}
+                  >
+                    <span className="cal-search-item-top">
+                      <span className="cal-search-name">{hit.customer_name}</span>
+                      <span className="cal-search-status">{BOOKING_STATUS_LABEL[hit.status] || hit.status}</span>
+                    </span>
+                    <span className="cal-search-meta">
+                      {[hit.customer_phone, artistLabelOf(hit.artist_id, hit.artist_name)].filter(Boolean).join(" · ")}
+                    </span>
+                    <span className="cal-search-meta">
+                      {[formatSearchWhen(hit.booking_date, hit.booking_time), (hit.service_names || []).join(" / ")]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <div className="cal-tabs">
@@ -259,7 +357,7 @@ export function CalendarDesktopView({
             <button
               type="button"
               disabled={empty}
-              onClick={() => setCreateOpen(true)}
+              onClick={() => setCreateSlot({})}
               className={clsx("cal-new", empty && "is-disabled")}
             >
               <CalIcon src="/admin-icons/lnb/plus.png" className="cal-new-icon" />
@@ -286,17 +384,20 @@ export function CalendarDesktopView({
               nowMinutes={nowMinutes}
               query={query}
               onOpenBooking={onOpenBooking}
+              onCreateAt={(time, artistId) => setCreateSlot({ time, artistId })}
             />
           )}
         </>
       )}
-      {createOpen ? (
+      {createSlot ? (
         <BookingCreateModal
           artists={artists.map((a) => ({ id: a.id, label: [a.name_kr, a.role].filter(Boolean).join(" ") }))}
           initialDate={date}
-          onClose={() => setCreateOpen(false)}
+          initialTime={createSlot.time}
+          initialArtistId={createSlot.artistId}
+          onClose={() => setCreateSlot(null)}
           onCreated={() => {
-            setCreateOpen(false);
+            setCreateSlot(null);
             onRefresh();
           }}
         />
@@ -310,25 +411,31 @@ function DayGrid({
   bookings,
   nowMinutes,
   query,
-  onOpenBooking
+  onOpenBooking,
+  onCreateAt
 }: {
   columns: CalArtist[];
   bookings: CalDayBooking[];
   nowMinutes: number | null;
   query: string;
   onOpenBooking: (id: string) => void;
+  onCreateAt: (time: string, artistId: string) => void;
 }) {
-  const q = query.trim();
+  const q = query.trim().toLowerCase();
   const qDigits = q.replace(/\D/g, "");
   const visible = useMemo(
     () =>
       bookings.filter((b) => {
         if (!isBlocking(b.status)) return false;
         if (!q) return true;
-        if (b.customer_name.includes(q)) return true;
+        const artist = columns.find((a) => a.id === b.artist_id);
+        const text = [b.customer_name, b.customer_phone || "", artist?.name_kr || "", artist?.role || "", ...(b.service_names || [])]
+          .join(" ")
+          .toLowerCase();
+        if (text.includes(q)) return true;
         return qDigits.length > 0 && (b.customer_phone || "").replace(/\D/g, "").includes(qDigits);
       }),
-    [bookings, q, qDigits]
+    [bookings, columns, q, qDigits]
   );
 
   const slots = Array.from({ length: SLOT_COUNT }, (_, i) => OPEN_MINUTES + i * SLOT_MINUTES);
@@ -437,10 +544,15 @@ function DayGrid({
             <div key={artist.id} className="cal-col">
               {slots.map((m, i) =>
                 taken(m) ? null : (
-                  <div key={m} className="cal-cell" style={{ top: i * SLOT_HEIGHT }}>
-                    <button type="button" className="cal-cell-add">
+                  <div
+                    key={m}
+                    className="cal-cell"
+                    style={{ top: i * SLOT_HEIGHT }}
+                    onClick={() => onCreateAt(hhmm(m), artist.id)}
+                  >
+                    <span className="cal-cell-add">
                       <CalIcon src="/admin-icons/lnb/plus.png" className="cal-cell-add-icon" />
-                    </button>
+                    </span>
                   </div>
                 )
               )}
@@ -538,6 +650,7 @@ export default function AdminCalendarDesktop({
   const [artists, setArtists] = useState<CalArtist[] | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bookings, setBookings] = useState<CalDayBooking[]>([]);
+  const [catalog, setCatalog] = useState<SearchHit[]>([]);
   const [query, setQuery] = useState("");
   const [tick, setTick] = useState(0);
   const [nowMinutes, setNowMinutes] = useState<number>(currentMinutes);
@@ -558,6 +671,15 @@ export default function AdminCalendarDesktop({
       })
       .catch(() => setArtists([]));
   }, [tick]);
+
+  useEffect(() => {
+    fetch("/api/admin/bookings")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.ok) setCatalog(d.bookings as SearchHit[]);
+      })
+      .catch(() => undefined);
+  }, [tick, reloadKey]);
 
   useEffect(() => {
     const qs = new URLSearchParams({ from: date, to: date });
@@ -583,9 +705,16 @@ export default function AdminCalendarDesktop({
         setSelectedIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))
       }
       bookings={bookings}
+      catalog={catalog}
       nowMinutes={date === todayYmd() ? nowMinutes : null}
       query={query}
       onQuery={setQuery}
+      onPickSearch={(hit) => {
+        setDate(hit.booking_date);
+        if (hit.artist_id) setSelectedIds([hit.artist_id]);
+        onTab("day");
+        onOpenBooking(hit.id);
+      }}
       onRefresh={() => setTick((n) => n + 1)}
       onOpenBooking={onOpenBooking}
       legacy={legacy}

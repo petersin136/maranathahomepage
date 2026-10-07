@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clsx } from "clsx";
 import {
   STATE_META,
   STATE_ORDER,
+  customerDetailHref,
   customerState,
   type CustomerState
 } from "@/components/admin/CustomerFilters";
@@ -121,6 +123,8 @@ export default function AdminCustomersPage() {
         const hit =
           row.name.toLowerCase().includes(q) ||
           row.phone.toLowerCase().includes(q) ||
+          row.artistName.toLowerCase().includes(q) ||
+          row.services.some((name) => name.toLowerCase().includes(q)) ||
           (qDigits.length > 0 && phone.includes(qDigits));
         if (!hit) return false;
       }
@@ -367,7 +371,11 @@ export default function AdminCustomersPage() {
                         label={`${row.name} 선택`}
                       />
                     </td>
-                    <td className="truncate py-[15px] pr-3 font-medium">{row.name}</td>
+                    <td className="truncate py-[15px] pr-3 font-medium">
+                      <Link href={customerDetailHref(row.phone)} className="hover:underline">
+                        {row.name}
+                      </Link>
+                    </td>
                     <td className="truncate py-[15px] pr-3 font-medium text-[#3A3A3A]">{formatPhone(row.phone)}</td>
                     <td className="truncate py-[15px] pr-3 font-medium">{row.artistName}</td>
                     <td className="truncate py-[15px] pr-3 font-medium">{row.services.join(" / ") || "—"}</td>
@@ -385,7 +393,11 @@ export default function AdminCustomersPage() {
                         <span className="font-medium">—</span>
                       )}
                     </td>
-                    <td className="py-[15px] text-right font-normal text-[#8A847C]">상세보기</td>
+                    <td className="py-[15px] text-right font-normal text-[#8A847C]">
+                      <Link href={customerDetailHref(row.phone)} className="hover:text-[#1C1C1C]">
+                        상세보기
+                      </Link>
+                    </td>
                   </tr>
                 );
               })}

@@ -120,6 +120,82 @@ html:has(.ADMIN-CALENDAR) {
   color: #9a948c;
 }
 
+.ADMIN-CALENDAR .cal-search-wrap {
+  position: relative;
+}
+
+.ADMIN-CALENDAR .cal-search-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  width: 360px;
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid #c4c0ba;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(28, 28, 28, 0.08);
+}
+
+.ADMIN-CALENDAR .cal-search-empty {
+  margin: 0;
+  padding: 14px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  color: #8a847c;
+}
+
+.ADMIN-CALENDAR .cal-search-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  text-align: left;
+  background: #fff;
+}
+
+.ADMIN-CALENDAR .cal-search-item + .cal-search-item {
+  border-top: 1px solid #f3efea;
+}
+
+.ADMIN-CALENDAR .cal-search-item:hover {
+  background: #f9f8f4;
+}
+
+.ADMIN-CALENDAR .cal-search-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+.ADMIN-CALENDAR .cal-search-name {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 20px;
+  color: #1c1c1c;
+}
+
+.ADMIN-CALENDAR .cal-search-status {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  color: #8a847c;
+}
+
+.ADMIN-CALENDAR .cal-search-meta {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  color: #777672;
+}
+
 /* ── 탭 ─────────────────────────────── */
 .ADMIN-CALENDAR .cal-tabs {
   display: flex;
@@ -605,6 +681,10 @@ html:has(.ADMIN-CALENDAR) {
   display: none;
 }
 
+.ADMIN-CALENDAR .cal-cell:hover {
+  cursor: pointer;
+}
+
 .ADMIN-CALENDAR .cal-cell:hover::before {
   content: "";
   position: absolute;
@@ -627,7 +707,7 @@ html:has(.ADMIN-CALENDAR) {
   background: #2c3a2e;
   color: #fff;
   transform: translate(-50%, -50%);
-  cursor: default;
+  pointer-events: none;
 }
 
 .ADMIN-CALENDAR .cal-cell-add-icon {

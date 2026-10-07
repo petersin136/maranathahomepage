@@ -32,6 +32,10 @@ export const DAY_OPTIONS = [
   { id: "91+", label: "90일 초과", min: 91, max: 99999 }
 ] as const;
 
+export function customerDetailHref(phone: string) {
+  return `/admin/customers/${encodeURIComponent(phone)}` as Route;
+}
+
 export function customerProfileHref(phone: string) {
   return `/admin/customers/analytics?phone=${encodeURIComponent(phone)}` as Route;
 }

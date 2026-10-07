@@ -18,6 +18,8 @@ type ServiceOption = {
 type Props = {
   artists: CreateModalArtist[];
   initialDate?: string;
+  initialTime?: string;
+  initialArtistId?: string;
   onClose: () => void;
   onCreated: () => void;
 };
@@ -33,11 +35,18 @@ function todayYmd() {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-export default function BookingCreateModal({ artists, initialDate, onClose, onCreated }: Props) {
+export default function BookingCreateModal({
+  artists,
+  initialDate,
+  initialTime,
+  initialArtistId,
+  onClose,
+  onCreated
+}: Props) {
   const [services, setServices] = useState<ServiceOption[]>([]);
   const [date, setDate] = useState(initialDate || todayYmd);
-  const [time, setTime] = useState<string>(CANDIDATE_TIMES[0] ?? "10:00");
-  const [artistId, setArtistId] = useState(artists[0]?.id ?? "");
+  const [time, setTime] = useState<string>(initialTime || CANDIDATE_TIMES[0] || "10:00");
+  const [artistId, setArtistId] = useState(initialArtistId || artists[0]?.id || "");
   const [serviceIds, setServiceIds] = useState<string[]>([]);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -132,7 +141,9 @@ export default function BookingCreateModal({ artists, initialDate, onClose, onCr
               open={menu === "time"}
               onToggle={() => setMenu((cur) => (cur === "time" ? null : "time"))}
               onClose={() => setMenu(null)}
-              options={CANDIDATE_TIMES.map((t) => ({ value: t, label: t }))}
+              options={(CANDIDATE_TIMES.includes(time) ? CANDIDATE_TIMES : [...CANDIDATE_TIMES, time].sort()).map(
+                (t) => ({ value: t, label: t })
+              )}
               onChange={(next) => {
                 setTime(next);
                 setMenu(null);

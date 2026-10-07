@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clsx } from "clsx";
-import { BOOKING_STATUS_OPTIONS, cancelReasonLabel } from "@/lib/admin/booking-labels";
+import { BOOKING_STATUS_LABEL, BOOKING_STATUS_OPTIONS, cancelReasonLabel } from "@/lib/admin/booking-labels";
 import type { BookingRow, BookingStatus } from "@/lib/bookings/types";
 import BookingCreateModal from "@/components/admin/BookingCreateModal";
 
@@ -172,6 +172,7 @@ export default function AdminBookingsPage() {
   const [artists, setArtists] = useState<Artist[]>([]);
   const [tab, setTab] = useState<TabKey>("pending");
   const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [period, setPeriod] = useState<PeriodKey>("all");
   const [day, setDay] = useState(() => ymdOf(new Date()));
   const [artistFilter, setArtistFilter] = useState<string[]>([]);
@@ -183,6 +184,7 @@ export default function AdminBookingsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const filterRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
@@ -227,6 +229,15 @@ export default function AdminBookingsPage() {
   }, []);
 
   useEffect(() => {
+    if (!searchOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!searchRef.current?.contains(e.target as Node)) setSearchOpen(false);
+    };
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [searchOpen]);
+
+  useEffect(() => {
     if (!openFilter) return;
     const onDown = (e: MouseEvent) => {
       if (!filterRef.current?.contains(e.target as Node)) setOpenFilter(null);
@@ -268,9 +279,14 @@ export default function AdminBookingsPage() {
     return bookings.filter((row) => {
       if (q) {
         const phone = row.customer_phone.replace(/\D/g, "");
+        const artist = artistLabel(row).toLowerCase();
+        const services = (row.service_names || []).join(" ").toLowerCase();
         const hit =
           row.customer_name.toLowerCase().includes(q) ||
           row.customer_phone.toLowerCase().includes(q) ||
+          artist.includes(q) ||
+          services.includes(q) ||
+          (row.artist_name || "").toLowerCase().includes(q) ||
           (qDigits.length > 0 && phone.includes(qDigits));
         if (!hit) return false;
       }
@@ -278,7 +294,7 @@ export default function AdminBookingsPage() {
       if (artistFilter.length && !artistFilter.includes(row.artist_id)) return false;
       return true;
     });
-  }, [bookings, query, period, day, artistFilter]);
+  }, [bookings, query, period, day, artistFilter, artistById]);
 
   const counts = useMemo(() => {
     const out = {} as Record<TabKey, number>;
@@ -384,15 +400,55 @@ export default function AdminBookingsPage() {
     <div className="flex flex-col pl-[6px] pr-[8px] font-sans-kr text-[#1C1C1C] min-[1440px]:h-[calc(100dvh-5rem)]">
       <div className="flex items-center justify-between gap-6 pt-6">
         <h1 className="text-[30px] font-bold leading-none tracking-[-0.02em]">예약관리</h1>
-        <label className="-mr-[8px] flex h-[36px] w-[300px] items-center gap-2 rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white px-3">
-          <Icon src="/admin-icons/lnb/search-bold.png" className="h-[16px] w-[16px] text-[#9A948C]" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="고객명, 연락처 검색"
-            className="w-full bg-transparent text-[15px] font-bold text-[#9A948C] outline-none placeholder:text-[#9A948C]"
-          />
-        </label>
+        <div ref={searchRef} className="relative -mr-[8px]">
+          <label className="flex h-[36px] w-[300px] items-center gap-2 rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white px-3">
+            <Icon src="/admin-icons/lnb/search-bold.png" className="h-[16px] w-[16px] text-[#9A948C]" />
+            <input
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setSearchOpen(true);
+              }}
+              onFocus={() => setSearchOpen(true)}
+              placeholder="고객명, 연락처 검색"
+              className="w-full bg-transparent text-[15px] font-bold text-[#9A948C] outline-none placeholder:text-[#9A948C]"
+            />
+          </label>
+          {searchOpen && query.trim() ? (
+            <div className="absolute right-0 top-[42px] z-30 max-h-[320px] w-[360px] overflow-auto rounded-[8px] border border-[#C4C0BA] bg-white shadow-[0_8px_24px_rgba(28,28,28,0.08)]">
+              {base.length === 0 ? (
+                <p className="px-3 py-[14px] text-[14px] font-medium leading-[20px] text-[#8A847C]">검색 결과가 없습니다.</p>
+              ) : (
+                base.slice(0, 12).map((row) => (
+                  <button
+                    key={row.id}
+                    type="button"
+                    onClick={() => {
+                      setTab(row.status === "cancelled" || row.status === "noshow" ? "cancelled_noshow" : row.status);
+                      setSearchOpen(false);
+                    }}
+                    className="flex w-full flex-col items-start gap-1 border-t border-[#F3EFEA] px-3 py-[10px] text-left first:border-t-0 hover:bg-[#F9F8F4]"
+                  >
+                    <span className="flex w-full items-center justify-between gap-2">
+                      <span className="text-[15px] font-bold leading-[20px] text-[#1C1C1C]">{row.customer_name}</span>
+                      <span className="shrink-0 text-[12px] font-semibold leading-[16px] text-[#8A847C]">
+                        {BOOKING_STATUS_LABEL[row.status]}
+                      </span>
+                    </span>
+                    <span className="text-[13px] font-medium leading-[18px] text-[#777672]">
+                      {[row.customer_phone, artistLabel(row)].filter(Boolean).join(" · ")}
+                    </span>
+                    <span className="text-[13px] font-medium leading-[18px] text-[#777672]">
+                      {[`${row.booking_date} ${row.booking_time.slice(0, 5)}`, (row.service_names || []).join(" / ")]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <div className="mt-[66px] flex border-b border-[#E6E1DA]">
