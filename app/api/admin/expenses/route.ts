@@ -1,73 +1,22 @@
 import { NextResponse } from "next/server";
 import { requireAdminUser, getSupabaseAdmin } from "@/lib/admin/auth";
-import {
-  buildExpenseSummary,
-  buildRecurringImportPreview,
-  normalizeExpenseInput,
-  previousExpenseMonth,
-  resolveExpenseMonth,
-  type ExpenseRow
-} from "@/lib/admin/expenses-data";
+import { normalizeExpenseInput, resolveExpenseMonth } from "@/lib/admin/expenses-data";
+import { ExpensesQueryError, loadExpensesDashboard } from "@/lib/admin/expenses-load";
 
 export const preferredRegion = "icn1";
-
-const FIELDS =
-  "id, expense_date, category, amount, vendor, memo, has_tax_invoice, receipt_url, is_recurring, created_at";
-
-async function fetchMonthExpenses(
-  admin: ReturnType<typeof getSupabaseAdmin>,
-  from: string,
-  to: string
-) {
-  const { data, error } = await admin
-    .from("expenses")
-    .select(FIELDS)
-    .gte("expense_date", from)
-    .lte("expense_date", to)
-    .order("expense_date", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(2000);
-  if (error) throw new Error(error.message);
-  return (data ?? []) as ExpenseRow[];
-}
 
 export async function GET(request: Request) {
   const auth = await requireAdminUser();
   if (!auth.ok) return auth.response;
 
   const { searchParams } = new URL(request.url);
-  const month = resolveExpenseMonth(searchParams.get("year"), searchParams.get("month"));
-  if ("error" in month) {
-    return NextResponse.json({ ok: false, error: month.error }, { status: 400 });
-  }
-
   try {
-    const admin = getSupabaseAdmin();
-    const prev = previousExpenseMonth(month.year, month.month);
-    const [current, previous] = await Promise.all([
-      fetchMonthExpenses(admin, month.from, month.to),
-      fetchMonthExpenses(admin, prev.from, prev.to)
-    ]);
-
-    const previousRecurring = previous.filter((e) => e.is_recurring);
-    const previousTotal = previous.reduce((sum, e) => sum + Number(e.amount || 0), 0);
-
-    return NextResponse.json({
-      ok: true,
-      year: month.year,
-      month: month.month,
-      from: month.from,
-      to: month.to,
-      summary: buildExpenseSummary(current, previousTotal),
-      expenses: current,
-      recurringImport: buildRecurringImportPreview({
-        targetYear: month.year,
-        targetMonth: month.month,
-        previousRecurring,
-        currentExpenses: current
-      })
-    });
+    const data = await loadExpensesDashboard(searchParams.get("year"), searchParams.get("month"));
+    return NextResponse.json({ ok: true, ...data });
   } catch (e) {
+    if (e instanceof ExpensesQueryError) {
+      return NextResponse.json({ ok: false, error: e.message }, { status: e.status });
+    }
     console.error("[admin/expenses GET]", e);
     return NextResponse.json(
       { ok: false, error: e instanceof Error ? e.message : "로드 실패" },
