@@ -20,6 +20,7 @@ import {
   TABLE_ROW,
   TD,
   TH,
+  Toolbar,
   Icon,
   pct,
   won
