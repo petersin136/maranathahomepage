@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { clsx } from "clsx";
+import { AdminDatePicker } from "@/components/admin/AdminDatePicker";
 
 type Reminder = {
   id: number | string;
@@ -119,13 +120,13 @@ export default function AdminRemindersPage() {
                 className={clsx("flex flex-col gap-2 px-5 py-4", overdue && "bg-[#f8eeee] text-[#9b4a4a]")}
               >
                 <div className="flex items-center justify-between gap-3">
-                  <input
-                    type="date"
+                  <AdminDatePicker
                     value={date}
-                    onChange={(e) => updateDate(r.id, e.target.value)}
+                    onChange={(ymd) => updateDate(r.id, ymd)}
+                    ariaLabel="연락 예정일"
                     className={clsx(
-                      "border-b bg-transparent py-1 font-sans-kr text-[13px] outline-none",
-                      overdue ? "border-[#9b4a4a]/40" : "border-hu-black/30"
+                      "h-[34px] min-w-[168px] rounded-[8px] border bg-white px-3 font-sans-kr text-[13px]",
+                      overdue ? "border-[#9b4a4a]/40" : "border-[#9A948C]"
                     )}
                   />
                   <button
@@ -182,13 +183,13 @@ export default function AdminRemindersPage() {
                     className={clsx(overdue && "bg-[#f8eeee] text-[#9b4a4a]")}
                   >
                     <td className="px-5 py-4">
-                      <input
-                        type="date"
+                      <AdminDatePicker
                         value={date}
-                        onChange={(e) => updateDate(r.id, e.target.value)}
+                        onChange={(ymd) => updateDate(r.id, ymd)}
+                        ariaLabel="연락 예정일"
                         className={clsx(
-                          "border-b bg-transparent py-1 font-sans-kr text-[13px] outline-none",
-                          overdue ? "border-[#9b4a4a]/40" : "border-hu-black/30"
+                          "h-[34px] w-[168px] rounded-[8px] border bg-white px-3 font-sans-kr text-[13px]",
+                          overdue ? "border-[#9b4a4a]/40" : "border-[#9A948C]"
                         )}
                       />
                     </td>

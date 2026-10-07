@@ -2,17 +2,28 @@
 
 import Link from "next/link";
 import { clsx } from "clsx";
-import FinanceNav from "@/components/admin/FinanceNav";
+import {
+  Empty,
+  FinanceHeader,
+  Note,
+  Section,
+  StatStrip,
+  TABLE_HEAD_ROW,
+  TABLE_ROW,
+  TD,
+  TH,
+  won
+} from "@/components/admin/finance-ui";
 import type { TaxDashboard } from "@/lib/admin/tax-data";
 
-function won(value: number) {
-  return `${value.toLocaleString("ko-KR")}원`;
-}
-
 function dDayLabel(dDay: number) {
-  if (dDay === 0) return "D-Day";
+  if (dDay === 0) return "D-day";
   if (dDay > 0) return `D-${dDay}`;
   return `D+${Math.abs(dDay)}`;
+}
+
+function dotted(ymd: string) {
+  return ymd.slice(2).replace(/-/g, ". ");
 }
 
 export default function AdminTaxPage({
@@ -23,251 +34,218 @@ export default function AdminTaxPage({
   initialError: string | null;
 }) {
   const data = initial;
-  const error = initialError;
-
-  const configured = data?.settingsConfigured;
-  const disabled = !configured;
+  const configured = !!data?.settingsConfigured;
+  const vat = data?.vat;
+  const income = data?.income;
 
   return (
-    <div className="font-sans-kr text-[#1C1C1C]">
-      <FinanceNav />
-      <h1 className="mt-8 flex items-baseline gap-2 text-[30px] font-bold leading-none tracking-[-0.02em]">
-        세무
-        <span className="text-[15px] font-normal text-[#8A847C]">
-          {data?.today ? data.today : "세무 현황"}
-        </span>
-      </h1>
+    <div className="pb-16 font-sans-kr text-[#1C1C1C]">
+      <FinanceHeader subtitle={data?.today ? `${dotted(data.today)} 기준 예상` : undefined} />
 
-      <div className="mt-6 border border-[#9b4a4a]/30 bg-[#9b4a4a]/5 px-5 py-4 font-sans-kr text-[13px] leading-relaxed text-[#9b4a4a]">
-        이 화면의 세액은 참고용 추정치입니다.
-        <br />
-        실제 신고 시에는 각종 공제·감면과 업종별 특례가 적용되어 금액이 크게 달라질 수 있습니다.
-        <br />
-        반드시 세무 대리인과 확인하세요.
-      </div>
+      <p className="mt-[34px] rounded-[8px] bg-[#F9F8F4] px-5 py-4 text-[13px] leading-[20px] text-[#8A847C]">
+        이 화면의 세액은 참고용 추정치입니다. 실제 신고 시에는 각종 공제·감면과 업종별 특례가 적용되어 금액이 크게
+        달라질 수 있으니, 반드시 세무 대리인과 확인하세요.
+      </p>
 
-      {!configured ? (
-        <p className="mt-6 font-sans-kr text-[13px]">
-          <Link href="/admin/settings" className="text-hu-muted underline underline-offset-2">
-            사업자 정보를 먼저 입력해주세요 →
+      {initialError ? <p className="mt-4 text-[13px] text-[#E24B4B]">{initialError}</p> : null}
+
+      {data && !configured ? (
+        <div className="mt-10 border-y-[1.5px] border-[#C9C3BB] py-16 text-center">
+          <p className="text-[18px] font-bold">사업자 정보가 아직 없어요</p>
+          <p className="mt-3 text-[14px] leading-[22px] text-[#8A847C]">
+            상호·사업자등록번호·과세 유형(일반·간이)을 입력하면 부가세·종합소득세 예상액과 세무 일정을 계산해 드립니다.
+          </p>
+          <Link
+            href="/admin/settings"
+            className="mt-6 inline-flex h-[40px] items-center rounded-[8px] bg-[#2F3A2F] px-5 text-[14px] font-bold text-white"
+          >
+            사업자 정보 입력하기
           </Link>
-        </p>
+        </div>
       ) : null}
 
-      {error ? <p className="mt-6 font-sans-kr text-[13px] text-[#9b4a4a]">{error}</p> : null}
+      {configured && vat ? (
+        <Section
+          title="부가가치세"
+          meta={`${vat.periodLabel} · ${vat.taxType === "simplified" ? "간이과세" : "일반과세"}`}
+          right={
+            vat.nextDeadlines[0] ? (
+              <span className="text-[14px] text-[#8A847C]">
+                {vat.nextDeadlines[0].label} {dotted(vat.nextDeadlines[0].date)}
+                <b className="ml-2 text-[#1C1C1C]">{dDayLabel(vat.nextDeadlines[0].dDay)}</b>
+              </span>
+            ) : null
+          }
+        >
+          <StatStrip
+            className="mt-4"
+            items={[
+              { label: "과세기간 매출", value: won(vat.revenue) },
+              { label: "매출세액", value: won(vat.outputVat) },
+              { label: vat.taxType === "simplified" ? "매입공제 (0.5%)" : "매입세액", value: won(vat.inputVat) },
+              { label: "예상 납부세액", value: won(vat.payable) }
+            ]}
+          />
+          <Note>
+            {vat.taxType === "simplified"
+              ? `간이과세 · 부가가치율 30% 적용(미용업). 증빙 매입의 0.5%를 공제합니다.${vat.simplifiedExemptNote ? ` ${vat.simplifiedExemptNote}` : ""}`
+              : "일반과세 · 매출과 증빙 지출을 부가세 포함 금액으로 보고 세액 = 금액 × 10/110 으로 계산합니다."}
+          </Note>
+        </Section>
+      ) : null}
 
-      <div className={clsx(disabled && "pointer-events-none opacity-40")}>
-        {data?.vat ? (
-          <section className="mt-10">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="font-serif text-[16px] tracking-[0.08em]">부가가치세 예상</h2>
-              <p className="font-sans-kr text-[12px] text-hu-muted">{data.vat.periodLabel}</p>
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-              <Stat label="과세기간 매출" value={won(data.vat.revenue)} />
-              <Stat label="매출세액" value={won(data.vat.outputVat)} />
-              <Stat
-                label={data.vat.taxType === "simplified" ? "매입공제(0.5%)" : "매입세액"}
-                value={won(data.vat.inputVat)}
-              />
-              <Stat
-                label="예상 납부세액"
-                value={won(data.vat.payable)}
-                emphasize
-              />
-            </div>
-            {data.vat.taxType === "simplified" ? (
-              <p className="mt-3 font-sans-kr text-[12px] text-hu-muted">
-                간이과세 · 부가가치율 30% 적용 (미용업/기타 서비스). 증빙 매입의 0.5% 공제.
-                {data.vat.simplifiedExemptNote
-                  ? ` ${data.vat.simplifiedExemptNote}`
-                  : ""}
-              </p>
-            ) : (
-              <p className="mt-3 font-sans-kr text-[12px] text-hu-muted">
-                일반과세 · 매출·증빙지출을 부가세 포함 금액으로 보고 세액 = 금액 × 10/110.
-              </p>
-            )}
-            {data.vat.nextDeadlines[0] ? (
-              <p className="mt-2 font-sans-kr text-[13px]">
-                다음 기한: {data.vat.nextDeadlines[0].label} {data.vat.nextDeadlines[0].date}{" "}
-                <span className="text-hu-muted">
-                  ({dDayLabel(data.vat.nextDeadlines[0].dDay)})
-                </span>
-              </p>
-            ) : null}
-          </section>
-        ) : null}
+      {configured && income ? (
+        <Section
+          title="종합소득세"
+          meta={`${dotted(income.from)} ~ ${dotted(income.to)}`}
+          right={
+            <span className="text-[14px] text-[#8A847C]">
+              신고 기한 {dotted(income.filingDeadline.date)}
+              <b className="ml-2 text-[#1C1C1C]">{dDayLabel(income.filingDeadline.dDay)}</b>
+            </span>
+          }
+        >
+          <StatStrip
+            className="mt-4"
+            cols={4}
+            items={[
+              { label: "수입금액", value: won(income.revenue) },
+              {
+                label: "필요경비",
+                value: won(income.expenseTotal),
+                hint: income.expenseUnproven > 0 ? `증빙 없음 ${won(income.expenseUnproven)}` : undefined
+              },
+              { label: "소득금액", value: won(income.income) },
+              { label: "과세표준", value: won(income.taxableBase), hint: "기본공제 150만원 반영" },
+              {
+                label: "종합소득세",
+                value: won(income.incomeTax),
+                hint: income.bracketRate != null ? `적용 세율 ${(income.bracketRate * 100).toFixed(0)}%` : undefined
+              },
+              { label: "지방소득세 (10%)", value: won(income.localIncomeTax) },
+              { label: "합계", value: won(income.totalTax) },
+              {
+                label: "월 적립 권장",
+                value: won(data?.recommendedMonthlyReserve ?? 0),
+                hint: "소득세·지방세 + 부가세 기준"
+              }
+            ]}
+          />
+          <Note>인적공제·세액공제·특별공제는 포함하지 않았습니다.</Note>
+        </Section>
+      ) : null}
 
-        {data?.income ? (
-          <section className="mt-10">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="font-serif text-[16px] tracking-[0.08em]">종합소득세 예상</h2>
-              <p className="font-sans-kr text-[12px] text-hu-muted">
-                {data.income.from} ~ {data.income.to}
-              </p>
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-              <Stat label="수입금액" value={won(data.income.revenue)} />
-              <Stat label="필요경비" value={won(data.income.expenseTotal)} />
-              <Stat label="소득금액" value={won(data.income.income)} />
-              <Stat label="과세표준" value={won(data.income.taxableBase)} />
-              <Stat
-                label="종합소득세"
-                value={won(data.income.incomeTax)}
-                hint={
-                  data.income.bracketRate != null
-                    ? `적용 세율 ${(data.income.bracketRate * 100).toFixed(0)}%`
-                    : undefined
-                }
-              />
-              <Stat label="지방소득세(10%)" value={won(data.income.localIncomeTax)} />
-              <Stat label="합계" value={won(data.income.totalTax)} emphasize />
-              <Stat
-                label="신고 기한"
-                value={dDayLabel(data.income.filingDeadline.dDay)}
-                hint={data.income.filingDeadline.date}
-              />
-            </div>
-            <p className="mt-3 font-sans-kr text-[12px] text-hu-muted">
-              기본공제 150만원만 반영했습니다. 인적공제·세액공제·특별공제는 포함하지 않습니다.
-              {data.income.expenseUnproven > 0
-                ? ` 필요경비 중 증빙 없는 지출 ${won(data.income.expenseUnproven)}.`
-                : ""}
-            </p>
-          </section>
-        ) : null}
-
-        {data && configured ? (
-          <section className="mt-10">
-            <h2 className="font-serif text-[16px] tracking-[0.08em]">월별 추이</h2>
-            <p className="mt-2 font-sans-kr text-[13px] text-hu-muted">
-              세금 준비금 제안: 매달{" "}
-              <span className="text-hu-black">{won(data.recommendedMonthlyReserve)}</span>씩
-              적립 권장 (연환산 소득세·지방세 + 당기 부가세 기준)
-            </p>
-            <div className="mt-4 overflow-x-auto bg-hu-white">
-              <table className="min-w-full text-left font-sans-kr text-[13px]">
-                <thead>
-                  <tr className="border-b border-hu-black/10 text-hu-muted">
-                    <th className="px-5 py-3 font-normal">월</th>
-                    <th className="px-5 py-3 font-normal">매출</th>
-                    <th className="px-5 py-3 font-normal">비용</th>
-                    <th className="px-5 py-3 font-normal">소득</th>
-                    <th className="px-5 py-3 font-normal">누적 소득</th>
+      {configured && data ? (
+        <div className="grid grid-cols-[3fr_2fr] gap-12">
+          <Section title="월별 추이" meta={`${data.monthly.length}개월`}>
+            <table className="mt-4 w-full table-fixed text-left text-[16px] font-medium leading-[20px]">
+              <thead>
+                <tr className={TABLE_HEAD_ROW}>
+                  <th className={clsx(TH, "pl-1")}>월</th>
+                  <th className={clsx(TH, "text-right")}>매출</th>
+                  <th className={clsx(TH, "text-right")}>비용</th>
+                  <th className={clsx(TH, "text-right")}>소득</th>
+                  <th className={clsx(TH, "pr-0 text-right")}>누적 소득</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.monthly.map((row) => (
+                  <tr key={`${row.year}-${row.month}`} className={TABLE_ROW}>
+                    <td className={clsx(TD, "pl-1")}>{row.label}</td>
+                    <td className={clsx(TD, "text-right tabular-nums")}>{won(row.revenue)}</td>
+                    <td className={clsx(TD, "text-right tabular-nums text-[#8A847C]")}>{won(row.expense)}</td>
+                    <td className={clsx(TD, "text-right tabular-nums", row.income < 0 && "text-[#E24B4B]")}>
+                      {won(row.income)}
+                    </td>
+                    <td className={clsx(TD, "pr-0 text-right font-bold tabular-nums")}>{won(row.cumulativeIncome)}</td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-hu-black/10">
-                  {data.monthly.map((row) => (
-                    <tr key={`${row.year}-${row.month}`}>
-                      <td className="px-5 py-3">{row.label}</td>
-                      <td className="px-5 py-3 tabular-nums">{won(row.revenue)}</td>
-                      <td className="px-5 py-3 tabular-nums">{won(row.expense)}</td>
-                      <td className="px-5 py-3 tabular-nums">{won(row.income)}</td>
-                      <td className="px-5 py-3 tabular-nums">{won(row.cumulativeIncome)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        ) : null}
-
-        {data && configured ? (
-          <section className="mt-10">
-            <h2 className="font-serif text-[16px] tracking-[0.08em]">세무 일정</h2>
-            {data.schedule.length === 0 ? (
-              <p className="mt-4 bg-hu-white px-5 py-8 font-sans-kr text-[13px] text-hu-muted">
-                다가오는 일정이 없습니다.
-              </p>
-            ) : (
-              <ul className="mt-4 divide-y divide-hu-black/10 bg-hu-white">
-                {data.schedule.map((item) => (
-                  <li
-                    key={item.key}
-                    className="flex flex-wrap items-baseline justify-between gap-2 px-5 py-4 font-sans-kr text-[14px]"
-                  >
-                    <span>
-                      {item.label}
-                      <span className="ml-2 text-[12px] text-hu-muted">{item.date}</span>
-                    </span>
-                    <span className="tabular-nums text-hu-muted">{dDayLabel(item.dDay)}</span>
-                  </li>
                 ))}
-              </ul>
-            )}
-          </section>
-        ) : null}
+              </tbody>
+            </table>
+            {data.monthly.length === 0 ? <Empty>집계할 데이터가 없습니다.</Empty> : null}
+          </Section>
 
-        {data && configured ? (
-          <section className="mt-10">
-            <h2 className="font-serif text-[16px] tracking-[0.08em]">경고</h2>
-            <div className="mt-4 space-y-3">
-              <div
-                className={clsx(
-                  "bg-hu-white px-5 py-4 font-sans-kr text-[13px]",
-                  data.warnings.cashReceiptCount > 0 && "text-[#9b4a4a]"
-                )}
-              >
-                <p>
-                  현금영수증 미발급 {data.warnings.cashReceiptCount.toLocaleString("ko-KR")}건 ·
-                  대상액 {won(data.warnings.cashReceiptAmount)}
-                </p>
-                <p className="mt-1">
-                  예상 가산세(20%) {won(data.warnings.cashReceiptPenalty)}
-                  {data.warnings.cashReceiptCount > 0 ? (
-                    <>
-                      {" · "}
-                      <Link href="/admin/bookings" className="underline">
-                        예약 목록
-                      </Link>
-                    </>
-                  ) : null}
-                </p>
-              </div>
-              <div
-                className={clsx(
-                  "bg-hu-white px-5 py-4 font-sans-kr text-[13px]",
-                  data.warnings.unprovenExpenseHigh && "text-[#9b4a4a]"
-                )}
-              >
-                증빙 없는 지출 비율{" "}
-                {(data.warnings.unprovenExpenseRatio * 100).toFixed(1)}%
-                {data.warnings.unprovenExpenseHigh
-                  ? " · 30%를 초과했습니다. 증빙을 보완하세요."
-                  : " · 양호"}
-              </div>
-            </div>
-          </section>
-        ) : null}
-      </div>
+          <div>
+            <Section title="세무 일정" meta={data.schedule.length ? `${data.schedule.length}건` : undefined}>
+              {data.schedule.length === 0 ? (
+                <Empty>다가오는 일정이 없습니다.</Empty>
+              ) : (
+                <ul className="mt-4 border-t-[1.5px] border-[#C9C3BB]">
+                  {data.schedule.map((item) => (
+                    <li key={item.key} className="flex items-baseline justify-between gap-4 border-b border-[#F3EFEA] py-[15px]">
+                      <span className="min-w-0 text-[16px] font-medium">
+                        {item.label}
+                        <span className="ml-2 text-[13px] font-normal text-[#8A847C]">{dotted(item.date)}</span>
+                      </span>
+                      <span
+                        className={clsx(
+                          "shrink-0 text-[14px] font-bold tabular-nums",
+                          item.dDay <= 14 ? "text-[#E24B4B]" : "text-[#1C1C1C]"
+                        )}
+                      >
+                        {dDayLabel(item.dDay)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Section>
+
+            <Section title="점검" className="mt-10">
+              <ul className="mt-4 border-t-[1.5px] border-[#C9C3BB]">
+                <CheckRow
+                  bad={data.warnings.cashReceiptCount > 0}
+                  label="현금영수증 미발급"
+                  value={`${data.warnings.cashReceiptCount}건 · ${won(data.warnings.cashReceiptAmount)}`}
+                  detail={
+                    data.warnings.cashReceiptCount > 0 ? (
+                      <>
+                        예상 가산세(20%) {won(data.warnings.cashReceiptPenalty)} ·{" "}
+                        <Link href="/admin/bookings" className="underline underline-offset-2">
+                          예약 목록에서 확인
+                        </Link>
+                      </>
+                    ) : (
+                      "미발급 건이 없습니다."
+                    )
+                  }
+                />
+                <CheckRow
+                  bad={data.warnings.unprovenExpenseHigh}
+                  label="증빙 없는 지출 비율"
+                  value={`${(data.warnings.unprovenExpenseRatio * 100).toFixed(1)}%`}
+                  detail={data.warnings.unprovenExpenseHigh ? "30%를 넘었습니다. 증빙을 보완하세요." : "양호합니다."}
+                />
+              </ul>
+            </Section>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function Stat({
+function CheckRow({
+  bad,
   label,
   value,
-  hint,
-  emphasize
+  detail
 }: {
+  bad: boolean;
   label: string;
   value: string;
-  hint?: string;
-  emphasize?: boolean;
+  detail: React.ReactNode;
 }) {
   return (
-    <div className="bg-hu-white px-4 py-5 lg:px-5 lg:py-6">
-      <p className="font-serif text-[12px] tracking-[0.14em] text-hu-muted">{label}</p>
-      <p
-        className={clsx(
-          "mt-3 font-serif leading-tight",
-          emphasize ? "text-[26px] lg:text-[30px]" : "text-[22px] lg:text-[26px]"
-        )}
-      >
-        {value}
-      </p>
-      {hint ? <p className="mt-1 font-sans-kr text-[12px] text-hu-muted">{hint}</p> : null}
-    </div>
+    <li className="border-b border-[#F3EFEA] py-[15px]">
+      <div className="flex items-baseline justify-between gap-4 text-[16px] font-medium">
+        <span className="inline-flex items-center gap-[6px]" style={{ color: bad ? "var(--danger)" : "#1C1C1C" }}>
+          <span className="h-[7px] w-[7px] shrink-0 rounded-full bg-current" />
+          {label}
+        </span>
+        <span className={clsx("tabular-nums", bad && "text-[#E24B4B]")}>{value}</span>
+      </div>
+      <p className={clsx("mt-1 pl-[13px] text-[13px]", bad ? "text-[#E24B4B]" : "text-[#8A847C]")}>{detail}</p>
+    </li>
   );
 }

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clsx } from "clsx";
 import { BOOKING_STATUS_LABEL, BOOKING_STATUS_OPTIONS, cancelReasonLabel } from "@/lib/admin/booking-labels";
 import type { BookingRow, BookingStatus } from "@/lib/bookings/types";
+import { AdminDatePicker } from "@/components/admin/AdminDatePicker";
 import BookingCreateModal from "@/components/admin/BookingCreateModal";
 import { useRefreshPendingCount } from "@/components/admin/pending-count";
 
@@ -242,7 +243,9 @@ export default function AdminBookingsPage() {
   useEffect(() => {
     if (!openFilter) return;
     const onDown = (e: MouseEvent) => {
-      if (!filterRef.current?.contains(e.target as Node)) setOpenFilter(null);
+      const target = e.target as HTMLElement;
+      if (filterRef.current?.contains(target) || target.closest?.("[data-admin-date]")) return;
+      setOpenFilter(null);
     };
     window.addEventListener("mousedown", onDown);
     return () => window.removeEventListener("mousedown", onDown);
@@ -512,20 +515,19 @@ export default function AdminBookingsPage() {
                   {period === p.key ? <Icon src="/admin-icons/lnb/check.png" className="ml-4 h-[12px] w-[12px]" /> : null}
                 </button>
               ))}
-              <label className="flex w-full items-center justify-between px-5 py-2 text-[14px] text-[#1C1C1C] hover:bg-[#F6F4F0]">
-                날짜 선택
-                <input
-                  type="date"
+              <div className="border-t border-[#F3EFEA] px-5 pb-3 pt-3">
+                <p className="text-[13px] font-bold text-[#9A948C]">날짜 선택</p>
+                <AdminDatePicker
                   value={day}
-                  onChange={(e) => {
-                    if (!e.target.value) return;
-                    setDay(e.target.value);
+                  ariaLabel="날짜 선택"
+                  onChange={(ymd) => {
+                    setDay(ymd);
                     setPeriod("day");
                     setOpenFilter(null);
                   }}
-                  className="ml-4 bg-transparent text-[14px] text-[#1C1C1C] outline-none"
+                  className="mt-2 h-[34px] w-full rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white px-3 text-[14px] font-medium text-[#1C1C1C]"
                 />
-              </label>
+              </div>
             </Panel>
           ) : null}
         </div>

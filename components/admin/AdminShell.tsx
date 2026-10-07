@@ -123,8 +123,15 @@ export default function AdminShell({
     router.refresh();
   };
 
+  const finance =
+    pathname.startsWith("/admin/sales") ||
+    pathname.startsWith("/admin/settlements") ||
+    pathname.startsWith("/admin/expenses") ||
+    pathname.startsWith("/admin/tax") ||
+    pathname.startsWith("/admin/export");
+
   return (
-    <div className="min-h-screen bg-white text-hu-black">
+    <div className={clsx("bg-white text-hu-black", finance ? "h-dvh overflow-hidden" : "min-h-screen")}>
       <aside className="fixed inset-y-0 left-0 z-30 flex w-[242px] flex-col bg-[#F9F8F4]">
         <Link href="/" prefetch={false} className="block px-[27px] pt-[36px]">
           <img src="/admin-icons/hair-up-logo.png" alt="hair up" className="h-[42px] w-auto" />
@@ -217,10 +224,12 @@ export default function AdminShell({
         className={
           pathname.startsWith("/admin/calendar")
             ? "min-w-0 pl-[242px]"
-            : "min-w-0 overflow-x-auto pl-[242px]"
+            : finance
+              ? "min-w-0 h-full overflow-auto pl-[242px]"
+              : "min-w-0 overflow-x-auto pl-[242px]"
         }
       >
-        <main className="min-h-screen w-full min-w-[1198px] px-10 py-10">
+        <main className={clsx("min-h-screen w-full min-w-[1198px] px-10", finance ? "pb-10" : "py-10")}>
           {children}
         </main>
       </div>

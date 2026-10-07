@@ -1,49 +1,35 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { clsx } from "clsx";
-import FinanceNav from "@/components/admin/FinanceNav";
+import {
+  CheckBox,
+  Empty,
+  FinanceHeader,
+  INPUT,
+  Modal,
+  MonthPicker,
+  Note,
+  OutlineButton,
+  PrimaryButton,
+  RefreshButton,
+  Section,
+  ShareBar,
+  StatStrip,
+  TABLE_HEAD_ROW,
+  TABLE_ROW,
+  TD,
+  TH,
+  Icon,
+  pct,
+  won
+} from "@/components/admin/finance-ui";
+import { AdminDatePicker } from "@/components/admin/AdminDatePicker";
 import { EXPENSE_CATEGORIES, expenseCategoryLabel } from "@/lib/admin/expense-categories";
-import type {
-  ExpenseRow,
-  ExpensesDashboard
-} from "@/lib/admin/expenses-data";
+import type { ExpenseRow, ExpensesDashboard } from "@/lib/admin/expenses-data";
 import { todayKst } from "@/lib/admin/sales-data";
 
-function won(value: number) {
-  return `${value.toLocaleString("ko-KR")}원`;
-}
-
-function pct(value: number | null, digits = 1) {
-  if (value == null || Number.isNaN(value)) return "—";
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toFixed(digits)}%`;
-}
-
-function parseYmdParts(ymd: string) {
-  const [y, m] = ymd.split("-").map(Number);
-  return { y, m };
-}
-
-function shiftMonth(year: number, month: number, delta: number) {
-  const dt = new Date(Date.UTC(year, month - 1 + delta, 1));
-  return { year: dt.getUTCFullYear(), month: dt.getUTCMonth() + 1 };
-}
-
-function defaultThisMonth() {
-  return parseYmdParts(todayKst());
-}
-
-type QuickForm = {
-  expense_date: string;
-  category: string;
-  amount: string;
-  vendor: string;
-  has_tax_invoice: boolean;
-  is_recurring: boolean;
-};
-
-type EditForm = {
+type ExpenseForm = {
   expense_date: string;
   category: string;
   amount: string;
@@ -53,7 +39,19 @@ type EditForm = {
   is_recurring: boolean;
 };
 
-function toEditForm(row: ExpenseRow): EditForm {
+function emptyForm(): ExpenseForm {
+  return {
+    expense_date: todayKst(),
+    category: "material",
+    amount: "",
+    vendor: "",
+    memo: "",
+    has_tax_invoice: false,
+    is_recurring: false
+  };
+}
+
+function toForm(row: ExpenseRow): ExpenseForm {
   return {
     expense_date: row.expense_date,
     category: row.category,
@@ -65,6 +63,12 @@ function toEditForm(row: ExpenseRow): EditForm {
   };
 }
 
+function dotted(ymd: string) {
+  return ymd.slice(2).replace(/-/g, ". ");
+}
+
+const SELECT = clsx(INPUT, "appearance-none bg-[url('/admin-icons/lnb/chevron-down.png')] bg-[length:14px] bg-[right_10px_center] bg-no-repeat pr-8");
+
 export default function AdminExpensesPage({
   initial,
   initialError
@@ -72,42 +76,28 @@ export default function AdminExpensesPage({
   initial: ExpensesDashboard | null;
   initialError: string | null;
 }) {
-  const [year, setYear] = useState(initial?.year ?? defaultThisMonth().y);
-  const [month, setMonth] = useState(initial?.month ?? defaultThisMonth().m);
+  const [today] = useState(() => todayKst().split("-").map(Number));
+  const [year, setYear] = useState(initial?.year ?? today[0]);
+  const [month, setMonth] = useState(initial?.month ?? today[1]);
   const [data, setData] = useState<ExpensesDashboard | null>(initial);
   const [error, setError] = useState<string | null>(initialError);
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<EditForm | null>(null);
+  const [editForm, setEditForm] = useState<ExpenseForm | null>(null);
   const [importOpen, setImportOpen] = useState(false);
-
-  const [form, setForm] = useState<QuickForm>(() => ({
-    expense_date: todayKst(),
-    category: "material",
-    amount: "",
-    vendor: "",
-    has_tax_invoice: false,
-    is_recurring: false
-  }));
-
-  const yearOptions = useMemo(() => {
-    const current = parseYmdParts(todayKst()).y;
-    const years: number[] = [];
-    for (let y = current + 1; y >= current - 4; y -= 1) years.push(y);
-    return years;
-  }, []);
+  const [deleteTarget, setDeleteTarget] = useState<ExpenseRow | null>(null);
+  const [form, setForm] = useState<ExpenseForm>(emptyForm);
 
   const load = useCallback(async (nextYear: number, nextMonth: number) => {
     setRefreshing(true);
     setError(null);
     setEditingId(null);
     setEditForm(null);
+    setYear(nextYear);
+    setMonth(nextMonth);
     try {
-      const params = new URLSearchParams({
-        year: String(nextYear),
-        month: String(nextMonth)
-      });
+      const params = new URLSearchParams({ year: String(nextYear), month: String(nextMonth) });
       const res = await fetch(`/api/admin/expenses?${params.toString()}`);
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "로드 실패");
@@ -121,216 +111,134 @@ export default function AdminExpensesPage({
     }
   }, []);
 
-  const moveMonth = (delta: number) => {
-    const next = shiftMonth(year, month, delta);
-    setYear(next.year);
-    setMonth(next.month);
-    void load(next.year, next.month);
+  const send = async (url: string, method: string, body?: unknown, fallback = "저장 실패") => {
+    const res = await fetch(url, {
+      method,
+      headers: body ? { "Content-Type": "application/json" } : undefined,
+      body: body ? JSON.stringify(body) : undefined
+    });
+    const json = await res.json();
+    if (!res.ok || !json.ok) throw new Error(json.error || fallback);
+    return json;
   };
 
-  const onSelectYearMonth = (nextYear: number, nextMonth: number) => {
-    setYear(nextYear);
-    setMonth(nextMonth);
-    void load(nextYear, nextMonth);
-  };
-
-  const createExpense = async () => {
+  const run = async (task: () => Promise<void>, fallback: string) => {
     if (busy) return;
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/expenses", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      await task();
+      await load(year, month);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : fallback);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const createExpense = () =>
+    run(async () => {
+      await send(
+        "/api/admin/expenses",
+        "POST",
+        {
           expense_date: form.expense_date,
           category: form.category,
           amount: form.amount,
           vendor: form.vendor,
+          memo: form.memo,
           has_tax_invoice: form.has_tax_invoice,
           is_recurring: form.is_recurring
-        })
-      });
-      const json = await res.json();
-      if (!res.ok || !json.ok) throw new Error(json.error || "등록 실패");
-      setForm((f) => ({
-        ...f,
-        amount: "",
-        vendor: "",
-        has_tax_invoice: false,
-        is_recurring: false
-      }));
-      await load(year, month);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "등록 실패");
-    } finally {
-      setBusy(false);
-    }
+        },
+        "등록 실패"
+      );
+      setForm((f) => ({ ...emptyForm(), expense_date: f.expense_date, category: f.category }));
+    }, "등록 실패");
+
+  const saveEdit = () => {
+    if (!editingId || !editForm) return;
+    return run(async () => {
+      await send(`/api/admin/expenses/${editingId}`, "PATCH", editForm, "수정 실패");
+    }, "수정 실패");
   };
 
-  const saveEdit = async () => {
-    if (!editingId || !editForm || busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/admin/expenses/${editingId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          expense_date: editForm.expense_date,
-          category: editForm.category,
-          amount: editForm.amount,
-          vendor: editForm.vendor,
-          memo: editForm.memo,
-          has_tax_invoice: editForm.has_tax_invoice,
-          is_recurring: editForm.is_recurring
-        })
-      });
-      const json = await res.json();
-      if (!res.ok || !json.ok) throw new Error(json.error || "수정 실패");
-      setEditingId(null);
-      setEditForm(null);
-      await load(year, month);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "수정 실패");
-    } finally {
-      setBusy(false);
-    }
-  };
+  const removeExpense = (id: string) =>
+    run(async () => {
+      await send(`/api/admin/expenses/${id}`, "DELETE", undefined, "삭제 실패");
+      setDeleteTarget(null);
+    }, "삭제 실패");
 
-  const removeExpense = async (id: string) => {
-    if (busy) return;
-    if (!confirm("이 지출을 삭제할까요?")) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/admin/expenses/${id}`, { method: "DELETE" });
-      const json = await res.json();
-      if (!res.ok || !json.ok) throw new Error(json.error || "삭제 실패");
-      if (editingId === id) {
-        setEditingId(null);
-        setEditForm(null);
-      }
-      await load(year, month);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "삭제 실패");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const runImport = async () => {
-    if (busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/admin/expenses", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "import_recurring",
-          year,
-          month
-        })
-      });
-      const json = await res.json();
-      if (!res.ok || !json.ok) throw new Error(json.error || "가져오기 실패");
+  const runImport = () =>
+    run(async () => {
+      await send("/api/admin/expenses", "POST", { action: "import_recurring", year, month }, "가져오기 실패");
       setImportOpen(false);
-      await load(year, month);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "가져오기 실패");
-    } finally {
-      setBusy(false);
-    }
-  };
+    }, "가져오기 실패");
 
-  const empty = data != null && data.expenses.length === 0;
   const importPreview = data?.recurringImport;
+  const canImport = !!importPreview && importPreview.available + importPreview.skipped > 0;
 
   return (
-    <div className="font-sans-kr text-[#1C1C1C]">
-      <FinanceNav />
-      <h1 className="mt-8 flex items-baseline gap-2 text-[30px] font-bold leading-none tracking-[-0.02em]">
-        비용
-        <span className="text-[15px] font-normal text-[#8A847C]">
-          {data ? `${data.year}년 ${data.month}월` : "비용 관리"}
-          {refreshing ? " · 갱신 중" : ""}
-        </span>
-      </h1>
+    <div className="pb-16 font-sans-kr text-[#1C1C1C]">
+      <FinanceHeader subtitle={`${year}년 ${month}월 지출`} />
 
-      <div className="mt-6 flex flex-wrap items-center gap-3 lg:mt-8">
-        <button
-          type="button"
-          onClick={() => moveMonth(-1)}
-          className="h-9 border border-hu-black/20 bg-hu-white px-3 font-sans-kr text-[13px]"
-          aria-label="이전 달"
-        >
-          ←
-        </button>
-        <label className="font-sans-kr text-[13px] text-hu-muted">
-          년
-          <select
-            value={year}
-            onChange={(e) => onSelectYearMonth(Number(e.target.value), month)}
-            className="ml-2 h-9 border border-hu-black/20 bg-hu-white px-2.5 outline-none"
-          >
-            {yearOptions.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="font-sans-kr text-[13px] text-hu-muted">
-          월
-          <select
-            value={month}
-            onChange={(e) => onSelectYearMonth(year, Number(e.target.value))}
-            className="ml-2 h-9 border border-hu-black/20 bg-hu-white px-2.5 outline-none"
-          >
-            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          type="button"
-          onClick={() => moveMonth(1)}
-          className="h-9 border border-hu-black/20 bg-hu-white px-3 font-sans-kr text-[13px]"
-          aria-label="다음 달"
-        >
-          →
-        </button>
-        <button
-          type="button"
-          disabled={busy || !importPreview || importPreview.available + importPreview.skipped === 0}
-          onClick={() => setImportOpen(true)}
-          className="ml-auto h-9 border border-hu-black/20 bg-hu-white px-3 font-sans-kr text-[13px] disabled:opacity-40"
-        >
-          지난달 반복 지출 가져오기
-        </button>
-      </div>
+      <Toolbar
+        left={
+          <>
+            <MonthPicker year={year} month={month} onChange={(y, m) => void load(y, m)} />
+            <RefreshButton spinning={refreshing} onClick={() => void load(year, month)} />
+          </>
+        }
+        right={
+          <OutlineButton disabled={busy || !canImport} onClick={() => setImportOpen(true)}>
+            지난달 반복 지출 가져오기
+            {importPreview?.available ? (
+              <span className="ml-2 text-[13px] font-semibold text-[#8A847C]">{importPreview.available}건</span>
+            ) : null}
+          </OutlineButton>
+        }
+      />
 
-      <form
-        className="sticky top-[96px] z-20 mt-6 border border-hu-black/10 bg-[#faf8f6]/95 px-3 py-3 backdrop-blur lg:px-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void createExpense();
-        }}
-      >
-        <div className="flex flex-wrap items-center gap-2 lg:gap-3">
-          <input
-            type="date"
+      {error ? <p className="mt-4 text-[13px] text-[#E24B4B]">{error}</p> : null}
+      {refreshing && !data ? <p className="mt-6 text-[13px] text-[#8A847C]">불러오는 중…</p> : null}
+
+      {data ? (
+        <StatStrip
+          items={[
+            {
+              label: "총 지출",
+              value: won(data.summary.totalAmount),
+              hint: `전월 대비 ${data.summary.changeAmount >= 0 ? "+" : ""}${won(data.summary.changeAmount)} · ${pct(data.summary.changeRate)}`
+            },
+            { label: "건수", value: `${data.expenses.length.toLocaleString("ko-KR")}건` },
+            { label: "증빙 있음", value: won(data.summary.withProofAmount), hint: "세금계산서·카드·현금영수증" },
+            {
+              label: "증빙 없음",
+              value: won(data.summary.withoutProofAmount),
+              hint: data.summary.withoutProofAmount > 0 ? "비용 인정이 어려울 수 있어요" : undefined,
+              tone: data.summary.withoutProofAmount > 0 ? "danger" : "muted"
+            }
+          ]}
+        />
+      ) : null}
+
+      <Section title="지출 등록">
+        <form
+          className="mt-4 flex flex-wrap items-center gap-2 border-y-[1.5px] border-[#C9C3BB] py-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void createExpense();
+          }}
+        >
+          <AdminDatePicker
             value={form.expense_date}
-            onChange={(e) => setForm((f) => ({ ...f, expense_date: e.target.value }))}
-            className="h-9 w-[140px] border border-hu-black/20 bg-hu-white px-2 font-sans-kr text-[13px] outline-none"
+            onChange={(ymd) => setForm((f) => ({ ...f, expense_date: ymd }))}
+            ariaLabel="지출일"
+            className={clsx(INPUT, "w-[168px]")}
           />
           <select
             value={form.category}
             onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-            className="h-9 min-w-[110px] border border-hu-black/20 bg-hu-white px-2 font-sans-kr text-[13px] outline-none"
+            className={clsx(SELECT, "w-[132px]")}
           >
             {EXPENSE_CATEGORIES.map((c) => (
               <option key={c.value} value={c.value}>
@@ -346,7 +254,7 @@ export default function AdminExpensesPage({
             placeholder="금액"
             value={form.amount}
             onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-            className="h-9 w-[110px] border border-hu-black/20 bg-hu-white px-2 font-sans-kr text-[13px] outline-none"
+            className={clsx(INPUT, "w-[132px] text-right tabular-nums")}
             required
           />
           <input
@@ -354,358 +262,254 @@ export default function AdminExpensesPage({
             placeholder="거래처"
             value={form.vendor}
             onChange={(e) => setForm((f) => ({ ...f, vendor: e.target.value }))}
-            className="h-9 min-w-[120px] flex-1 border border-hu-black/20 bg-hu-white px-2 font-sans-kr text-[13px] outline-none"
+            className={clsx(INPUT, "w-[180px]")}
           />
-          <label className="flex items-center gap-1.5 whitespace-nowrap font-sans-kr text-[12px] text-hu-muted">
-            <input
-              type="checkbox"
-              checked={form.has_tax_invoice}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, has_tax_invoice: e.target.checked }))
-              }
-            />
-            증빙
-          </label>
-          <label className="flex items-center gap-1.5 whitespace-nowrap font-sans-kr text-[12px] text-hu-muted">
-            <input
-              type="checkbox"
-              checked={form.is_recurring}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, is_recurring: e.target.checked }))
-              }
-            />
-            반복
-          </label>
-          <button
-            type="submit"
-            disabled={busy}
-            className="h-9 bg-hu-black px-4 font-sans-kr text-[13px] text-white disabled:bg-[#bcbcbc]"
-          >
+          <input
+            type="text"
+            placeholder="메모 (선택)"
+            value={form.memo}
+            onChange={(e) => setForm((f) => ({ ...f, memo: e.target.value }))}
+            className={clsx(INPUT, "min-w-[160px] flex-1")}
+          />
+          <div className="flex items-center gap-4 px-2">
+            <CheckBox label="증빙" checked={form.has_tax_invoice} onChange={(v) => setForm((f) => ({ ...f, has_tax_invoice: v }))} />
+            <CheckBox label="매달 반복" checked={form.is_recurring} onChange={(v) => setForm((f) => ({ ...f, is_recurring: v }))} />
+          </div>
+          <PrimaryButton type="submit" disabled={busy || !form.amount}>
+            <Icon src="/admin-icons/lnb/plus.png" className="h-[14px] w-[14px]" />
             추가
-          </button>
-        </div>
-      </form>
+          </PrimaryButton>
+        </form>
+      </Section>
 
-      {error ? <p className="mt-4 font-sans-kr text-[13px] text-[#9b4a4a]">{error}</p> : null}
-      {refreshing && !data ? (
-        <p className="mt-6 font-sans-kr text-[13px] text-hu-muted">불러오는 중…</p>
+      {data && data.summary.categories.length > 0 ? (
+        <Section title="카테고리별 비중" meta={`${data.summary.categories.length}개`}>
+          <ul className="mt-4 grid grid-cols-3 gap-x-12 border-t-[1.5px] border-[#C9C3BB]">
+            {data.summary.categories.map((c) => (
+              <li key={c.category} className="border-b border-[#F3EFEA] py-[15px]">
+                <div className="flex items-baseline justify-between text-[16px] font-medium">
+                  <span>{c.label}</span>
+                  <span className="tabular-nums">
+                    {won(c.amount)}
+                    <span className="ml-2 text-[13px] font-normal text-[#8A847C]">{c.share.toFixed(1)}%</span>
+                  </span>
+                </div>
+                <ShareBar share={c.share} />
+              </li>
+            ))}
+          </ul>
+        </Section>
       ) : null}
 
       {data ? (
-        <>
-          <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-            <div className="bg-hu-white px-4 py-5 lg:px-5 lg:py-6">
-              <p className="font-serif text-[12px] tracking-[0.14em] text-hu-muted">총 지출</p>
-              <p className="mt-3 font-serif text-[22px] leading-tight lg:text-[26px]">
-                {won(data.summary.totalAmount)}
-              </p>
-              <p className="mt-1 font-sans-kr text-[12px] text-hu-muted">
-                전월 대비{" "}
-                {data.summary.changeAmount >= 0 ? "+" : ""}
-                {won(data.summary.changeAmount)} · {pct(data.summary.changeRate)}
-              </p>
-            </div>
-            <div className="bg-hu-white px-4 py-5 lg:px-5 lg:py-6">
-              <p className="font-serif text-[12px] tracking-[0.14em] text-hu-muted">건수</p>
-              <p className="mt-3 font-serif text-[22px] leading-tight lg:text-[26px]">
-                {data.expenses.length.toLocaleString("ko-KR")}건
-              </p>
-              <p className="mt-1 font-sans-kr text-[12px] text-hu-muted">선택 월 지출</p>
-            </div>
-            <div className="bg-hu-white px-4 py-5 lg:px-5 lg:py-6">
-              <p className="font-serif text-[12px] tracking-[0.14em] text-hu-muted">증빙 있음</p>
-              <p className="mt-3 font-serif text-[22px] leading-tight lg:text-[26px]">
-                {won(data.summary.withProofAmount)}
-              </p>
-            </div>
-            <div className="bg-hu-white px-4 py-5 lg:px-5 lg:py-6">
-              <p className="font-serif text-[12px] tracking-[0.14em] text-hu-muted">증빙 없음</p>
-              <p className="mt-3 font-serif text-[22px] leading-tight lg:text-[26px] text-hu-muted">
-                {won(data.summary.withoutProofAmount)}
-              </p>
-            </div>
-          </div>
-
-          {data.summary.categories.length > 0 ? (
-            <section className="mt-8">
-              <h2 className="font-serif text-[16px] tracking-[0.08em]">카테고리별 비중</h2>
-              <ul className="mt-4 divide-y divide-hu-black/10 bg-hu-white">
-                {data.summary.categories.map((c) => (
-                  <li key={c.category} className="px-5 py-4">
-                    <div className="flex items-baseline justify-between gap-4 font-sans-kr text-[14px]">
-                      <span>{c.label}</span>
-                      <span className="text-hu-muted">
-                        {won(c.amount)} · {c.count}건 · {c.share.toFixed(1)}%
-                      </span>
-                    </div>
-                    <div className="mt-2 h-1.5 bg-hu-black/10">
-                      <div
-                        className="h-full bg-hu-black"
-                        style={{ width: `${Math.min(100, c.share)}%` }}
+        <Section title="지출 목록" meta={`${data.expenses.length}건`}>
+          <table className="mt-4 w-full table-fixed text-left text-[16px] font-medium leading-[20px]">
+            <colgroup>
+              <col className="w-[13%]" />
+              <col className="w-[12%]" />
+              <col className="w-[18%]" />
+              <col className="w-[13%]" />
+              <col className="w-[12%]" />
+              <col />
+              <col className="w-[120px]" />
+            </colgroup>
+            <thead>
+              <tr className={TABLE_HEAD_ROW}>
+                <th className={clsx(TH, "pl-1")}>날짜</th>
+                <th className={TH}>카테고리</th>
+                <th className={TH}>거래처</th>
+                <th className={clsx(TH, "text-right")}>금액</th>
+                <th className={clsx(TH, "pl-4")}>증빙</th>
+                <th className={TH}>메모</th>
+                <th className={clsx(TH, "pr-0 text-right")}>관리</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.expenses.map((row) =>
+                editingId === row.id && editForm ? (
+                  <tr key={row.id} className={clsx(TABLE_ROW, "bg-[#F9F8F4]")}>
+                    <td className="py-2 pl-1 pr-2">
+                      <AdminDatePicker
+                        value={editForm.expense_date}
+                        onChange={(ymd) => setEditForm((f) => (f ? { ...f, expense_date: ymd } : f))}
+                        ariaLabel="지출일"
+                        className={clsx(INPUT, "w-full")}
                       />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
-
-          <section className="mt-10">
-            <h2 className="font-serif text-[16px] tracking-[0.08em]">지출 목록</h2>
-            {empty ? (
-              <p className="mt-4 bg-hu-white px-5 py-10 text-center font-sans-kr text-[13px] text-hu-muted">
-                해당 월에 등록된 지출이 없습니다
-              </p>
-            ) : (
-              <div className="mt-4 overflow-x-auto bg-hu-white">
-                <table className="min-w-full text-left font-sans-kr text-[13px]">
-                  <thead>
-                    <tr className="border-b border-hu-black/10 text-hu-muted">
-                      <th className="px-4 py-3 font-normal">날짜</th>
-                      <th className="px-4 py-3 font-normal">카테고리</th>
-                      <th className="px-4 py-3 font-normal">거래처</th>
-                      <th className="px-4 py-3 font-normal">금액</th>
-                      <th className="px-4 py-3 font-normal">증빙</th>
-                      <th className="px-4 py-3 font-normal">메모</th>
-                      <th className="px-4 py-3 font-normal">수정/삭제</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-hu-black/10">
-                    {data.expenses.map((row) => {
-                      const editing = editingId === row.id && editForm;
-                      if (editing) {
-                        return (
-                          <tr key={row.id} className="bg-hu-beige/30">
-                            <td className="px-4 py-2">
-                              <input
-                                type="date"
-                                value={editForm.expense_date}
-                                onChange={(e) =>
-                                  setEditForm((f) =>
-                                    f ? { ...f, expense_date: e.target.value } : f
-                                  )
-                                }
-                                className="h-8 w-[132px] border border-hu-black/20 bg-hu-white px-1.5 outline-none"
-                              />
-                            </td>
-                            <td className="px-4 py-2">
-                              <select
-                                value={editForm.category}
-                                onChange={(e) =>
-                                  setEditForm((f) =>
-                                    f ? { ...f, category: e.target.value } : f
-                                  )
-                                }
-                                className="h-8 border border-hu-black/20 bg-hu-white px-1.5 outline-none"
-                              >
-                                {EXPENSE_CATEGORIES.map((c) => (
-                                  <option key={c.value} value={c.value}>
-                                    {c.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </td>
-                            <td className="px-4 py-2">
-                              <input
-                                type="text"
-                                value={editForm.vendor}
-                                onChange={(e) =>
-                                  setEditForm((f) =>
-                                    f ? { ...f, vendor: e.target.value } : f
-                                  )
-                                }
-                                className="h-8 w-full min-w-[100px] border border-hu-black/20 bg-hu-white px-1.5 outline-none"
-                              />
-                            </td>
-                            <td className="px-4 py-2">
-                              <input
-                                type="number"
-                                min={0}
-                                value={editForm.amount}
-                                onChange={(e) =>
-                                  setEditForm((f) =>
-                                    f ? { ...f, amount: e.target.value } : f
-                                  )
-                                }
-                                className="h-8 w-[100px] border border-hu-black/20 bg-hu-white px-1.5 outline-none"
-                              />
-                            </td>
-                            <td className="px-4 py-2">
-                              <label className="flex items-center gap-1.5">
-                                <input
-                                  type="checkbox"
-                                  checked={editForm.has_tax_invoice}
-                                  onChange={(e) =>
-                                    setEditForm((f) =>
-                                      f
-                                        ? { ...f, has_tax_invoice: e.target.checked }
-                                        : f
-                                    )
-                                  }
-                                />
-                                <span className="text-[12px] text-hu-muted">증빙</span>
-                              </label>
-                              <label className="mt-1 flex items-center gap-1.5">
-                                <input
-                                  type="checkbox"
-                                  checked={editForm.is_recurring}
-                                  onChange={(e) =>
-                                    setEditForm((f) =>
-                                      f ? { ...f, is_recurring: e.target.checked } : f
-                                    )
-                                  }
-                                />
-                                <span className="text-[12px] text-hu-muted">반복</span>
-                              </label>
-                            </td>
-                            <td className="px-4 py-2">
-                              <input
-                                type="text"
-                                value={editForm.memo}
-                                onChange={(e) =>
-                                  setEditForm((f) =>
-                                    f ? { ...f, memo: e.target.value } : f
-                                  )
-                                }
-                                className="h-8 w-full min-w-[120px] border border-hu-black/20 bg-hu-white px-1.5 outline-none"
-                              />
-                            </td>
-                            <td className="px-4 py-2">
-                              <div className="flex gap-2">
-                                <button
-                                  type="button"
-                                  disabled={busy}
-                                  onClick={() => void saveEdit()}
-                                  className="font-sans-kr text-[12px] text-hu-black underline"
-                                >
-                                  저장
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={busy}
-                                  onClick={() => {
-                                    setEditingId(null);
-                                    setEditForm(null);
-                                  }}
-                                  className="font-sans-kr text-[12px] text-hu-muted"
-                                >
-                                  취소
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      }
-
-                      return (
-                        <tr
-                          key={row.id}
-                          className="cursor-pointer hover:bg-hu-beige/40"
+                    </td>
+                    <td className="py-2 pr-2">
+                      <select
+                        value={editForm.category}
+                        onChange={(e) => setEditForm((f) => (f ? { ...f, category: e.target.value } : f))}
+                        className={clsx(SELECT, "w-full")}
+                      >
+                        {EXPENSE_CATEGORIES.map((c) => (
+                          <option key={c.value} value={c.value}>
+                            {c.label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="py-2 pr-2">
+                      <input
+                        type="text"
+                        value={editForm.vendor}
+                        onChange={(e) => setEditForm((f) => (f ? { ...f, vendor: e.target.value } : f))}
+                        className={clsx(INPUT, "w-full")}
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <input
+                        type="number"
+                        min={0}
+                        value={editForm.amount}
+                        onChange={(e) => setEditForm((f) => (f ? { ...f, amount: e.target.value } : f))}
+                        className={clsx(INPUT, "w-full text-right tabular-nums")}
+                      />
+                    </td>
+                    <td className="py-2 pl-4 pr-2">
+                      <div className="flex flex-col gap-1">
+                        <CheckBox
+                          label="증빙"
+                          checked={editForm.has_tax_invoice}
+                          onChange={(v) => setEditForm((f) => (f ? { ...f, has_tax_invoice: v } : f))}
+                        />
+                        <CheckBox
+                          label="반복"
+                          checked={editForm.is_recurring}
+                          onChange={(v) => setEditForm((f) => (f ? { ...f, is_recurring: v } : f))}
+                        />
+                      </div>
+                    </td>
+                    <td className="py-2 pr-2">
+                      <input
+                        type="text"
+                        value={editForm.memo}
+                        onChange={(e) => setEditForm((f) => (f ? { ...f, memo: e.target.value } : f))}
+                        className={clsx(INPUT, "w-full")}
+                      />
+                    </td>
+                    <td className="py-2 text-right">
+                      <div className="flex items-center justify-end gap-3 text-[14px]">
+                        <button
+                          type="button"
+                          disabled={busy}
                           onClick={() => {
-                            setEditingId(row.id);
-                            setEditForm(toEditForm(row));
+                            setEditingId(null);
+                            setEditForm(null);
                           }}
+                          className="text-[#8A847C] hover:text-[#1C1C1C]"
                         >
-                          <td className="px-4 py-3 tabular-nums text-hu-muted">
-                            {row.expense_date.slice(2)}
-                          </td>
-                          <td className="px-4 py-3">{expenseCategoryLabel(row.category)}</td>
-                          <td className="px-4 py-3">{row.vendor || "—"}</td>
-                          <td className="px-4 py-3 tabular-nums">{won(Number(row.amount))}</td>
-                          <td
-                            className={clsx(
-                              "px-4 py-3",
-                              row.has_tax_invoice ? "text-hu-black" : "text-hu-muted"
-                            )}
-                          >
-                            {row.has_tax_invoice ? "있음" : "없음"}
-                            {row.is_recurring ? (
-                              <span className="ml-1 text-[11px] text-hu-muted">·반복</span>
-                            ) : null}
-                          </td>
-                          <td className="max-w-[180px] truncate px-4 py-3 text-hu-muted">
-                            {row.memo || "—"}
-                          </td>
-                          <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              type="button"
-                              disabled={busy}
-                              onClick={() => {
-                                setEditingId(row.id);
-                                setEditForm(toEditForm(row));
-                              }}
-                              className="mr-2 font-sans-kr text-[12px] text-hu-muted underline"
-                            >
-                              수정
-                            </button>
-                            <button
-                              type="button"
-                              disabled={busy}
-                              onClick={() => void removeExpense(row.id)}
-                              className="font-sans-kr text-[12px] text-[#9b4a4a]"
-                            >
-                              삭제
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                          취소
+                        </button>
+                        <button type="button" disabled={busy} onClick={() => void saveEdit()} className="font-bold text-[#1C1C1C]">
+                          저장
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={row.id} className={TABLE_ROW}>
+                    <td className={clsx(TD, "pl-1 tabular-nums")}>{dotted(row.expense_date)}</td>
+                    <td className={clsx(TD, "truncate")}>{expenseCategoryLabel(row.category)}</td>
+                    <td className={clsx(TD, "truncate")}>{row.vendor || "—"}</td>
+                    <td className={clsx(TD, "text-right tabular-nums")}>{won(Number(row.amount))}</td>
+                    <td className={clsx(TD, "truncate pl-4")}>
+                      <span
+                        className="inline-flex items-center gap-[6px]"
+                        style={{ color: row.has_tax_invoice ? "#1C1C1C" : "var(--danger)" }}
+                      >
+                        <span className="h-[7px] w-[7px] shrink-0 rounded-full bg-current" />
+                        {row.has_tax_invoice ? "있음" : "없음"}
+                      </span>
+                      {row.is_recurring ? <span className="ml-2 text-[13px] text-[#8A847C]">반복</span> : null}
+                    </td>
+                    <td className={clsx(TD, "truncate text-[#8A847C]")} title={row.memo || undefined}>
+                      {row.memo || "—"}
+                    </td>
+                    <td className={clsx(TD, "pr-0 text-right font-normal text-[#8A847C]")}>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => {
+                          setEditingId(row.id);
+                          setEditForm(toForm(row));
+                        }}
+                        className="hover:text-[#1C1C1C]"
+                      >
+                        수정
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => setDeleteTarget(row)}
+                        className="ml-3 hover:text-[#E24B4B]"
+                      >
+                        삭제
+                      </button>
+                    </td>
+                  </tr>
+                )
+              )}
+            </tbody>
+          </table>
+          {data.expenses.length === 0 ? <Empty>해당 월에 등록된 지출이 없습니다.</Empty> : null}
 
-            <p className="mt-4 font-sans-kr text-[12px] leading-relaxed text-hu-muted">
-              세금계산서·카드전표·현금영수증 중 하나를 받은 지출만 &apos;증빙 있음&apos;으로
-              체크하세요.
-              <br />
-              증빙이 없으면 비용으로 인정받지 못하거나 부가세 매입세액 공제를 받을 수
-              없습니다.
-            </p>
-          </section>
-        </>
+          <Note>
+            세금계산서·카드전표·현금영수증 중 하나를 받은 지출만 &lsquo;증빙&rsquo;으로 체크하세요. 증빙이 없으면 비용으로
+            인정받지 못하거나 부가세 매입세액 공제를 받을 수 없습니다.
+          </Note>
+        </Section>
       ) : null}
 
       {importOpen && importPreview ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-          onClick={() => {
-            if (!busy) setImportOpen(false);
-          }}
-        >
-          <div
-            className="w-full max-w-[400px] bg-hu-white p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="font-serif text-[18px] tracking-[0.06em]">반복 지출 가져오기</p>
-            <p className="mt-3 font-sans-kr text-[13px] text-hu-muted">
-              지난달 반복 지출 중{" "}
-              <span className="text-hu-black">{importPreview.available}건</span>을{" "}
-              {year}년 {month}월로 복사합니다.
-              {importPreview.skipped > 0
-                ? ` 같은 카테고리·거래처 ${importPreview.skipped}건은 이미 있어 건너뜁니다.`
-                : ""}
-            </p>
-            <div className="mt-6 flex items-center justify-end gap-3">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => setImportOpen(false)}
-                className="px-4 py-2 font-sans-kr text-[13px] text-hu-muted disabled:opacity-40"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                disabled={busy || importPreview.available === 0}
-                onClick={() => void runImport()}
-                className="bg-hu-black px-4 py-2 font-sans-kr text-[13px] text-white disabled:bg-[#bcbcbc]"
-              >
+        <Modal
+          title="반복 지출 가져오기"
+          busy={busy}
+          onClose={() => setImportOpen(false)}
+          actions={
+            <>
+              <OutlineButton disabled={busy} onClick={() => setImportOpen(false)}>
+                닫기
+              </OutlineButton>
+              <PrimaryButton disabled={busy || importPreview.available === 0} onClick={() => void runImport()}>
                 {busy ? "처리 중..." : `${importPreview.available}건 가져오기`}
-              </button>
-            </div>
-          </div>
-        </div>
+              </PrimaryButton>
+            </>
+          }
+        >
+          지난달 반복 지출 중 <b>{importPreview.available}건</b>을 {year}년 {month}월로 복사합니다.
+          {importPreview.skipped > 0 ? (
+            <span className="mt-2 block text-[13px] text-[#8A847C]">
+              같은 카테고리·거래처 {importPreview.skipped}건은 이미 있어 건너뜁니다.
+            </span>
+          ) : null}
+        </Modal>
+      ) : null}
+
+      {deleteTarget ? (
+        <Modal
+          title="지출 삭제"
+          busy={busy}
+          onClose={() => setDeleteTarget(null)}
+          actions={
+            <>
+              <OutlineButton disabled={busy} onClick={() => setDeleteTarget(null)}>
+                닫기
+              </OutlineButton>
+              <PrimaryButton
+                disabled={busy}
+                onClick={() => void removeExpense(deleteTarget.id)}
+                danger
+              >
+                {busy ? "삭제 중..." : "삭제"}
+              </PrimaryButton>
+            </>
+          }
+        >
+          {dotted(deleteTarget.expense_date)} · {expenseCategoryLabel(deleteTarget.category)}
+          {deleteTarget.vendor ? ` · ${deleteTarget.vendor}` : ""} · {won(Number(deleteTarget.amount))}
+          <span className="mt-2 block text-[13px] text-[#8A847C]">삭제하면 되돌릴 수 없습니다.</span>
+        </Modal>
       ) : null}
     </div>
   );

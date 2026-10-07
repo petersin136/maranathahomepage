@@ -13,6 +13,7 @@ import {
   parseTimeToMinutes,
   type OccupiedInterval
 } from "@/lib/booking/overlap";
+import { AdminDatePicker } from "@/components/admin/AdminDatePicker";
 import BookingCreateModal from "@/components/admin/BookingCreateModal";
 import "./admin-calendar.css";
 
@@ -184,7 +185,6 @@ export function CalendarDesktopView({
   const [createSlot, setCreateSlot] = useState<{ time?: string; artistId?: string } | null>(null);
   const staffRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
-  const dateRef = useRef<HTMLInputElement>(null);
   const empty = artists.length === 0;
 
   useEffect(() => {
@@ -291,28 +291,22 @@ export function CalendarDesktopView({
       ) : (
         <>
           <div className="cal-toolbar">
-            <button
-              type="button"
+            <AdminDatePicker
+              value={date}
+              onChange={onDate}
+              display={formatChipDate(date)}
+              ariaLabel="날짜"
               className="cal-chip cal-date-chip"
-              onClick={() => dateRef.current?.showPicker?.()}
-            >
-              <svg viewBox="0 0 16 16" className="cal-date-icon" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round">
-                <rect x="2" y="3" width="12" height="11" rx="1.5" />
-                <path d="M2 6.5h12M5.5 1.8v2.4M10.5 1.8v2.4" />
-                <path d="M5 9.6h.01M8 9.6h.01M11 9.6h.01" strokeWidth={1.8} />
-              </svg>
-              <span className="cal-date-text">{formatChipDate(date)}</span>
-              <ChevronDown className="cal-chip-chevron" />
-              <input
-                ref={dateRef}
-                type="date"
-                value={date}
-                onChange={(e) => e.target.value && onDate(e.target.value)}
-                className="cal-date-input"
-                tabIndex={-1}
-                aria-hidden
-              />
-            </button>
+              textClassName="cal-date-text"
+              leading={
+                <svg viewBox="0 0 16 16" className="cal-date-icon" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round">
+                  <rect x="2" y="3" width="12" height="11" rx="1.5" />
+                  <path d="M2 6.5h12M5.5 1.8v2.4M10.5 1.8v2.4" />
+                  <path d="M5 9.6h.01M8 9.6h.01M11 9.6h.01" strokeWidth={1.8} />
+                </svg>
+              }
+              trailing={<ChevronDown className="cal-chip-chevron" />}
+            />
 
             <div ref={staffRef} className="cal-staff-wrap">
               <button

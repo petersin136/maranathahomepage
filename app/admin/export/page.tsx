@@ -1,23 +1,27 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import FinanceNav from "@/components/admin/FinanceNav";
+import {
+  FieldList,
+  FinanceHeader,
+  Icon,
+  MonthPicker,
+  Note,
+  PrimaryButton,
+  Section,
+  Toolbar,
+  shiftMonth
+} from "@/components/admin/finance-ui";
 import { todayKst } from "@/lib/admin/sales-data";
-
-function parseYmdParts(ymd: string) {
-  const [y, m] = ymd.split("-").map(Number);
-  return { y, m };
-}
-
-function shiftMonth(year: number, month: number, delta: number) {
-  const dt = new Date(Date.UTC(year, month - 1 + delta, 1));
-  return { year: dt.getUTCFullYear(), month: dt.getUTCMonth() + 1 };
-}
 
 /** 마감은 보통 지난달 기준 */
 function defaultLastMonth() {
-  const { y, m } = parseYmdParts(todayKst());
+  const [y, m] = todayKst().split("-").map(Number);
   return shiftMonth(y, m, -1);
+}
+
+function lastDay(year: number, month: number) {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
 export default function AdminExportPage() {
@@ -26,29 +30,18 @@ export default function AdminExportPage() {
   const [month, setMonth] = useState(initial.month);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
 
-  const yearOptions = useMemo(() => {
-    const current = parseYmdParts(todayKst()).y;
-    const years: number[] = [];
-    for (let y = current + 1; y >= current - 4; y -= 1) years.push(y);
-    return years;
-  }, []);
-
-  const moveMonth = (delta: number) => {
-    const next = shiftMonth(year, month, delta);
-    setYear(next.year);
-    setMonth(next.month);
-  };
+  const mm = String(month).padStart(2, "0");
+  const defaultName = `헤어업_${year}년${mm}월_마감자료.xlsx`;
 
   const download = async () => {
     if (busy) return;
     setBusy(true);
     setError(null);
+    setDone(null);
     try {
-      const params = new URLSearchParams({
-        year: String(year),
-        month: String(month)
-      });
+      const params = new URLSearchParams({ year: String(year), month: String(month) });
       const res = await fetch(`/api/admin/export?${params.toString()}`);
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
@@ -57,9 +50,7 @@ export default function AdminExportPage() {
       const blob = await res.blob();
       const disposition = res.headers.get("Content-Disposition") || "";
       const utfMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
-      const filename = utfMatch
-        ? decodeURIComponent(utfMatch[1])
-        : `헤어업_${year}년${String(month).padStart(2, "0")}월_마감자료.xlsx`;
+      const filename = utfMatch ? decodeURIComponent(utfMatch[1]) : defaultName;
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -69,6 +60,7 @@ export default function AdminExportPage() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      setDone(filename);
     } catch (e) {
       setError(e instanceof Error ? e.message : "다운로드에 실패했습니다.");
     } finally {
@@ -77,83 +69,44 @@ export default function AdminExportPage() {
   };
 
   return (
-    <div className="font-sans-kr text-[#1C1C1C]">
-      <FinanceNav />
-      <h1 className="mt-8 flex items-baseline gap-2 text-[30px] font-bold leading-none tracking-[-0.02em]">
-        내보내기
-        <span className="text-[15px] font-normal text-[#8A847C]">월 마감 · 세무 대리인 전달용</span>
-      </h1>
+    <div className="pb-16 font-sans-kr text-[#1C1C1C]">
+      <FinanceHeader subtitle="월 마감 · 세무 대리인 전달용" />
 
-      <section className="mt-8 rounded-[12px] border border-[#E4E0DA] bg-white px-6 py-6">
-        <h2 className="text-[20px] font-bold leading-none">대상 월</h2>
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={() => moveMonth(-1)}
-            className="h-9 border border-hu-black/20 bg-hu-white px-3 font-sans-kr text-[13px]"
-            aria-label="이전 달"
-          >
-            ←
-          </button>
-          <label className="font-sans-kr text-[13px] text-hu-muted">
-            년
-            <select
-              value={year}
-              onChange={(e) => setYear(Number(e.target.value))}
-              className="ml-2 h-9 border border-hu-black/20 bg-hu-white px-2.5 outline-none"
-            >
-              {yearOptions.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="font-sans-kr text-[13px] text-hu-muted">
-            월
-            <select
-              value={month}
-              onChange={(e) => setMonth(Number(e.target.value))}
-              className="ml-2 h-9 border border-hu-black/20 bg-hu-white px-2.5 outline-none"
-            >
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="button"
-            onClick={() => moveMonth(1)}
-            className="h-9 border border-hu-black/20 bg-hu-white px-3 font-sans-kr text-[13px]"
-            aria-label="다음 달"
-          >
-            →
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void download()}
-            className="ml-auto h-9 bg-hu-black px-4 font-sans-kr text-[13px] text-white disabled:bg-[#bcbcbc]"
-          >
+      <Toolbar
+        left={
+          <MonthPicker
+            year={year}
+            month={month}
+            onChange={(y, m) => {
+              setYear(y);
+              setMonth(m);
+              setDone(null);
+            }}
+          />
+        }
+        right={
+          <PrimaryButton disabled={busy} onClick={() => void download()} className="w-[136px]">
+            <Icon src="/admin-icons/lnb/exit.png" className="h-[14px] w-[14px]" />
             {busy ? "생성 중..." : "엑셀 다운로드"}
-          </button>
-        </div>
+          </PrimaryButton>
+        }
+      />
 
-        {error ? (
-          <p className="mt-4 font-sans-kr text-[13px] text-[#9b4a4a]">{error}</p>
-        ) : null}
+      {error ? <p className="mt-4 text-[13px] text-[#E24B4B]">{error}</p> : null}
+      {done ? <p className="mt-4 text-[13px] text-[#8A847C]">{done} 파일을 내려받았습니다.</p> : null}
 
-        <ul className="mt-6 space-y-1.5 font-sans-kr text-[13px] text-hu-muted">
-          <li>· 시트: 매출내역 / 지출내역 / 디자이너정산 / 요약</li>
-          <li>· 매출·정산은 결제 완료 시각(paid_at) 기준, 지출은 지출일 기준</li>
-          <li>· 고객 전화번호는 포함하지 않습니다</li>
-          <li>
-            · 파일명: 헤어업_{year}년{String(month).padStart(2, "0")}월_마감자료.xlsx
-          </li>
-        </ul>
-      </section>
+      <Section title="포함 내용" meta={`${year}년 ${month}월`} className="mt-10">
+        <FieldList
+          rows={[
+            { label: "대상 기간", value: `${year}. ${mm}. 01 ~ ${year}. ${mm}. ${lastDay(year, month)}` },
+            { label: "시트 구성", value: "매출내역 · 지출내역 · 디자이너정산 · 요약" },
+            { label: "집계 기준", value: "매출·정산은 결제 완료 시각, 지출은 지출일 기준" },
+            { label: "개인정보", value: "고객 전화번호는 포함하지 않습니다" },
+            { label: "파일명", value: defaultName }
+          ]}
+        />
+        <Note>마감은 보통 지난달 기준이라 기본값으로 지난달이 선택되어 있습니다.</Note>
+      </Section>
     </div>
   );
 }
