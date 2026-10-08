@@ -34,6 +34,7 @@ export async function POST(request: Request) {
     is_published?: boolean;
     lunch_start?: string | null;
     lunch_minutes?: number;
+    day_off?: number | null;
   };
 
   try {
@@ -51,22 +52,20 @@ export async function POST(request: Request) {
   }
 
   const admin = getSupabaseAdmin();
-  const { data, error } = await admin
-    .from("artists")
-    .insert({
-      id,
-      name_kr: body.name_kr.trim(),
-      name_en: body.name_en.trim().toUpperCase(),
-      role: body.role?.trim() || "Stylist",
-      image_url: body.image_url || null,
-      instagram_url: body.instagram_url || null,
-      sort_order: body.sort_order ?? 0,
-      is_published: body.is_published ?? true,
-      lunch_start: body.lunch_start || null,
-      lunch_minutes: body.lunch_minutes ?? 30
-    })
-    .select("*")
-    .single();
+  const row: Record<string, unknown> = {
+    id,
+    name_kr: body.name_kr.trim(),
+    name_en: body.name_en.trim().toUpperCase(),
+    role: body.role?.trim() || "Stylist",
+    image_url: body.image_url || null,
+    instagram_url: body.instagram_url || null,
+    sort_order: body.sort_order ?? 0,
+    is_published: body.is_published ?? true,
+    lunch_start: body.lunch_start || null,
+    lunch_minutes: body.lunch_minutes ?? 30,
+    day_off: body.day_off == null || Number.isNaN(Number(body.day_off)) ? null : Number(body.day_off)
+  };
+  const { data, error } = await admin.from("artists").insert(row).select("*").single();
 
   if (error) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 400 });

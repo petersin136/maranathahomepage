@@ -15,9 +15,22 @@ type Artist = {
   is_published: boolean;
   lunch_start: string | null;
   lunch_minutes: number | null;
+  day_off: number | null;
 };
 
-const emptyForm = {
+const emptyForm: {
+  id: string;
+  name_kr: string;
+  name_en: string;
+  role: string;
+  image_url: string;
+  instagram_url: string;
+  sort_order: number;
+  is_published: boolean;
+  lunch_start: string;
+  lunch_minutes: number;
+  day_off: number | null;
+} = {
   id: "",
   name_kr: "",
   name_en: "",
@@ -27,7 +40,8 @@ const emptyForm = {
   sort_order: 0,
   is_published: true,
   lunch_start: "",
-  lunch_minutes: 30
+  lunch_minutes: 30,
+  day_off: null
 };
 
 export default function AdminArtistsPage() {
@@ -62,7 +76,8 @@ export default function AdminArtistsPage() {
       instagram_url: form.instagram_url || null,
       sort_order: Number(form.sort_order) || 0,
       lunch_start: form.lunch_start || null,
-      lunch_minutes: Number(form.lunch_minutes) || 30
+      lunch_minutes: Number(form.lunch_minutes) || 30,
+      day_off: form.day_off
     };
 
     const res = await fetch(
@@ -150,7 +165,8 @@ export default function AdminArtistsPage() {
                             sort_order: a.sort_order,
                             is_published: a.is_published,
                             lunch_start: a.lunch_start ? a.lunch_start.slice(0, 5) : "",
-                            lunch_minutes: a.lunch_minutes ?? 30
+                            lunch_minutes: a.lunch_minutes ?? 30,
+                            day_off: a.day_off ?? null
                           });
                         }}
                         className="text-[16px] font-normal text-[#8A847C]"
@@ -223,6 +239,25 @@ export default function AdminArtistsPage() {
               value={String(form.lunch_minutes)}
               onChange={(v) => setForm((f) => ({ ...f, lunch_minutes: Number(v) || 0 }))}
             />
+            <label className="block text-[15px] font-bold leading-none text-[#9A948C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+              정기 휴무
+              <select
+                value={form.day_off == null ? "" : String(form.day_off)}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, day_off: e.target.value === "" ? null : Number(e.target.value) }))
+                }
+                className="mt-2 block h-[36px] w-full rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-3 text-[15px] font-medium text-[#1C1C1C] outline-none"
+              >
+                <option value="">없음</option>
+                <option value="0">일요일</option>
+                <option value="1">월요일</option>
+                <option value="2">화요일</option>
+                <option value="3">수요일</option>
+                <option value="4">목요일</option>
+                <option value="5">금요일</option>
+                <option value="6">토요일</option>
+              </select>
+            </label>
             <label className="flex items-center gap-2 text-[15px] font-bold text-[#1C1C1C]">
               <input
                 type="checkbox"

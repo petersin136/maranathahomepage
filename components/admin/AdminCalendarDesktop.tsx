@@ -13,6 +13,7 @@ import {
   parseTimeToMinutes,
   type OccupiedInterval
 } from "@/lib/booking/overlap";
+import { todayKst } from "@/lib/admin/sales-data";
 import { AdminDatePicker } from "@/components/admin/AdminDatePicker";
 import BookingCreateModal from "@/components/admin/BookingCreateModal";
 import "./admin-calendar.css";
@@ -25,6 +26,7 @@ export type CalArtist = {
   role: string | null;
   lunch_start: string | null;
   lunch_minutes: number | null;
+  day_off?: number | null;
 };
 
 export type CalDayBooking = {
@@ -764,6 +766,11 @@ function DayGrid({
   );
 }
 
+function weekdayOf(ymd: string) {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(y, m - 1, d).getDay();
+}
+
 function WeekGrid({
   artist,
   days,
@@ -789,8 +796,7 @@ function WeekGrid({
     (b) => b.artist_id === artist.id && isBlocking(b.status) && matchesQuery(b, artist, q, qDigits)
   );
   const slots = Array.from({ length: SLOT_COUNT }, (_, i) => OPEN_MINUTES + i * SLOT_MINUTES);
-  const lunch = lunchInterval(artist);
-  const showLunch = lunch != null && lunch.startMinutes >= OPEN_MINUTES && lunch.endMinutes <= CLOSING_MINUTES;
+  const offDow = artist.day_off == null || Number.isNaN(Number(artist.day_off)) ? null : Number(artist.day_off);
   const nowTop =
     nowMinutes >= OPEN_MINUTES && nowMinutes <= CLOSING_MINUTES
       ? ((nowMinutes - OPEN_MINUTES) / SLOT_MINUTES) * SLOT_HEIGHT
@@ -801,11 +807,17 @@ function WeekGrid({
       <div className="cal-grid-head-bar">
         <div className="cal-time-head" />
         <div className="cal-week-head">
-          {days.map((day) => (
-            <div key={day} className="cal-week-day">
-              <span className={clsx("cal-week-day-label", day === today && "is-today")}>{formatWeekHead(day)}</span>
-            </div>
-          ))}
+          {days.map((day) => {
+            const off = offDow != null && weekdayOf(day) === offDow;
+            return (
+              <div key={day} className={clsx("cal-week-day", off && "is-off")}>
+                <span className={clsx("cal-week-day-label", day === today && "is-today")}>
+                  {formatWeekHead(day)}
+                  {off ? <span className="cal-week-off-text"> 휴무</span> : null}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -844,53 +856,31 @@ function WeekGrid({
         </div>
 
         {days.map((day) => {
-          const list = own.filter((b) => b.booking_date === day);
+          const off = offDow != null && weekdayOf(day) === offDow;
+          const list = off ? [] : own.filter((b) => b.booking_date === day);
           const taken = (slotStart: number) =>
             list.some((b) => {
               const s = parseTimeToMinutes(b.booking_time.slice(0, 5));
               return slotStart >= s && slotStart < s + b.duration_minutes;
             });
-          const busy: OccupiedInterval[] = list.map((b) => {
-            const s = parseTimeToMinutes(b.booking_time.slice(0, 5));
-            return { startMinutes: s, endMinutes: s + b.duration_minutes };
-          });
-          if (showLunch && lunch) busy.push(lunch);
           return (
-            <div key={day} className="cal-col">
-              {busy.slice(0, list.length).map((o, i) => {
-                const gap = bufferAfter(o.startMinutes, o.endMinutes - o.startMinutes, busy);
-                return gap ? (
-                  <BufferBlock key={`buf-${list[i].id}`} {...gap} onClick={() => onCreateAt(day, hhmm(gap.start))} />
-                ) : null;
-              })}
-              {showLunch && lunch ? (
-                <div
-                  className="cal-lunch"
-                  style={{
-                    top: ((lunch.startMinutes - OPEN_MINUTES) / SLOT_MINUTES) * SLOT_HEIGHT,
-                    height: ((lunch.endMinutes - lunch.startMinutes) / SLOT_MINUTES) * SLOT_HEIGHT
-                  }}
-                >
-                  <span className="cal-lunch-label">
-                    점심시간 ({durationLabel(lunch.endMinutes - lunch.startMinutes)})
-                  </span>
-                </div>
-              ) : null}
-
-              {slots.map((m, i) =>
-                taken(m) ? null : (
-                  <div
-                    key={m}
-                    className="cal-cell"
-                    style={{ top: i * SLOT_HEIGHT }}
-                    onClick={() => onCreateAt(day, hhmm(m))}
-                  >
-                    <span className="cal-cell-add">
-                      <CalIcon src="/admin-icons/lnb/plus.png" className="cal-cell-add-icon" />
-                    </span>
-                  </div>
-                )
-              )}
+            <div key={day} className={clsx("cal-col", off && "is-off")}>
+              {off
+                ? null
+                : slots.map((m, i) =>
+                    taken(m) ? null : (
+                      <div
+                        key={m}
+                        className="cal-cell"
+                        style={{ top: i * SLOT_HEIGHT }}
+                        onClick={() => onCreateAt(day, hhmm(m))}
+                      >
+                        <span className="cal-cell-add">
+                          <CalIcon src="/admin-icons/lnb/plus.png" className="cal-cell-add-icon" />
+                        </span>
+                      </div>
+                    )
+                  )}
 
               {list.map((b) => {
                 const start = parseTimeToMinutes(b.booking_time.slice(0, 5));
@@ -921,7 +911,7 @@ function WeekGrid({
                 );
               })}
 
-              {day === today && nowTop != null ? (
+              {!off && day === today && nowTop != null ? (
                 <div className="cal-now is-col" style={{ top: nowTop }}>
                   <span className="cal-now-dot" />
                 </div>
@@ -1029,8 +1019,7 @@ function Briefing({
 }
 
 function todayYmd() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return todayKst();
 }
 
 function currentMinutes() {

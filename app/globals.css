@@ -35,6 +35,7 @@
   --accent: #2F3A2F;
   --sidebar-bg: #F9F8F4;
   --row-select: #F4EFE9;
+  --cal-off-bg: var(--row-select);
   --danger: #E24B4B;
 
   --booking-col-check: 6%;

@@ -26,20 +26,20 @@ export async function PATCH(
     "sort_order",
     "is_published",
     "lunch_start",
-    "lunch_minutes"
+    "lunch_minutes",
+    "day_off"
   ];
   const patch: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) patch[key] = body[key];
   }
+  if ("day_off" in patch) {
+    const raw = patch.day_off;
+    patch.day_off = raw == null || raw === "" || Number.isNaN(Number(raw)) ? null : Number(raw);
+  }
 
   const admin = getSupabaseAdmin();
-  const { data, error } = await admin
-    .from("artists")
-    .update(patch)
-    .eq("id", id)
-    .select("*")
-    .single();
+  const { data, error } = await admin.from("artists").update(patch).eq("id", id).select("*").single();
 
   if (error) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
