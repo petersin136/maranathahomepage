@@ -22,6 +22,26 @@ function badRequest(message: string) {
   return NextResponse.json({ ok: false, error: message }, { status: 400 });
 }
 
+function rejectDesigner(role: string) {
+  if (role !== "designer") return null;
+  return NextResponse.json({ ok: false, error: "접근 권한이 없습니다." }, { status: 403 });
+}
+
+function stripOtherDesignerAmounts<T extends { artist_id?: string | null }>(
+  rows: T[],
+  role: string,
+  artistId: string | null
+) {
+  if (role !== "designer") return rows;
+  return rows.map((row) => {
+    if (row.artist_id === artistId) return row;
+    const next = { ...row } as T & { final_amount?: unknown; deposit_amount?: unknown };
+    delete next.final_amount;
+    delete next.deposit_amount;
+    return next;
+  });
+}
+
 export async function POST(request: Request) {
   const auth = await requireAdminUser();
   if (!auth.ok) return auth.response;
@@ -36,6 +56,9 @@ export async function POST(request: Request) {
   const bookingDate = body.bookingDate?.trim();
   const bookingTime = body.bookingTime?.trim();
   const artistId = body.artistId?.trim();
+  if (auth.role === "designer" && artistId !== auth.artistId) {
+    return NextResponse.json({ ok: false, error: "접근 권한이 없습니다." }, { status: 403 });
+  }
   const customerName = body.customerName?.trim();
   const customerPhone = body.customerPhone?.trim();
   const customerRequest = body.customerRequest?.trim() || null;
@@ -153,5 +176,16 @@ export async function GET(request: Request) {
   if (error) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
-  return NextResponse.json({ ok: true, bookings: data ?? [] });
+  return NextResponse.json({
+    ok: true,
+    bookings: stripOtherDesignerAmounts(data ?? [], auth.role, auth.artistId)
+  });
+}
+
+export async function DELETE() {
+  const auth = await requireAdminUser();
+  if (!auth.ok) return auth.response;
+  const denied = rejectDesigner(auth.role);
+  if (denied) return denied;
+  return NextResponse.json({ ok: false, error: "지원하지 않는 요청입니다." }, { status: 405 });
 }

@@ -5,9 +5,16 @@ import { loadShopSettings, loadTaxDashboard } from "@/lib/admin/tax-load";
 
 export const preferredRegion = "icn1";
 
+function rejectDesigner(role: string) {
+  if (role !== "designer") return null;
+  return NextResponse.json({ ok: false, error: "접근 권한이 없습니다." }, { status: 403 });
+}
+
 export async function GET() {
   const auth = await requireAdminUser();
   if (!auth.ok) return auth.response;
+  const denied = rejectDesigner(auth.role);
+  if (denied) return denied;
 
   try {
     const data = await loadTaxDashboard();
@@ -24,6 +31,8 @@ export async function GET() {
 export async function PATCH(request: Request) {
   const auth = await requireAdminUser();
   if (!auth.ok) return auth.response;
+  const denied = rejectDesigner(auth.role);
+  if (denied) return denied;
 
   let body: {
     business_name?: string | null;

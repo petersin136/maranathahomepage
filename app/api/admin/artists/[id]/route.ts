@@ -1,12 +1,19 @@
 import { NextResponse } from "next/server";
 import { requireAdminUser, getSupabaseAdmin } from "@/lib/admin/auth";
 
+function rejectDesigner(role: string) {
+  if (role !== "designer") return null;
+  return NextResponse.json({ ok: false, error: "접근 권한이 없습니다." }, { status: 403 });
+}
+
 export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
   const auth = await requireAdminUser();
   if (!auth.ok) return auth.response;
+  const denied = rejectDesigner(auth.role);
+  if (denied) return denied;
 
 
   const { id } = await context.params;
@@ -53,7 +60,8 @@ export async function DELETE(
 ) {
   const auth = await requireAdminUser();
   if (!auth.ok) return auth.response;
-
+  const denied = rejectDesigner(auth.role);
+  if (denied) return denied;
 
   const { id } = await context.params;
   const admin = getSupabaseAdmin();

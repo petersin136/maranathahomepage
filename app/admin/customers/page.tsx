@@ -11,6 +11,8 @@ import {
   type CustomerState
 } from "@/components/admin/CustomerFilters";
 import type { CustomerDirectoryRow, CustomersDashboard } from "@/lib/admin/customers-data";
+import { AdminBellButton } from "@/components/admin/AdminBellButton";
+import { AdminPageTitle } from "@/components/admin/AdminPageTitle";
 
 const PAGE_SIZE = 12;
 
@@ -198,22 +200,25 @@ export default function AdminCustomersPage() {
 
   return (
     <div className="flex flex-col font-sans-kr text-[#1C1C1C] min-[1440px]:h-[calc(100dvh-5rem)]">
-      <div className="flex items-center justify-between gap-6 pt-6">
-        <h1 className="flex items-baseline gap-2 text-[30px] font-bold leading-none tracking-[-0.02em]">
+      <div className="flex items-start justify-between gap-6 pl-[6px]">
+        <AdminPageTitle className="flex items-baseline gap-2">
           고객관리
           <span className="text-[15px] font-normal text-[#8A847C]">
             총 {rows.length.toLocaleString("ko-KR")}명
           </span>
-        </h1>
-        <label className="flex h-[36px] w-[300px] items-center gap-2 rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white px-3">
-          <Icon src="/admin-icons/lnb/search-bold.png" className="h-[16px] w-[16px] text-[#9A948C]" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="고객명, 연락처 검색"
-            className="w-full bg-transparent text-[15px] font-bold text-[#9A948C] outline-none placeholder:text-[#9A948C]"
-          />
-        </label>
+        </AdminPageTitle>
+        <div className="mt-[24px] flex items-start gap-[8px]">
+          <label className="flex h-[36px] w-[300px] items-center gap-2 rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white px-3">
+            <Icon src="/admin-icons/lnb/search-bold.png" className="h-[16px] w-[16px] text-[#9A948C]" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="고객명, 연락처 검색"
+              className="w-full bg-transparent text-[15px] font-bold text-[#9A948C] outline-none placeholder:text-[#9A948C]"
+            />
+          </label>
+          <AdminBellButton />
+        </div>
       </div>
 
       {error ? <p className="mt-4 text-[13px] text-[#9b4a4a]">{error}</p> : null}

@@ -15,9 +15,16 @@ import {
 
 export const preferredRegion = "icn1";
 
+function rejectDesigner(role: string) {
+  if (role !== "designer") return null;
+  return NextResponse.json({ ok: false, error: "접근 권한이 없습니다." }, { status: 403 });
+}
+
 export async function GET(request: Request) {
   const auth = await requireAdminUser();
   if (!auth.ok) return auth.response;
+  const denied = rejectDesigner(auth.role);
+  if (denied) return denied;
 
   const { searchParams } = new URL(request.url);
   try {
@@ -38,6 +45,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const auth = await requireAdminUser();
   if (!auth.ok) return auth.response;
+  const denied = rejectDesigner(auth.role);
+  if (denied) return denied;
 
   let body: Record<string, unknown>;
   try {

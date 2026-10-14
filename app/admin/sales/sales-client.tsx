@@ -3,42 +3,76 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { clsx } from "clsx";
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   CheckBox,
-  Empty,
+  DownloadExportButton,
   FinanceHeader,
   Icon,
   MonthPicker,
   RefreshButton,
-  Section,
-  ShareBar,
-  StatStrip,
   TABLE_HEAD_ROW,
   TABLE_ROW,
   TD,
   TH,
-  TRIM_KR,
   Toolbar,
-  pct,
+  useOutsideClose,
   won
 } from "@/components/admin/finance-ui";
-import type { SalesDashboard, SalesPreset } from "@/lib/admin/sales-data";
+import type { SalesDashboard } from "@/lib/admin/sales-data";
+import { METHOD_LABEL, monthEnd, monthStart, salesBoardView, todayKst } from "@/lib/admin/sales-data";
 
 type Staff = { id: string; name_kr: string | null; role: string | null };
 
-function pad2(n: number) {
-  return String(n).padStart(2, "0");
+const METHOD_TONE: Record<"card" | "transfer" | "cash", string> = {
+  card: "var(--accent)",
+  transfer: "var(--muted)",
+  cash: "var(--label)"
+};
+
+function formatPaidAt(iso: string) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Seoul",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23"
+    })
+      .formatToParts(new Date(iso))
+      .map((part) => [part.type, part.value])
+  );
+  return `${parts.month}. ${parts.day} ${parts.hour}:${parts.minute}`;
 }
 
-function monthBounds(year: number, month: number) {
-  const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const mm = pad2(month);
-  return { from: `${year}-${mm}-01`, to: `${year}-${mm}-${pad2(last)}` };
+function phoneTail(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  return digits.slice(-4);
 }
 
-function shortChartDate(ymd: string) {
-  return ymd.length >= 10 ? `${ymd.slice(5, 7)}/${ymd.slice(8, 10)}` : ymd;
+function signedPct(rate: number) {
+  const body = `${Math.abs(rate).toFixed(1)}%`;
+  if (rate > 0) return `+${body} ▲`;
+  if (rate < 0) return `-${body} ▼`;
+  return "0.0%";
+}
+
+function signedCount(delta: number) {
+  if (delta > 0) return `+${delta.toLocaleString("ko-KR")}건 ▲`;
+  if (delta < 0) return `${delta.toLocaleString("ko-KR")}건 ▼`;
+  return "0건";
+}
+
+function signedWon(delta: number) {
+  const abs = Math.abs(delta).toLocaleString("ko-KR");
+  if (delta > 0) return `+${abs}원 ▲`;
+  if (delta < 0) return `-${abs}원 ▼`;
+  return "0원";
+}
+
+function monthRange(year: number, month: number) {
+  const from = monthStart(`${year}-${String(month).padStart(2, "0")}-01`);
+  return { from, to: monthEnd(from) };
 }
 
 export default function AdminSalesPage({
@@ -48,34 +82,42 @@ export default function AdminSalesPage({
   initial: SalesDashboard | null;
   initialError: string | null;
 }) {
-  const [preset, setPreset] = useState<SalesPreset>(initial?.period.preset ?? "this_month");
   const [from, setFrom] = useState(initial?.period.from ?? "");
   const [to, setTo] = useState(initial?.period.to ?? "");
   const [data, setData] = useState<SalesDashboard | null>(initial);
   const [error, setError] = useState<string | null>(initialError);
   const [refreshing, setRefreshing] = useState(false);
-  const [year, setYear] = useState(() => Number((initial?.period.from ?? "2026-10-01").slice(0, 4)));
-  const [month, setMonth] = useState(() => Number((initial?.period.from ?? "2026-10-01").slice(5, 7)));
+  const [year, setYear] = useState(() => Number((initial?.period.from ?? todayKst()).slice(0, 4)));
+  const [month, setMonth] = useState(() => Number((initial?.period.from ?? todayKst()).slice(5, 7)));
   const [staff, setStaff] = useState<Staff[] | null>(null);
   const [artistFilter, setArtistFilter] = useState<string[]>([]);
-  const [excelBusy, setExcelBusy] = useState(false);
+  const [staffOpen, setStaffOpen] = useState(false);
+  const closeStaff = useCallback(() => setStaffOpen(false), []);
+  const staffRef = useOutsideClose(staffOpen, closeStaff);
 
-  const load = useCallback(async (nextPreset: SalesPreset, nextFrom?: string, nextTo?: string) => {
+  useEffect(() => {
+    if (!staffOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeStaff();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [staffOpen, closeStaff]);
+
+  const load = useCallback(async (nextYear: number, nextMonth: number) => {
     setRefreshing(true);
     setError(null);
-    const params = new URLSearchParams({ preset: nextPreset });
-    if (nextPreset === "custom" && nextFrom && nextTo) {
-      params.set("from", nextFrom);
-      params.set("to", nextTo);
-    }
+    const range = monthRange(nextYear, nextMonth);
+    const params = new URLSearchParams({ preset: "custom", from: range.from, to: range.to });
     try {
       const res = await fetch(`/api/admin/sales?${params.toString()}`);
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "로드 실패");
       setData(json as SalesDashboard);
-      setPreset(nextPreset);
       setFrom(json.period.from);
       setTo(json.period.to);
+      setYear(Number(json.period.from.slice(0, 4)));
+      setMonth(Number(json.period.from.slice(5, 7)));
     } catch (e) {
       setError(e instanceof Error ? e.message : "로드 실패");
     } finally {
@@ -87,93 +129,85 @@ export default function AdminSalesPage({
     let cancelled = false;
     fetch("/api/admin/artists")
       .then((res) => res.json())
-      .then((json) => {
+      .then((artistsJson) => {
         if (cancelled) return;
-        setStaff(json.ok ? (json.artists as Staff[]) : []);
+        setStaff(artistsJson.ok ? (artistsJson.artists as Staff[]) : []);
       })
       .catch(() => {
-        if (!cancelled) setStaff([]);
+        if (cancelled) return;
+        setStaff([]);
       });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const [staffOpen, setStaffOpen] = useState(false);
-  const showIncentive = useMemo(() => (data?.artists ?? []).some((a) => a.incentive != null), [data]);
-  const emptyCompleted = data != null && data.summary.completedCount === 0;
   const setupEmpty = staff != null && staff.length === 0;
-  const s = data?.summary;
-  const a = data?.attrition;
-  const visibleArtists = useMemo(() => {
-    const rows = data?.artists ?? [];
-    if (artistFilter.length === 0) return rows;
-    return rows.filter((r) => r.artistId != null && artistFilter.includes(r.artistId));
+
+  const view = useMemo(() => {
+    if (!data) return null;
+    return salesBoardView({
+      payments: data.payments ?? [],
+      previousPayments: data.previousPayments ?? [],
+      periodBookings: data.periodBookings ?? [],
+      artistIds: artistFilter
+    });
   }, [data, artistFilter]);
 
-  const downloadExcel = async () => {
-    if (excelBusy) return;
-    setExcelBusy(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams({ year: String(year), month: String(month) });
-      const res = await fetch(`/api/admin/export?${params.toString()}`);
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        throw new Error(json.error || "다운로드에 실패했습니다.");
-      }
-      const blob = await res.blob();
-      const disposition = res.headers.get("Content-Disposition") || "";
-      const utfMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
-      const filename = utfMatch ? decodeURIComponent(utfMatch[1]) : `헤어업_${year}년${pad2(month)}월_마감자료.xlsx`;
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "다운로드에 실패했습니다.");
-    } finally {
-      setExcelBusy(false);
-    }
-  };
+  const s = view;
+  const a = s?.attrition;
+  const prevCount = s ? s.completedCount - s.completedChange : 0;
+  const currentEmpty = !s || s.completedCount === 0;
+  const canCompare = !currentEmpty && s.revenueChangeRate != null && prevCount > 0;
+  const revenueHint = canCompare
+    ? `전월 대비 ${signedPct(s.revenueChangeRate ?? 0)}`
+    : "전월 결제 내역 없음";
+  const excluded = (a?.cancelledCount ?? 0) + (a?.noshowCount ?? 0);
+  const countHint = currentEmpty
+    ? "결제 내역 없음"
+    : canCompare
+      ? `전월 대비 ${signedCount(s.completedChange)} · 취소/노쇼 ${excluded}건 제외`
+      : `취소/노쇼 ${excluded}건 제외`;
+  const avgHint = currentEmpty
+    ? "산출 데이터가 없음"
+    : canCompare
+      ? `전월 대비 ${signedWon(s.avgTicket - s.prevAvgTicket)}`
+      : "전월 결제 내역 없음";
+  const depositHint =
+    s && s.totalRevenue > 0
+      ? `전체 매출의 ${s.depositShare.toFixed(1)}% · 현장 결제 ${s.onSiteShare.toFixed(1)}%`
+      : "사전 0.0% · 현장 0.0%";
+  const revenueUp = canCompare && (s.revenueChangeRate ?? 0) > 0;
+  const countUp = canCompare && s.completedChange > 0;
+  const avgUp = canCompare && s.avgTicket - s.prevAvgTicket > 0;
 
   return (
     <div className="pb-16 font-sans-kr text-[#1C1C1C]">
-      <div className="sticky top-0 z-20 bg-white pt-[63px]">
-      <FinanceHeader embedded />
+      <FinanceHeader />
 
       <Toolbar
-        className="mt-[38px]"
+        className="mt-[34px]"
         left={
           <>
             <MonthPicker
               year={year}
               month={month}
-              width={179}
-              label={`${year}.${pad2(month)}`}
-              onChange={(y, m) => {
-                setYear(y);
-                setMonth(m);
-                const range = monthBounds(y, m);
-                void load("custom", range.from, range.to);
-              }}
+              width={202}
+              label={`${year}. ${String(month).padStart(2, "0")}`}
+              onChange={(nextYear, nextMonth) => void load(nextYear, nextMonth)}
             />
-            <div className="relative">
+            <div ref={staffRef} className="relative z-30">
               <button
                 type="button"
                 onClick={() => setStaffOpen((v) => !v)}
                 className="flex h-[34px] w-[186px] items-center rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white pl-3 pr-3 text-[13px] font-semibold leading-none text-[#1C1C1C]"
               >
                 <Icon src="/admin-icons/lnb/filter.png" className="h-[15px] w-[15px] text-[#9A948C]" />
-                <span className={clsx(TRIM_KR, "ml-2")}>담당자</span>
-                <span className="ml-2 inline-flex h-[28px] w-[29px] items-center justify-center bg-[#F3EFEA] text-[12px] font-semibold text-[#9A948C]">
-                  <span className={TRIM_KR}>{artistFilter.length}</span>
+                <span className="ml-2 leading-normal">담당자</span>
+                <span className="ml-2 inline-flex h-[20px] min-w-[20px] items-center justify-center rounded-[4px] bg-[#F3EFEA] px-1 text-[12px] font-semibold leading-normal text-[#9A948C]">
+                  {artistFilter.length}
                 </span>
-                <span className={clsx(TRIM_KR, "ml-2")}>선택</span>
+                <span className="ml-2 leading-normal">선택</span>
                 <Icon
                   src={
                     staffOpen || artistFilter.length > 0
@@ -184,7 +218,7 @@ export default function AdminSalesPage({
                 />
               </button>
               {staffOpen ? (
-                <div className="absolute left-0 top-[40px] z-30 min-w-full rounded-[12px] border border-[#EFEBE6] bg-white py-2 shadow-[0_8px_24px_rgba(28,28,28,0.08)]">
+                <div className="absolute left-0 top-full z-50 mt-[6px] min-w-full rounded-[12px] border border-[#EFEBE6] bg-white py-2 shadow-[0_8px_24px_rgba(28,28,28,0.08)]">
                   {staff == null || staff.length === 0 ? (
                     <p className="px-5 py-2 text-[14px] text-[#8A847C]">담당자 없음</p>
                   ) : (
@@ -208,193 +242,230 @@ export default function AdminSalesPage({
                 </div>
               ) : null}
             </div>
-            <RefreshButton spinning={refreshing} onClick={() => void load(preset, from, to)} />
+            <RefreshButton spinning={refreshing} onClick={() => void load(year, month)} />
           </>
         }
         right={
-          <button
-            type="button"
-            disabled={excelBusy}
-            onClick={() => void downloadExcel()}
-            className="inline-flex h-[34px] items-center gap-[6px] rounded-[8px] border-[1.5px] border-[#C9C3BB] bg-white px-[12px] text-[13px] font-semibold leading-none text-[#1C1C1C] hover:bg-[#F6F4F0] disabled:opacity-40"
-          >
-            <svg viewBox="0 0 16 16" className="h-[14px] w-[14px]" fill="none" aria-hidden="true">
-              <path d="M8 2.2v7.2M5.2 6.8 8 9.6l2.8-2.8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M3.2 11.2v1.4c0 .6.5 1 1.1 1h7.4c.6 0 1.1-.4 1.1-1v-1.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-            </svg>
-            <span className={TRIM_KR}>엑셀 다운로드</span>
-          </button>
+          <DownloadExportButton
+            labeled
+            from={from}
+            to={to}
+            year={year}
+            month={month}
+            artistIds={artistFilter}
+            onError={setError}
+          />
         }
       />
 
       {error ? <p className="mt-4 text-[13px] text-[#E24B4B]">{error}</p> : null}
-      </div>
 
       {setupEmpty ? (
         <div className="flex flex-col items-center" style={{ marginTop: 188 }}>
-          <p className={`text-center text-[16px] font-bold leading-[16px] text-[#1C1A19] ${TRIM_KR}`}>
+          <p className="text-center text-[16px] font-bold leading-normal text-[#1C1A19]">
             매장 기본 설정을 먼저 완료해 주세요.
           </p>
-          <p className={`mt-[13px] text-center text-[14px] font-normal leading-[21px] text-[#807B77] ${TRIM_KR}`}>
+          <p className="mt-[13px] text-center text-[14px] font-normal leading-[21px] text-[#807B77]">
             매장 정보와 디자이너가 등록되어야 매출 데이터를 집계할 수 있습니다.
           </p>
           <Link
             href="/admin/settings"
             className="mt-[35px] flex h-[45px] w-[186px] items-center justify-center rounded-[4px] bg-[#2C3A2E] text-white"
           >
-            <span className={`text-[15px] font-bold leading-[15px] ${TRIM_KR}`}>매장 설정 바로가기</span>
+            <span className="text-[15px] font-bold leading-normal">매장 설정 바로가기</span>
           </Link>
         </div>
       ) : null}
 
-      {!setupEmpty && refreshing && !data ? <p className="mt-6 text-[13px] text-[#8A847C]">불러오는 중…</p> : null}
-
-      {!setupEmpty && data && s && a ? (
-          <StatStrip
-            items={[
-              { label: "총 매출", value: won(s.totalRevenue), hint: `직전 기간 대비 ${pct(s.revenueChangeRate)}` },
-              {
-                label: "완료 건수",
-                value: `${s.completedCount.toLocaleString("ko-KR")}건`,
-                hint:
-                  s.missingAmountCount > 0
-                    ? `금액 미입력 ${s.missingAmountCount}건 제외`
-                    : `직전 대비 ${s.completedChange >= 0 ? "+" : ""}${s.completedChange}건`
-              },
-              { label: "객단가", value: won(s.avgTicket), hint: "총 매출 ÷ 완료 건수" },
-              {
-                label: "취소 · 노쇼",
-                value: `${a.cancelledCount} · ${a.noshowCount}건`,
-                hint: `예약 ${a.totalBookings}건 중 ${a.cancelledRate.toFixed(1)}% · ${a.noshowRate.toFixed(1)}%`,
-                tone: a.noshowHigh ? "danger" : undefined
-              },
-              {
-                label: "현금영수증 미발급",
-                value: `${s.receiptWarningCount.toLocaleString("ko-KR")}건`,
-                hint: s.receiptWarningCount > 0 ? "10만원 이상 현금·이체 →" : "해당 없음",
-                tone: s.receiptWarningCount > 0 ? "danger" : undefined,
-                href: s.receiptWarningCount > 0 ? "/admin/bookings" : undefined
-              }
-            ]}
-          />
+      {!setupEmpty && refreshing && !data ? (
+        <p className="mt-6 text-[13px] text-[#8A847C]">불러오는 중…</p>
       ) : null}
 
-      {!setupEmpty && data && s && a ? (
+      {!setupEmpty && s ? (
         <>
-          <Section title="일별 매출" meta={emptyCompleted ? undefined : `${data.daily.length}일`}>
-            {emptyCompleted ? (
-              <Empty>해당 기간에 완료된 예약이 없습니다.</Empty>
-            ) : (
-              <div className="mt-4 h-[260px] border-b border-[#F3EFEA] pb-3">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.daily} margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
-                    <XAxis
-                      dataKey="date"
-                      tickFormatter={shortChartDate}
-                      tick={{ fontSize: 13, fill: "#9A948C" }}
-                      axisLine={{ stroke: "#C9C3BB" }}
-                      tickLine={false}
-                      interval="preserveStartEnd"
-                    />
-                    <YAxis
-                      tickFormatter={(v: number) => (v >= 10000 ? `${Math.round(v / 10000)}만` : v.toLocaleString("ko-KR"))}
-                      tick={{ fontSize: 13, fill: "#9A948C" }}
-                      axisLine={false}
-                      tickLine={false}
-                      width={48}
-                    />
-                    <Tooltip
-                      cursor={{ fill: "#F6F4F0" }}
-                      formatter={(value) => [won(Number(value ?? 0)), "매출"]}
-                      labelFormatter={(label) => String(label)}
-                      contentStyle={{ border: "1px solid #EFEBE6", borderRadius: 8, fontSize: 14 }}
-                    />
-                    <Bar dataKey="revenue" fill="#2F3A2F" radius={[3, 3, 0, 0]} maxBarSize={24} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </Section>
-
-          <div className="grid grid-cols-[3fr_2fr] gap-12">
-            <Section title="디자이너별 매출" meta={`${visibleArtists.length}명`}>
-              <table className="mt-4 w-full table-fixed text-left text-[16px] font-medium leading-[20px]">
-                <thead>
-                  <tr className={TABLE_HEAD_ROW}>
-                    <th className={clsx(TH, "pl-1")}>디자이너</th>
-                    <th className={clsx(TH, "text-right")}>매출</th>
-                    <th className={clsx(TH, "w-[64px] text-right")}>건수</th>
-                    <th className={clsx(TH, "text-right")}>객단가</th>
-                    <th className={clsx(TH, "w-[72px] text-right")}>비중</th>
-                    {showIncentive ? <th className={clsx(TH, "pr-0 text-right")}>예상 인센티브</th> : null}
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleArtists.map((r) => (
-                    <tr key={`${r.artistId ?? r.artistName}`} className={TABLE_ROW}>
-                      <td className={clsx(TD, "truncate pl-1")}>{r.artistName}</td>
-                      <td className={clsx(TD, "text-right tabular-nums")}>{won(r.revenue)}</td>
-                      <td className={clsx(TD, "text-right tabular-nums")}>{r.count}</td>
-                      <td className={clsx(TD, "text-right tabular-nums")}>{won(r.avgTicket)}</td>
-                      <td className={clsx(TD, "text-right tabular-nums text-[#8A847C]")}>{r.share.toFixed(1)}%</td>
-                      {showIncentive ? (
-                        <td className={clsx(TD, "pr-0 text-right tabular-nums")}>
-                          {r.incentive != null && r.commissionRate != null ? (
-                            <>
-                              {won(r.incentive)}
-                              <span className="ml-1 text-[13px] text-[#8A847C]">{r.commissionRate}%</span>
-                            </>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                      ) : null}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {visibleArtists.length === 0 ? <Empty>해당 기간에 완료된 예약이 없습니다.</Empty> : null}
-            </Section>
-
-            <div>
-              <Section title="결제수단">
-                <ul className="mt-4 border-t-[1.5px] border-[#C9C3BB]">
-                  {data.methods.map((m) => (
-                    <li key={m.method} className="border-b border-[#F3EFEA] py-[15px]">
-                      <div className="flex items-baseline justify-between text-[16px] font-medium">
-                        <span>{m.label}</span>
-                        <span className="tabular-nums">
-                          {won(m.amount)}
-                          <span className="ml-2 text-[13px] font-normal text-[#8A847C]">
-                            {m.count}건 · {m.share.toFixed(1)}%
-                          </span>
-                        </span>
-                      </div>
-                      <ShareBar share={m.share} />
-                    </li>
-                  ))}
-                </ul>
-              </Section>
-
-              <Section title="많이 받은 시술" meta={data.services.length ? `${data.services.length}종` : undefined} className="mt-10">
-                {data.services.length === 0 ? (
-                  <Empty>완료된 시술이 없습니다.</Empty>
-                ) : (
-                  <ol className="mt-4 border-t-[1.5px] border-[#C9C3BB]">
-                    {data.services.slice(0, 8).map((sv, i) => (
-                      <li key={sv.name} className="flex items-center justify-between border-b border-[#F3EFEA] py-[15px] text-[16px] font-medium">
-                        <span className="min-w-0 truncate">
-                          <span className="mr-3 inline-block w-[16px] text-[#9A948C] tabular-nums">{i + 1}</span>
-                          {sv.name}
-                        </span>
-                        <span className="shrink-0 tabular-nums text-[#8A847C]">{sv.count}건</span>
-                      </li>
-                    ))}
-                  </ol>
+          <div className="mt-6 grid grid-cols-4 gap-2">
+            <article className="overflow-visible rounded-[8px] bg-[color:var(--accent)] px-5 py-5 text-white">
+              <p className="text-[15px] font-bold leading-normal">총 매출액</p>
+              <p className="mt-3 text-[20px] font-bold leading-normal tabular-nums">{won(s.totalRevenue)}</p>
+              <p
+                className={clsx(
+                  "mt-1 text-[13px] leading-normal",
+                  revenueUp ? "text-white" : "text-[color:var(--sidebar-bg)]"
                 )}
-              </Section>
-            </div>
+              >
+                {revenueHint}
+              </p>
+            </article>
+            {[
+              {
+                label: "결제 완료 건수",
+                value: `${s.completedCount.toLocaleString("ko-KR")}건`,
+                hint: countHint,
+                up: countUp
+              },
+              {
+                label: "고객 객단가",
+                value: won(s.avgTicket),
+                hint: avgHint,
+                up: avgUp
+              },
+              {
+                label: "사전 예약금",
+                value: won(s.depositAmount),
+                hint: depositHint,
+                up: false
+              }
+            ].map((card) => (
+              <article
+                key={card.label}
+                className="overflow-visible rounded-[8px] bg-[color:var(--sidebar-bg)] px-5 py-5 text-[color:var(--ink)]"
+              >
+                <p className="text-[15px] font-bold leading-normal text-[color:var(--label)]">{card.label}</p>
+                <p className="mt-3 text-[20px] font-bold leading-normal tabular-nums">{card.value}</p>
+                <p
+                  className={clsx(
+                    "mt-1 text-[13px] leading-normal",
+                    card.up ? "text-[color:var(--accent)]" : "text-[color:var(--muted)]"
+                  )}
+                >
+                  {card.hint}
+                </p>
+              </article>
+            ))}
           </div>
+
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <section className="overflow-visible rounded-[8px] bg-[color:var(--sidebar-bg)] px-5 py-5">
+              <h2 className="text-[15px] font-bold leading-normal text-[color:var(--label)]">결제 수단별 매출</h2>
+              <div className="mt-4 flex h-[14px] overflow-hidden rounded-[2px] bg-[#E4DFD6]">
+                {s.totalRevenue > 0
+                  ? s.methods.map((m) =>
+                      m.share > 0 ? (
+                        <span
+                          key={m.method}
+                          className="h-full"
+                          style={{ width: `${m.share}%`, background: METHOD_TONE[m.method] }}
+                        />
+                      ) : null
+                    )
+                  : null}
+              </div>
+              <ul className="mt-4">
+                {s.methods.map((m) => (
+                  <li key={m.method} className="flex items-center justify-between py-[10px] text-[16px] font-medium">
+                    <span className="flex min-w-0 items-center">
+                      <span
+                        className="mr-2 inline-block h-[14px] w-[3px] shrink-0 rounded-full"
+                        style={{ background: METHOD_TONE[m.method] }}
+                      />
+                      <span className="font-bold tabular-nums">{Math.round(m.share)}%</span>
+                      <span className="ml-2">{m.label}</span>
+                    </span>
+                    <span className="shrink-0 tabular-nums text-[color:var(--muted)]">{won(m.amount)}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <section className="overflow-visible rounded-[8px] bg-[color:var(--sidebar-bg)] px-5 py-5">
+              <h2 className="text-[15px] font-bold leading-normal text-[color:var(--label)]">시술 · 제품별 매출</h2>
+              {[
+                {
+                  label: "시술",
+                  share: s.totalRevenue > 0 ? 100 : 0,
+                  amount: s.totalRevenue,
+                  tone: "var(--accent)"
+                },
+                { label: "제품", share: 0, amount: 0, tone: "var(--muted)" }
+              ].map((row) => (
+                <div key={row.label} className="mt-4">
+                  <div className="flex items-baseline justify-between text-[16px] font-medium">
+                    <span>
+                      <span className="font-bold tabular-nums">{row.share}%</span>
+                      <span className="ml-2">{row.label}</span>
+                    </span>
+                    <span className="tabular-nums text-[color:var(--muted)]">{won(row.amount)}</span>
+                  </div>
+                  <div className="mt-2 h-[14px] overflow-hidden rounded-[2px] bg-[#E4DFD6]">
+                    <div
+                      className="h-full rounded-[2px]"
+                      style={{ width: `${row.share}%`, background: row.tone }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </section>
+          </div>
+
+          <p className="mt-6 pl-6 text-[15px] font-bold leading-normal text-[color:var(--label)]">상세 결제 내역</p>
+          <section className="mt-4 overflow-hidden rounded-[8px] bg-[color:var(--sidebar-bg)] px-5">
+            <table className="w-full table-fixed text-left text-[16px] font-medium leading-[20px]">
+              <colgroup>
+                <col className="w-[13%]" />
+                <col className="w-[14%]" />
+                <col className="w-[16%]" />
+                <col />
+                <col className="w-[10%]" />
+                <col className="w-[12%]" />
+                <col className="w-[10%]" />
+              </colgroup>
+              <thead>
+                <tr className={TABLE_HEAD_ROW}>
+                  <th className={clsx(TH, "pl-1")}>결제 일시</th>
+                  <th className={TH}>고객명</th>
+                  <th className={TH}>담당자</th>
+                  <th className={TH}>결제 항목</th>
+                  <th className={TH}>결제 수단</th>
+                  <th className={clsx(TH, "text-right")}>결제 금액</th>
+                  <th className={clsx(TH, "pr-0 text-right")}>상태</th>
+                </tr>
+              </thead>
+              {s.payments.length > 0 ? (
+                <tbody>
+                  {s.payments.map((row) => {
+                    const tail = phoneTail(row.customerPhone);
+                    const cancelled = row.status === "cancelled";
+                    const artist = [row.artistName, row.artistRole].filter(Boolean).join(" ");
+                    return (
+                      <tr key={row.id} className={TABLE_ROW}>
+                        <td className={clsx(TD, "truncate pl-1 tabular-nums")}>{formatPaidAt(row.paidAt)}</td>
+                        <td className={clsx(TD, "truncate")}>
+                          {tail ? `${row.customerName}(${tail})` : row.customerName}
+                        </td>
+                        <td className={clsx(TD, "truncate")}>{artist}</td>
+                        <td className={clsx(TD, "truncate")} title={row.serviceNames.join(" + ")}>
+                          <span className="text-[color:var(--muted)]">[시술]</span>
+                          {row.serviceNames.length ? ` ${row.serviceNames.join(" + ")}` : " —"}
+                        </td>
+                        <td className={clsx(TD, "truncate")}>
+                          {row.paymentMethod ? METHOD_LABEL[row.paymentMethod] : "—"}
+                        </td>
+                        <td className={clsx(TD, "text-right font-bold tabular-nums")}>{won(row.amount)}</td>
+                        <td className={clsx(TD, "pr-0 text-right")}>
+                          <span
+                            className="inline-flex rounded-[4px] bg-white px-2 py-[4px] text-[13px] font-medium"
+                            style={{ color: cancelled ? "var(--danger)" : "var(--muted)" }}
+                          >
+                            {cancelled ? "결제취소" : "결제완료"}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              ) : null}
+            </table>
+            {s.payments.length === 0 ? (
+              <div className="py-16 text-center">
+                <p className="text-[16px] font-semibold leading-normal text-[color:var(--ink)]">
+                  결제 내역이 없습니다.
+                </p>
+                <p className="mt-[15px] text-[14px] leading-normal text-[color:var(--muted)]">
+                  첫 결제가 완료되면 이곳에 상세 장부가 실시간으로 기록됩니다.
+                </p>
+              </div>
+            ) : null}
+          </section>
         </>
       ) : null}
     </div>

@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { NextResponse } from "next/server";
+import { getAdminUser, type AdminUserRow } from "@/lib/admin/admin-users";
 import { createClient } from "@/lib/supabase/server";
 import {
   ConfigError,
@@ -39,7 +40,8 @@ const loadAdminUser = cache(async () => {
 });
 
 export async function requireAdminUser(): Promise<
-  { ok: true; user: User } | { ok: false; response: NextResponse }
+  | { ok: true; user: User; role: AdminUserRow["role"]; artistId: string | null }
+  | { ok: false; response: NextResponse }
 > {
   const { user, error } = await loadAdminUser();
 
@@ -53,5 +55,29 @@ export async function requireAdminUser(): Promise<
     };
   }
 
-  return { ok: true, user };
+  let row: AdminUserRow | null;
+  try {
+    row = await getAdminUser(user.id);
+  } catch (e) {
+    console.error("[getAdminUser]", e);
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { ok: false, error: "권한 정보를 확인하지 못했습니다." },
+        { status: 500 }
+      )
+    };
+  }
+
+  if (!row) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { ok: false, error: "접근 권한이 없습니다." },
+        { status: 403 }
+      )
+    };
+  }
+
+  return { ok: true, user, role: row.role, artistId: row.artistId };
 }

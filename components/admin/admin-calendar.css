@@ -258,7 +258,7 @@ html:has(.ADMIN-CALENDAR) main {
 /* ── 탭 ─────────────────────────────── */
 .ADMIN-CALENDAR .cal-tabs {
   display: flex;
-  margin-top: 64px;
+  margin-top: 48px;
   border-bottom: 1px solid #e3e3ce;
 }
 

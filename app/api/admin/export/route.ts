@@ -11,6 +11,7 @@ import {
   resolveSettlementMonth,
   settlementPaidAtRange
 } from "@/lib/admin/settlements-data";
+import { artistIdsFromSearchParams, isYmd } from "@/lib/admin/sales-data";
 import type { ShopSettings } from "@/lib/admin/tax-data";
 import type { PaymentMethod } from "@/lib/bookings/types";
 
@@ -30,32 +31,71 @@ export async function GET(request: Request) {
   if (!auth.ok) return auth.response;
 
   const { searchParams } = new URL(request.url);
-  const month = resolveSettlementMonth(searchParams.get("year"), searchParams.get("month"));
-  if ("error" in month) {
-    return NextResponse.json({ ok: false, error: month.error }, { status: 400 });
+  let artistIds: string[];
+  if (auth.role === "designer") {
+    if (!auth.artistId) {
+      return NextResponse.json({ ok: false, error: "접근 권한이 없습니다." }, { status: 403 });
+    }
+    artistIds = [auth.artistId];
+  } else {
+    const parsed = artistIdsFromSearchParams(searchParams);
+    if ("error" in parsed) {
+      return NextResponse.json({ ok: false, error: parsed.error }, { status: 400 });
+    }
+    artistIds = parsed;
+  }
+  const fromRaw = searchParams.get("from");
+  const toRaw = searchParams.get("to");
+  let range: { year: number; month: number; from: string; to: string };
+  if (fromRaw != null || toRaw != null) {
+    if (!fromRaw || !toRaw || !isYmd(fromRaw) || !isYmd(toRaw)) {
+      return NextResponse.json({ ok: false, error: "날짜 범위가 올바르지 않습니다." }, { status: 400 });
+    }
+    if (fromRaw > toRaw) {
+      return NextResponse.json({ ok: false, error: "시작일이 종료일보다 늦을 수 없습니다." }, { status: 400 });
+    }
+    range = {
+      year: Number(fromRaw.slice(0, 4)),
+      month: Number(fromRaw.slice(5, 7)),
+      from: fromRaw,
+      to: toRaw
+    };
+  } else {
+    const month = resolveSettlementMonth(searchParams.get("year"), searchParams.get("month"));
+    if ("error" in month) {
+      return NextResponse.json({ ok: false, error: month.error }, { status: 400 });
+    }
+    range = month;
   }
 
   try {
     const admin = getSupabaseAdmin();
-    const paidRange = settlementPaidAtRange(month.from, month.to);
+    const paidRange = settlementPaidAtRange(range.from, range.to);
+
+    let salesQuery = admin
+      .from("bookings")
+      .select(SALE_FIELDS)
+      .eq("status", "completed")
+      .not("final_amount", "is", null)
+      .gte("paid_at", paidRange.gte)
+      .lt("paid_at", paidRange.lt)
+      .order("paid_at", { ascending: true });
+    if (artistIds.length > 0) salesQuery = salesQuery.in("artist_id", artistIds);
+
+    const expensesQuery =
+      auth.role === "designer"
+        ? Promise.resolve({ data: [], error: null })
+        : admin
+            .from("expenses")
+            .select(EXPENSE_FIELDS)
+            .gte("expense_date", range.from)
+            .lte("expense_date", range.to)
+            .order("expense_date", { ascending: true })
+            .limit(5000);
 
     const [salesRes, expensesRes, artistsRes, settingsRes] = await Promise.all([
-      admin
-        .from("bookings")
-        .select(SALE_FIELDS)
-        .eq("status", "completed")
-        .not("final_amount", "is", null)
-        .gte("paid_at", paidRange.gte)
-        .lt("paid_at", paidRange.lt)
-        .order("paid_at", { ascending: true })
-        .limit(5000),
-      admin
-        .from("expenses")
-        .select(EXPENSE_FIELDS)
-        .gte("expense_date", month.from)
-        .lte("expense_date", month.to)
-        .order("expense_date", { ascending: true })
-        .limit(5000),
+      salesQuery.limit(5000),
+      expensesQuery,
       admin.from("artists").select(ARTIST_FIELDS).order("sort_order", { ascending: true }),
       admin.from("shop_settings").select("*").limit(1).maybeSingle()
     ]);
@@ -86,10 +126,10 @@ export async function GET(request: Request) {
     }));
 
     const settlements = aggregateSettlements({
-      year: month.year,
-      month: month.month,
-      from: month.from,
-      to: month.to,
+      year: range.year,
+      month: range.month,
+      from: range.from,
+      to: range.to,
       artists: artistsRes.data ?? [],
       bookings: salesRaw.map((b) => ({
         id: String(b.id || ""),
@@ -104,8 +144,8 @@ export async function GET(request: Request) {
     });
 
     const buffer = await buildMonthlyCloseWorkbook({
-      year: month.year,
-      month: month.month,
+      year: range.year,
+      month: range.month,
       settings: (settingsRes.data as ShopSettings | null) ?? null,
       sales,
       expenses,
@@ -116,7 +156,7 @@ export async function GET(request: Request) {
       generatedAtIso: new Date().toISOString()
     });
 
-    const filename = monthlyCloseFilename(month.year, month.month);
+    const filename = monthlyCloseFilename(range.year, range.month);
     const encoded = encodeURIComponent(filename);
 
     return new NextResponse(Buffer.from(buffer), {

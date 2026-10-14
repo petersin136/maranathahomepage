@@ -55,8 +55,34 @@ export type SalesSummary = {
   completedChange: number;
   completedChangeRate: number | null;
   avgTicket: number;
+  prevAvgTicket: number;
   missingAmountCount: number;
   receiptWarningCount: number;
+};
+
+export type SalesPaymentRow = {
+  id: string;
+  paidAt: string;
+  customerName: string;
+  customerPhone: string;
+  artistId: string | null;
+  artistName: string;
+  artistRole: string | null;
+  serviceNames: string[];
+  paymentMethod: PaymentMethod | null;
+  amount: number;
+  depositAmount: number;
+  status: string;
+};
+
+export type SalesPrevPayment = {
+  artistId: string | null;
+  amount: number;
+};
+
+export type SalesPeriodBooking = {
+  status: string;
+  artistId: string | null;
 };
 
 export type SalesAttrition = {
@@ -75,12 +101,15 @@ export type SalesDashboard = {
   methods: SalesMethodRow[];
   artists: SalesArtistRow[];
   services: SalesServiceRow[];
+  payments: SalesPaymentRow[];
+  previousPayments: SalesPrevPayment[];
+  periodBookings: SalesPeriodBooking[];
   attrition: SalesAttrition;
 };
 
 const TZ = "Asia/Seoul";
 const CASH_RECEIPT_THRESHOLD = 100_000;
-const METHOD_LABEL: Record<PaymentMethod, string> = {
+export const METHOD_LABEL: Record<PaymentMethod, string> = {
   card: "카드",
   cash: "현금",
   transfer: "계좌이체"
@@ -97,12 +126,17 @@ type BookingSaleRow = {
   artist_name: string | null;
   service_names: string[] | null;
   booking_date: string;
+  customer_name?: string | null;
+  customer_phone?: string | null;
+  deposit_paid?: boolean | null;
+  deposit_amount?: number | null;
 };
 
 type ArtistRate = {
   id: string;
   name_kr: string | null;
   name_en: string | null;
+  role?: string | null;
   commission_rate: number | null;
 };
 
@@ -119,6 +153,26 @@ export function isYmd(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
+const ARTIST_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+
+/** 비어 있으면 전체. `artistId` 반복 또는 `artistIds` 쉼표 구분. */
+export function parseArtistIds(values: Iterable<string>): string[] | { error: string } {
+  const ids: string[] = [];
+  for (const raw of values) {
+    for (const part of String(raw).split(",")) {
+      const id = part.trim();
+      if (!id) continue;
+      if (!ARTIST_ID_RE.test(id)) return { error: "담당자 값이 올바르지 않습니다." };
+      if (!ids.includes(id)) ids.push(id);
+    }
+  }
+  return ids;
+}
+
+export function artistIdsFromSearchParams(searchParams: URLSearchParams) {
+  return parseArtistIds([...searchParams.getAll("artistId"), ...searchParams.getAll("artistIds")]);
+}
+
 function parseYmd(ymd: string) {
   const [y, m, d] = ymd.split("-").map(Number);
   return { y, m, d };
@@ -128,13 +182,13 @@ function formatYmd(y: number, m: number, d: number) {
   return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
-function addDays(ymd: string, delta: number) {
+export function addDays(ymd: string, delta: number) {
   const { y, m, d } = parseYmd(ymd);
   const dt = new Date(Date.UTC(y, m - 1, d + delta));
   return formatYmd(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate());
 }
 
-function weekStartMonday(ymd: string) {
+export function weekStartMonday(ymd: string) {
   const { y, m, d } = parseYmd(ymd);
   const dt = new Date(Date.UTC(y, m - 1, d));
   const dow = dt.getUTCDay();
@@ -142,12 +196,12 @@ function weekStartMonday(ymd: string) {
   return addDays(ymd, -back);
 }
 
-function monthStart(ymd: string) {
+export function monthStart(ymd: string) {
   const { y, m } = parseYmd(ymd);
   return formatYmd(y, m, 1);
 }
 
-function monthEnd(ymd: string) {
+export function monthEnd(ymd: string) {
   const { y, m } = parseYmd(ymd);
   return formatYmd(y, m, new Date(Date.UTC(y, m, 0)).getUTCDate());
 }
@@ -237,11 +291,7 @@ export function resolveSalesPeriod(
 
   let prevFrom: string;
   let prevTo: string;
-  if (preset === "this_month") {
-    const start = shiftMonth(from, -1);
-    prevFrom = start;
-    prevTo = monthEnd(start);
-  } else if (preset === "last_month") {
+  if (preset === "this_month" || preset === "last_month" || (from === monthStart(from) && to === monthEnd(from))) {
     const start = shiftMonth(from, -1);
     prevFrom = start;
     prevTo = monthEnd(start);
@@ -255,7 +305,7 @@ export function resolveSalesPeriod(
 }
 
 function changeRate(current: number, previous: number): number | null {
-  if (previous === 0) return current === 0 ? 0 : null;
+  if (previous === 0) return null;
   return ((current - previous) / previous) * 100;
 }
 
@@ -300,19 +350,26 @@ function buildDaily(from: string, to: string, revenueRows: BookingSaleRow[]): Sa
   });
 }
 
-function buildMethods(revenueRows: BookingSaleRow[], totalRevenue: number): SalesMethodRow[] {
-  const methods: PaymentMethod[] = ["card", "cash", "transfer"];
-  return methods.map((method) => {
-    const rows = revenueRows.filter((r) => r.payment_method === method);
-    const amount = rows.reduce((sum, r) => sum + Number(r.final_amount), 0);
-    return {
-      method,
-      label: METHOD_LABEL[method],
-      amount,
-      count: rows.length,
-      share: totalRevenue > 0 ? (amount / totalRevenue) * 100 : 0
-    };
+function buildMethodsFromAmounts(
+  rows: { method: PaymentMethod | null; amount: number }[]
+): SalesMethodRow[] {
+  const methods: PaymentMethod[] = ["card", "transfer", "cash"];
+  const classified = methods.map((method) => {
+    const matched = rows.filter((r) => r.method === method);
+    const amount = matched.reduce((sum, r) => sum + r.amount, 0);
+    return { method, label: METHOD_LABEL[method], amount, count: matched.length };
   });
+  const classifiedTotal = classified.reduce((sum, row) => sum + row.amount, 0);
+  return classified.map((row) => ({
+    ...row,
+    share: classifiedTotal > 0 ? (row.amount / classifiedTotal) * 100 : 0
+  }));
+}
+
+function buildMethods(revenueRows: BookingSaleRow[]): SalesMethodRow[] {
+  return buildMethodsFromAmounts(
+    revenueRows.map((r) => ({ method: r.payment_method, amount: Number(r.final_amount) }))
+  );
 }
 
 function resolveCommissionRate(raw: number | null | undefined) {
@@ -359,6 +416,42 @@ function buildArtists(
     .sort((a, b) => b.revenue - a.revenue);
 }
 
+function hangulName(value: string | null | undefined) {
+  const hangul = (value || "").trim().match(/^[\uAC00-\uD7A3]+/);
+  return hangul?.[0] || "";
+}
+
+function buildPayments(revenueRows: BookingSaleRow[], artists: ArtistRate[]): SalesPaymentRow[] {
+  const byId = new Map(artists.map((a) => [a.id, a]));
+  return [...revenueRows]
+    .filter((row) => row.paid_at)
+    .sort((a, b) => String(b.paid_at).localeCompare(String(a.paid_at)))
+    .map((row) => {
+      const linked = row.artist_id ? byId.get(row.artist_id) : undefined;
+      const artistName =
+        (linked?.name_kr || "").trim() || hangulName(row.artist_name) || "—";
+      const artistRole = (linked?.role || "").trim() || null;
+      const amount = Number(row.final_amount);
+      const rawDeposit = row.deposit_paid ? Math.max(0, Number(row.deposit_amount) || 0) : 0;
+      return {
+        id: row.id,
+        paidAt: String(row.paid_at),
+        customerName: String(row.customer_name || "").trim() || "—",
+        customerPhone: String(row.customer_phone || "").trim(),
+        artistId: row.artist_id || null,
+        artistName,
+        artistRole,
+        serviceNames: Array.isArray(row.service_names)
+          ? row.service_names.map((name) => String(name || "").trim()).filter(Boolean)
+          : [],
+        paymentMethod: row.payment_method,
+        amount,
+        depositAmount: Math.min(rawDeposit, amount),
+        status: row.status
+      };
+    });
+}
+
 function buildServices(revenueRows: BookingSaleRow[]): SalesServiceRow[] {
   const counts = new Map<string, number>();
   for (const row of revenueRows) {
@@ -395,11 +488,19 @@ export function aggregateSales(args: {
   period: SalesPeriod;
   currentCompleted: BookingSaleRow[];
   previousCompleted: BookingSaleRow[];
-  periodBookings: { status: string }[];
+  periodBookings: { status: string; artist_id?: string | null }[];
   artists: ArtistRate[];
 }): SalesDashboard {
   const current = summarizeCompleted(args.currentCompleted);
   const previous = summarizeCompleted(args.previousCompleted);
+  const periodBookings: SalesPeriodBooking[] = args.periodBookings.map((row) => ({
+    status: row.status,
+    artistId: row.artist_id || null
+  }));
+  const previousPayments: SalesPrevPayment[] = previous.revenueRows.map((row) => ({
+    artistId: row.artist_id || null,
+    amount: Number(row.final_amount)
+  }));
 
   return {
     period: args.period,
@@ -410,16 +511,59 @@ export function aggregateSales(args: {
       completedChange: current.completedCount - previous.completedCount,
       completedChangeRate: changeRate(current.completedCount, previous.completedCount),
       avgTicket:
-        current.completedCount > 0
-          ? Math.round(current.totalRevenue / current.completedCount)
-          : 0,
+        current.completedCount > 0 ? Math.floor(current.totalRevenue / current.completedCount) : 0,
+      prevAvgTicket:
+        previous.completedCount > 0 ? Math.floor(previous.totalRevenue / previous.completedCount) : 0,
       missingAmountCount: current.missingAmountCount,
       receiptWarningCount: current.receiptWarningCount
     },
     daily: buildDaily(args.period.from, args.period.to, current.revenueRows),
-    methods: buildMethods(current.revenueRows, current.totalRevenue),
+    methods: buildMethods(current.revenueRows),
     artists: buildArtists(current.revenueRows, current.totalRevenue, args.artists),
     services: buildServices(current.revenueRows),
-    attrition: buildAttrition(args.periodBookings)
+    payments: buildPayments(current.revenueRows, args.artists),
+    previousPayments,
+    periodBookings,
+    attrition: buildAttrition(periodBookings)
+  };
+}
+
+export function salesBoardView(args: {
+  payments: SalesPaymentRow[];
+  previousPayments: SalesPrevPayment[];
+  periodBookings: SalesPeriodBooking[];
+  artistIds: string[];
+}) {
+  const selected = new Set(args.artistIds);
+  const match = (artistId: string | null) =>
+    selected.size === 0 || (artistId != null && selected.has(artistId));
+
+  const payments = args.payments.filter((row) => match(row.artistId));
+  const previous = args.previousPayments.filter((row) => match(row.artistId));
+  const bookings = args.periodBookings.filter((row) => match(row.artistId));
+
+  const totalRevenue = payments.reduce((sum, row) => sum + row.amount, 0);
+  const completedCount = payments.length;
+  const prevRevenue = previous.reduce((sum, row) => sum + row.amount, 0);
+  const prevCount = previous.length;
+  const depositAmount = payments.reduce((sum, row) => sum + row.depositAmount, 0);
+  const onSiteAmount = Math.max(0, totalRevenue - depositAmount);
+
+  return {
+    totalRevenue,
+    revenueChangeRate: changeRate(totalRevenue, prevRevenue),
+    completedCount,
+    completedChange: completedCount - prevCount,
+    avgTicket: completedCount > 0 ? Math.floor(totalRevenue / completedCount) : 0,
+    prevAvgTicket: prevCount > 0 ? Math.floor(prevRevenue / prevCount) : 0,
+    depositAmount,
+    onSiteAmount,
+    depositShare: totalRevenue > 0 ? (depositAmount / totalRevenue) * 100 : 0,
+    onSiteShare: totalRevenue > 0 ? (onSiteAmount / totalRevenue) * 100 : 0,
+    methods: buildMethodsFromAmounts(
+      payments.map((row) => ({ method: row.paymentMethod, amount: row.amount }))
+    ),
+    payments,
+    attrition: buildAttrition(bookings)
   };
 }

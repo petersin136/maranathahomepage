@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { clsx } from "clsx";
 import SettingsNav from "@/components/admin/SettingsNav";
+import { AdminBellButton } from "@/components/admin/AdminBellButton";
+import { AdminPageTitle } from "@/components/admin/AdminPageTitle";
 
 type Artist = {
   id: string;
@@ -110,13 +112,18 @@ export default function AdminArtistsPage() {
 
   return (
     <div className="font-sans-kr text-[#1C1C1C]">
-      <SettingsNav />
-      <h1 className="mt-8 flex items-baseline gap-2 text-[30px] font-bold leading-none tracking-[-0.02em]">
-        <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">디자이너</span>
-        <span className="text-[15px] font-normal text-[#8A847C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
-          총 {artists.length}명
-        </span>
-      </h1>
+      <div className="flex items-start justify-between gap-6 pl-[6px]">
+        <AdminPageTitle className="flex items-baseline gap-2">
+          디자이너
+          <span className="text-[15px] font-normal text-[#8A847C]">총 {artists.length}명</span>
+        </AdminPageTitle>
+        <div className="mt-[24px]">
+          <AdminBellButton />
+        </div>
+      </div>
+      <div className="mt-12">
+        <SettingsNav />
+      </div>
       {error ? <p className="mt-6 text-[15px] font-medium text-[#E24B4B]">{error}</p> : null}
 
       <div className="mt-8 grid items-start gap-8 min-[1440px]:grid-cols-[minmax(0,1fr)_380px]">

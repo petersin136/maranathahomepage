@@ -1,10 +1,30 @@
 import { NextResponse } from "next/server";
 import { requireAdminUser, getSupabaseAdmin } from "@/lib/admin/auth";
 
+const DESIGNER_HIDDEN_ARTIST_FIELDS = [
+  "bank_name",
+  "bank_account",
+  "bank_holder",
+  "account_holder",
+  "commission_rate",
+  "employment_type",
+  "is_freelance"
+] as const;
+
+function rejectDesigner(role: string) {
+  if (role !== "designer") return null;
+  return NextResponse.json({ ok: false, error: "접근 권한이 없습니다." }, { status: 403 });
+}
+
+function stripDesignerArtist<T extends Record<string, unknown>>(row: T) {
+  const next = { ...row };
+  for (const key of DESIGNER_HIDDEN_ARTIST_FIELDS) delete next[key];
+  return next;
+}
+
 export async function GET() {
   const auth = await requireAdminUser();
   if (!auth.ok) return auth.response;
-
 
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
@@ -15,12 +35,18 @@ export async function GET() {
   if (error) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
-  return NextResponse.json({ ok: true, artists: data ?? [] });
+  const artists = (data ?? []) as Record<string, unknown>[];
+  return NextResponse.json({
+    ok: true,
+    artists: auth.role === "designer" ? artists.map(stripDesignerArtist) : artists
+  });
 }
 
 export async function POST(request: Request) {
   const auth = await requireAdminUser();
   if (!auth.ok) return auth.response;
+  const denied = rejectDesigner(auth.role);
+  if (denied) return denied;
 
 
   let body: {

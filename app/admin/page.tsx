@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
+import { AdminBellButton } from "@/components/admin/AdminBellButton";
+import { AdminPageTitle } from "@/components/admin/AdminPageTitle";
 import {
   getDashboardData,
   todayKst,
@@ -28,11 +30,14 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="font-sans-kr text-[#1C1C1C]">
-      <div className="flex items-end justify-between gap-6 pt-6">
-        <h1 className="flex items-baseline gap-2 text-[30px] font-bold leading-none tracking-[-0.02em]">
+      <div className="flex items-start justify-between gap-6 pl-[6px]">
+        <AdminPageTitle className="flex items-baseline gap-2">
           대시보드
           <span className="text-[15px] font-normal text-[#8A847C]">오늘 · {today}</span>
-        </h1>
+        </AdminPageTitle>
+        <div className="mt-[24px]">
+          <AdminBellButton />
+        </div>
       </div>
 
       <Suspense fallback={<StatsSkeleton />}>

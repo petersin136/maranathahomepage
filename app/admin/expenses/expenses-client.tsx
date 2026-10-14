@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { clsx } from "clsx";
 import {
   CheckBox,
+  DownloadExportButton,
   Empty,
   FinanceHeader,
   INPUT,
@@ -187,6 +188,7 @@ export default function AdminExpensesPage({
           <>
             <MonthPicker year={year} month={month} onChange={(y, m) => void load(y, m)} />
             <RefreshButton spinning={refreshing} onClick={() => void load(year, month)} />
+            <DownloadExportButton year={year} month={month} onError={setError} />
           </>
         }
         right={

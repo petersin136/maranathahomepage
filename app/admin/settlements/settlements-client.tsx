@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { clsx } from "clsx";
 import {
+  DownloadExportButton,
   Empty,
   FinanceHeader,
   Icon,
@@ -86,6 +87,7 @@ export default function AdminSettlementsPage({
           <>
             <MonthPicker year={year} month={month} onChange={(y, m) => void load(y, m)} />
             <RefreshButton spinning={refreshing} onClick={() => void load(year, month)} />
+            <DownloadExportButton year={year} month={month} onError={setError} />
           </>
         }
       />

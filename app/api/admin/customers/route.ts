@@ -51,6 +51,18 @@ export async function GET() {
       });
     }
 
+    if (auth.role === "designer") {
+      data.directory = data.directory.map((row) => ({
+        ...row,
+        lifetimeRevenue: null as unknown as number
+      }));
+      data.churn.expectedRecoverRevenue = null as unknown as number;
+      data.churn.customers = data.churn.customers.map((row) => ({
+        ...row,
+        lifetimeRevenue: null as unknown as number
+      }));
+    }
+
     return NextResponse.json({ ok: true, ...data });
   } catch (e) {
     console.error("[admin/customers GET]", e);

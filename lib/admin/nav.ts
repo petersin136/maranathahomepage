@@ -79,10 +79,8 @@ export const ADMIN_MENUS: AdminMenu[] = [
     icon: "/admin-icons/lnb/usd.png",
     items: [
       { href: "/admin/sales", label: "매출", icon: "/admin-icons/lnb/usd.png" },
-      { href: "/admin/expenses", label: "비용", icon: "/admin-icons/lnb/card.png" },
-      { href: "/admin/settlements", label: "정산", icon: "/admin-icons/lnb/calendar-check.png" },
-      { href: "/admin/tax", label: "세무", icon: "/admin-icons/lnb/check.png" },
-      { href: "/admin/export", label: "내보내기", icon: "/admin-icons/lnb/exit.png" }
+      { href: "/admin/expenses", label: "지출", icon: "/admin-icons/lnb/card.png" },
+      { href: "/admin/settlements", label: "정산", icon: "/admin-icons/lnb/calendar-check.png" }
     ]
   },
   {

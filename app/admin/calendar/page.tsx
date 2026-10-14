@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { clsx } from "clsx";
 import BookingActionButtons from "@/components/admin/BookingActionButtons";
 import BookingConfirmModal from "@/components/admin/BookingConfirmModal";
 import { BOOKING_STATUS_LABEL } from "@/lib/admin/booking-labels";
@@ -23,6 +24,13 @@ type CustomerSnapshot = {
   priorCount: number;
   visitLabel: string;
   previous: PriorVisit[];
+};
+
+type ServiceOption = {
+  id: string;
+  name: string;
+  price: number;
+  artist_prices: Record<string, number>;
 };
 
 const WEEKDAY_FULL = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"] as const;
@@ -143,6 +151,10 @@ export default function AdminCalendarPage() {
               busyId={actions.busyId}
               onCancel={actions.openCancel}
               onDelete={actions.openDelete}
+              onSaved={() => {
+                setReloadKey((n) => n + 1);
+                setDetailTick((n) => n + 1);
+              }}
             />
           </div>
         </div>
@@ -175,7 +187,8 @@ function DetailCard({
   onClose,
   busyId,
   onCancel,
-  onDelete
+  onDelete,
+  onSaved
 }: {
   detail: BookingRow | null;
   customer: CustomerSnapshot | null;
@@ -184,12 +197,73 @@ function DetailCard({
   busyId: string | null;
   onCancel: (booking: BookingActionTarget) => void;
   onDelete: (booking: BookingActionTarget) => void;
+  onSaved: () => void;
 }) {
   const story = detail ? requestText(detail) : "";
   const visits = customer?.previous ?? [];
+  const [editing, setEditing] = useState(false);
+  const [services, setServices] = useState<ServiceOption[]>([]);
+  const [serviceIds, setServiceIds] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setEditing(false);
+    setEditError(null);
+    setServiceIds(detail?.service_ids ?? []);
+  }, [detail?.id]);
+
+  const openEditor = () => {
+    if (!detail) return;
+    setServiceIds(detail.service_ids ?? []);
+    setEditError(null);
+    setEditing(true);
+    if (services.length > 0) return;
+    fetch("/api/admin/services")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.ok && Array.isArray(d.services)) setServices(d.services);
+      })
+      .catch(() => setEditError("시술 목록을 불러오지 못했습니다."));
+  };
+
+  const previewTotal = useMemo(() => {
+    if (!detail) return 0;
+    return serviceIds.reduce((sum, id) => {
+      const s = services.find((x) => x.id === id);
+      if (!s) return sum;
+      return sum + (s.artist_prices?.[detail.artist_id] ?? s.price ?? 0);
+    }, 0);
+  }, [detail, serviceIds, services]);
+
+  const saveServices = async () => {
+    if (!detail) return;
+    setSaving(true);
+    setEditError(null);
+    try {
+      const res = await fetch(`/api/admin/bookings/${detail.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ serviceIds })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || "시술 저장에 실패했습니다.");
+      setEditing(false);
+      onSaved();
+    } catch (e) {
+      setEditError(e instanceof Error ? e.message : "시술 저장에 실패했습니다.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
-    <section className="flex h-[248px] shrink-0 flex-col overflow-hidden rounded-[12px] border border-[#E4E0DA] bg-white px-6 py-3">
+    <section
+      className={clsx(
+        "flex shrink-0 flex-col rounded-[12px] border border-[#E4E0DA] bg-white px-6 py-3",
+        editing ? "max-h-[80vh] overflow-auto" : "h-[248px] overflow-hidden"
+      )}
+    >
       {!detail ? (
         <p className="m-auto text-center text-[15px] text-[#8A847C]">
           {loading ? "불러오는 중" : "오른쪽 목록에서 예약을 누르면 여기에 상세가 열립니다."}
@@ -252,8 +326,66 @@ function DetailCard({
             <p className="min-w-0 flex-1 truncate text-[16px] leading-[24px]" title={(detail.service_names || []).join(", ")}>
               <span className="mr-2 text-[13px] font-bold text-[#9A948C]">시술</span>
               <span className="font-medium">{(detail.service_names || []).join(", ") || "—"}</span>
+              <button
+                type="button"
+                onClick={openEditor}
+                className="ml-3 text-[13px] font-bold text-[#1C1C1C] underline-offset-2 hover:underline"
+              >
+                {editing ? "편집 중" : "편집"}
+              </button>
             </p>
           </div>
+          {editing ? (
+            <div className="mt-3 border-t border-[#F3EFEA] pt-3">
+              <div className="flex max-h-[240px] flex-wrap overflow-auto">
+                {services.map((s) => {
+                  const on = serviceIds.includes(s.id);
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      disabled={saving}
+                      onClick={() =>
+                        setServiceIds((cur) => (on ? cur.filter((x) => x !== s.id) : [...cur, s.id]))
+                      }
+                      className={clsx(
+                        "mb-2 mr-2 inline-flex h-[36px] items-center rounded-[8px] border-[1.5px] px-3 text-[14px] font-bold disabled:opacity-40",
+                        on ? "border-[#2F3A2F] bg-[#2F3A2F] text-white" : "border-[#9A948C] bg-white text-[#1C1C1C]"
+                      )}
+                    >
+                      {s.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-1 flex items-center justify-between gap-4">
+                <p className="text-[14px] text-[#8A847C]">합계 {previewTotal.toLocaleString("ko-KR")}원</p>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => {
+                      setEditing(false);
+                      setEditError(null);
+                      setServiceIds(detail.service_ids ?? []);
+                    }}
+                    className="text-[14px] font-bold text-[#8A847C] disabled:opacity-40"
+                  >
+                    편집 취소
+                  </button>
+                  <button
+                    type="button"
+                    disabled={saving || serviceIds.length === 0}
+                    onClick={() => void saveServices()}
+                    className="inline-flex h-[36px] items-center rounded-[8px] bg-[#2F3A2F] px-4 text-[14px] font-bold text-white disabled:opacity-40"
+                  >
+                    {saving ? "저장 중" : "저장"}
+                  </button>
+                </div>
+              </div>
+              {editError ? <p className="mt-2 text-[13px] text-[#E24B4B]">{editError}</p> : null}
+            </div>
+          ) : null}
 
           <p className="mt-2 text-[15px] leading-[24px] text-[#1C1C1C]">
             <span className="mr-3 font-bold text-[#9A948C]">고객 메모</span>

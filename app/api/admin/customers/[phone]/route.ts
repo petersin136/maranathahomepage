@@ -58,11 +58,18 @@ export async function GET(
     console.error("[GET /api/admin/customers/:phone] note", noteRes.error);
   }
 
+  const bookings = (bookingsRes.data ?? []).map((row) => {
+    if (auth.role !== "designer" || row.artist_id === auth.artistId) return row;
+    const next = { ...row };
+    delete next.final_amount;
+    return next;
+  });
+
   return NextResponse.json({
     ok: true,
     today: todayKst(),
     phone,
-    bookings: bookingsRes.data ?? [],
+    bookings,
     note: noteRes.data ?? null,
     noteError: notesMissing ? NOTES_MISSING_MESSAGE : null
   });

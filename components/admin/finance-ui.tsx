@@ -4,8 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { clsx } from "clsx";
+import { AdminBellButton } from "@/components/admin/AdminBellButton";
+import { AdminPageTitle } from "@/components/admin/AdminPageTitle";
 
 export const TRIM_KR = "[text-box-edge:cap_alphabetic] [text-box-trim:trim-both]";
+export const TRIM_LATIN = "[text-box-edge:text_alphabetic] [text-box-trim:trim-both]";
 
 export const TABLE_HEAD_ROW = "border-b-[1.5px] border-[#C9C3BB] text-[15px] font-bold text-[#9A948C]";
 export const TABLE_ROW = "border-b border-[#F3EFEA]";
@@ -44,20 +47,7 @@ export function FinanceSearch() {
           className={`min-w-0 flex-1 bg-transparent text-[15px] font-bold leading-none text-[#1C1C1C] outline-none placeholder:text-[#9A948C] ${TRIM_KR}`}
         />
       </label>
-      <button
-        type="button"
-        aria-label="알림"
-        className="flex h-[36px] w-[36px] items-center justify-center rounded-[8px] border-[1.5px] border-[#9A948C] bg-white text-[#1C1C1C]"
-      >
-        <svg viewBox="0 0 16 16" className="h-[16px] w-[16px]" fill="none" aria-hidden="true">
-          <path
-            d="M8 1.7a3.1 3.1 0 0 1 3.1 3.1v1.5c0 .55.18 1.08.52 1.52l.58.68H3.8l.58-.68c.34-.44.52-.97.52-1.52V4.8A3.1 3.1 0 0 1 8 1.7Z"
-            stroke="currentColor"
-            strokeWidth="1.3"
-          />
-          <path d="M6.55 12.15a1.45 1.45 0 0 0 2.9 0" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-        </svg>
-      </button>
+      <AdminBellButton />
     </div>
   );
 }
@@ -110,17 +100,15 @@ export function FinanceHeader({
 }) {
   const pathname = usePathname();
   return (
-    <div className={embedded ? undefined : "sticky top-0 z-20 bg-white pt-10"}>
-      <div className="flex items-center justify-between gap-6">
-        <h1 className={`text-[24px] font-bold leading-none tracking-[-0.02em] text-[#1C1C1C] ${TRIM_KR}`}>
-          매출/정산
-        </h1>
-        {right ?? <FinanceSearch />}
+    <div className={embedded ? undefined : "sticky top-0 z-20 bg-white pt-10 pl-[6px]"}>
+      <div className="flex items-start justify-between gap-6">
+        <AdminPageTitle>매출/정산</AdminPageTitle>
+        <div className="mt-[24px]">{right ?? <FinanceSearch />}</div>
       </div>
       {subtitle ? (
-        <p className={`mt-[14px] text-[16px] font-medium leading-none text-[#8A847C] ${TRIM_KR}`}>{subtitle}</p>
+        <p className="mt-[14px] text-[16px] font-medium leading-normal text-[#8A847C]">{subtitle}</p>
       ) : null}
-      <nav className="mt-[66px] flex border-b border-[#E6E1DA]">
+      <nav className={clsx("flex border-b border-[#E6E1DA]", subtitle ? "mt-[10px]" : "mt-12")}>
         {FINANCE_TABS.map((t) => {
           const on = pathname === t.href || pathname.startsWith(`${t.href}/`);
           return (
@@ -128,11 +116,18 @@ export function FinanceHeader({
               key={t.href}
               href={t.href}
               className={clsx(
-                "-mb-px flex items-end border-b-2 px-[18px] pb-[12px] text-[15px] leading-none",
+                "-mb-px flex items-end border-b-2 px-[18px] pb-[12px] text-[15px] leading-normal",
                 on ? "border-[#1C1C1C] text-[#1C1C1C]" : "border-transparent text-[#B7B2AA]"
               )}
             >
-              <span className={clsx(TRIM_KR, on ? "font-bold" : "font-medium")}>{t.label}</span>
+              <span
+                className={clsx(
+                  "[text-box-edge:cap_alphabetic] [text-box-trim:trim-both]",
+                  on ? "font-bold" : "font-medium"
+                )}
+              >
+                {t.label}
+              </span>
             </Link>
           );
         })}
@@ -145,21 +140,29 @@ export function FinanceHeader({
 export function Toolbar({
   left,
   right,
-  className
+  className,
+  align = "center"
 }: {
   left?: React.ReactNode;
   right?: React.ReactNode;
   className?: string;
+  align?: "center" | "start";
 }) {
   return (
-    <div className={clsx("flex items-center gap-[6px]", className ?? "mt-[34px]")}>
+    <div
+      className={clsx(
+        "flex w-full gap-[6px]",
+        align === "start" ? "items-start" : "items-center",
+        className ?? "mt-[34px]"
+      )}
+    >
       {left}
       {right ? <div className="ml-auto flex items-center gap-2">{right}</div> : null}
     </div>
   );
 }
 
-function useOutsideClose(open: boolean, close: () => void) {
+export function useOutsideClose(open: boolean, close: () => void) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -261,6 +264,94 @@ export function RefreshButton({ onClick, spinning }: { onClick: () => void; spin
   return (
     <IconButton label="새로고침" onClick={onClick} disabled={spinning}>
       <Icon src="/admin-icons/lnb/refresh.png" className={clsx("h-[16px] w-[16px]", spinning && "animate-spin")} />
+    </IconButton>
+  );
+}
+
+function DownloadGlyph() {
+  return (
+    <svg viewBox="0 0 16 16" className="h-[16px] w-[16px]" fill="none" aria-hidden="true">
+      <path d="M8 2.2v7.2M5.2 6.8 8 9.6l2.8-2.8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3.2 11.2v1.4c0 .6.5 1 1.1 1h7.4c.6 0 1.1-.4 1.1-1v-1.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function DownloadExportButton({
+  year,
+  month,
+  from,
+  to,
+  artistIds,
+  onError,
+  labeled = false
+}: {
+  year?: number;
+  month?: number;
+  from?: string;
+  to?: string;
+  artistIds?: string[];
+  onError?: (message: string) => void;
+  labeled?: boolean;
+}) {
+  const [busy, setBusy] = useState(false);
+
+  const download = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const params = new URLSearchParams();
+      if (from && to) {
+        params.set("from", from);
+        params.set("to", to);
+      } else {
+        params.set("year", String(year));
+        params.set("month", String(month));
+      }
+      for (const id of artistIds ?? []) params.append("artistId", id);
+      const res = await fetch(`/api/admin/export?${params.toString()}`);
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error || "다운로드에 실패했습니다.");
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") || "";
+      const utfMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+      const mm = String((month ?? Number(from?.slice(5, 7))) || 0).padStart(2, "0");
+      const yy = year ?? Number(from?.slice(0, 4));
+      const filename = utfMatch ? decodeURIComponent(utfMatch[1]) : `헤어업_${yy}년${mm}월_마감자료.xlsx`;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      onError?.(e instanceof Error ? e.message : "다운로드에 실패했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (labeled) {
+    return (
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => void download()}
+        className="inline-flex h-[34px] items-center gap-2 rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white px-3 text-[13px] font-semibold leading-normal text-[#1C1C1C] hover:bg-[#F6F4F0] disabled:opacity-40"
+      >
+        <DownloadGlyph />
+        <span>{busy ? "다운로드 중" : "엑셀 다운로드"}</span>
+      </button>
+    );
+  }
+
+  return (
+    <IconButton label="다운로드" onClick={() => void download()} disabled={busy}>
+      <DownloadGlyph />
     </IconButton>
   );
 }
@@ -398,6 +489,7 @@ export type StatItem = {
   label: string;
   value: string;
   hint?: string;
+  hintTone?: "accent" | "muted";
   tone?: "danger" | "muted";
   href?: string;
 };
@@ -432,7 +524,16 @@ export function StatStrip({
               {item.value}
             </dd>
             {item.hint ? (
-              <dd className={clsx("mt-1 truncate text-[13px]", item.tone === "danger" ? "text-[#E24B4B]" : "text-[#8A847C]")}>
+              <dd
+                className={clsx(
+                  "mt-1 truncate text-[13px]",
+                  item.tone === "danger"
+                    ? "text-[#E24B4B]"
+                    : item.hintTone === "accent"
+                      ? "text-[color:var(--accent)]"
+                      : "text-[color:var(--muted)]"
+                )}
+              >
                 {item.hint}
               </dd>
             ) : null}

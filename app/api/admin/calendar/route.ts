@@ -120,7 +120,11 @@ export async function GET(request: Request) {
       const own = artistPrice.get(`${m.id}:${row.artist_id}`);
       return sum + (own ?? (Number(m.price) || 0));
     }, 0);
-    const paid = row.status === "completed" && row.final_amount != null ? Number(row.final_amount) : null;
+    const hideAmount = auth.role === "designer" && row.artist_id !== auth.artistId;
+    const paid =
+      hideAmount || row.final_amount == null || row.status !== "completed"
+        ? null
+        : Number(row.final_amount);
     const phone = (row.customer_phone || "").trim();
     const prior = phone ? completedByPhone.get(phone) ?? [] : [];
     const isNew = !prior.some(
@@ -144,7 +148,7 @@ export async function GET(request: Request) {
       tone,
       is_new: isNew,
       memo: resolveCustomerRequestText(row.customer_request, row.admin_memo),
-      expected_amount: paid ?? listPrice
+      expected_amount: hideAmount ? null : (paid ?? listPrice)
     };
   });
 

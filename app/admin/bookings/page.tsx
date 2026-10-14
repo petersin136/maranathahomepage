@@ -7,6 +7,8 @@ import { BOOKING_STATUS_LABEL, BOOKING_STATUS_OPTIONS, cancelReasonLabel } from 
 import type { BookingRow, BookingStatus } from "@/lib/bookings/types";
 import { AdminDatePicker } from "@/components/admin/AdminDatePicker";
 import BookingCreateModal from "@/components/admin/BookingCreateModal";
+import { AdminBellButton } from "@/components/admin/AdminBellButton";
+import { AdminPageTitle } from "@/components/admin/AdminPageTitle";
 import { useRefreshPendingCount } from "@/components/admin/pending-count";
 
 const PAGE_SIZE = 12;
@@ -404,9 +406,10 @@ export default function AdminBookingsPage() {
 
   return (
     <div className="flex flex-col pl-[6px] pr-[8px] font-sans-kr text-[#1C1C1C] min-[1440px]:h-[calc(100dvh-5rem)]">
-      <div className="flex items-center justify-between gap-6 pt-6">
-        <h1 className="text-[30px] font-bold leading-none tracking-[-0.02em]">예약관리</h1>
-        <div ref={searchRef} className="relative -mr-[8px]">
+      <div className="flex items-start justify-between gap-6">
+        <AdminPageTitle>예약관리</AdminPageTitle>
+        <div className="-mr-[8px] mt-[24px] flex items-start gap-[8px]">
+        <div ref={searchRef} className="relative">
           <label className="flex h-[36px] w-[300px] items-center gap-2 rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white px-3">
             <Icon src="/admin-icons/lnb/search-bold.png" className="h-[16px] w-[16px] text-[#9A948C]" />
             <input
@@ -455,9 +458,11 @@ export default function AdminBookingsPage() {
             </div>
           ) : null}
         </div>
+        <AdminBellButton />
+        </div>
       </div>
 
-      <div className="mt-[66px] flex border-b border-[#E6E1DA]">
+      <div className="mt-12 flex border-b border-[#E6E1DA]">
         {TABS.map((t) => {
           const on = t.key === tab;
           return (

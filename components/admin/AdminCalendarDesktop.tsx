@@ -17,6 +17,8 @@ import { isKoreanHoliday } from "@/lib/admin/kr-holidays";
 import { todayKst } from "@/lib/admin/sales-data";
 import { AdminDatePicker } from "@/components/admin/AdminDatePicker";
 import BookingCreateModal from "@/components/admin/BookingCreateModal";
+import { AdminBellButton } from "@/components/admin/AdminBellButton";
+import { AdminPageTitle } from "@/components/admin/AdminPageTitle";
 import "./admin-calendar.css";
 
 export type CalTab = "day" | "week" | "month";
@@ -327,7 +329,7 @@ export function CalendarDesktopView({
   return (
     <div className="ADMIN-CALENDAR">
       <div className="cal-head">
-        <h1 className="cal-title">캘린더</h1>
+        <AdminPageTitle>캘린더</AdminPageTitle>
         <div ref={searchRef} className="cal-search-wrap">
           <div className="cal-search-row">
             <label className="cal-search">
@@ -343,9 +345,7 @@ export function CalendarDesktopView({
                 className="cal-search-input"
               />
             </label>
-            <button type="button" className="cal-bell" aria-label="알림">
-              <CalIcon src="/admin-icons/lnb/bell.png" className="cal-bell-icon" />
-            </button>
+            <AdminBellButton />
           </div>
           {searchOpen && query.trim() ? (
             <div className="cal-search-panel">

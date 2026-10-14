@@ -7,6 +7,7 @@ import {
 } from "@/lib/booking/overlap";
 
 type BookingOccupancyRow = {
+  id?: string;
   booking_time: string;
   service_ids: string[] | null;
   duration?: number | null;
@@ -21,12 +22,13 @@ export async function loadOccupiedIntervals(opts: {
   supabase: SupabaseClient;
   artistId: string;
   bookingDate: string;
+  excludeBookingId?: string;
 }): Promise<{ intervals: OccupiedInterval[]; error: string | null }> {
-  const { supabase, artistId, bookingDate } = opts;
+  const { supabase, artistId, bookingDate, excludeBookingId } = opts;
 
   const { data: bookings, error: bookingsError } = await supabase
     .from("bookings")
-    .select("booking_time, service_ids")
+    .select("id, booking_time, service_ids")
     .eq("artist_id", artistId)
     .eq("booking_date", bookingDate)
     .in("status", [...BLOCKING_STATUSES]);
@@ -65,6 +67,7 @@ export async function loadOccupiedIntervals(opts: {
 
   const intervals: OccupiedInterval[] = [];
   for (const row of rows) {
+    if (excludeBookingId && row.id === excludeBookingId) continue;
     const serviceIds = Array.isArray(row.service_ids)
       ? row.service_ids.map(String)
       : [];

@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireAdminUser, getSupabaseAdmin } from "@/lib/admin/auth";
 
+function rejectDesigner(role: string) {
+  if (role !== "designer") return null;
+  return NextResponse.json({ ok: false, error: "접근 권한이 없습니다." }, { status: 403 });
+}
+
 const CATEGORIES = ["Cut", "Perm", "Color", "Clinic"] as const;
 
 type ArtistPriceInput = { artist_id: string; price: number };
@@ -68,6 +73,8 @@ export async function GET() {
 export async function POST(request: Request) {
   const auth = await requireAdminUser();
   if (!auth.ok) return auth.response;
+  const denied = rejectDesigner(auth.role);
+  if (denied) return denied;
 
   let body: {
     id?: string;
