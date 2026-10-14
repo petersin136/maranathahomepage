@@ -58,7 +58,8 @@ function weekdayOf(date: string) {
   return WEEKDAY_KO[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
 }
 
-function won(value: number) {
+function won(value: number | null | undefined) {
+  if (value == null) return "—";
   return `${value.toLocaleString("ko-KR")}원`;
 }
 
@@ -216,7 +217,7 @@ function CustomerProfile() {
             hint={row?.daysSince != null ? `${row.daysSince}일 경과` : undefined}
           />
           <ProfileStat label="방문 횟수" value={`${(row?.visitCount ?? completed.length).toLocaleString("ko-KR")}회`} />
-          <ProfileStat label="누적 매출" value={won(row?.lifetimeRevenue ?? 0)} />
+          <ProfileStat label="누적 매출" value={won(row?.lifetimeRevenue)} />
           <ProfileStat label="평균 방문 주기" value={cycle != null ? `${Math.round(cycle)}일` : "—"} />
         </dl>
       </section>

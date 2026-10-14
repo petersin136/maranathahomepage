@@ -199,7 +199,7 @@ export default function AdminCustomersPage() {
   const noMatch = !loading && rows.length > 0 && filtered.length === 0;
 
   return (
-    <div className="flex flex-col font-sans-kr text-[#1C1C1C] min-[1440px]:h-[calc(100dvh-5rem)]">
+    <div className="flex flex-col font-sans-kr text-[#1C1C1C]">
       <div className="flex items-start justify-between gap-6 pl-[6px]">
         <AdminPageTitle className="flex items-baseline gap-2">
           고객관리
@@ -315,7 +315,7 @@ export default function AdminCustomersPage() {
         </div>
       </div>
 
-      <div className="mt-8 min-h-0 flex-1 min-[1440px]:overflow-auto">
+      <div className="mt-8">
         <table className="w-full table-fixed text-left text-[16px] font-medium leading-[20px]">
           <colgroup>
             <col className="w-[5.7%]" />
@@ -433,7 +433,7 @@ export default function AdminCustomersPage() {
         ) : null}
       </div>
 
-      <div className="mb-16 mt-auto flex shrink-0 items-center justify-end gap-2 pt-5 text-[14px] text-[#8A847C]">
+      <div className="flex items-center justify-end gap-2 pt-5 text-[14px] text-[#8A847C]">
         <PageBtn disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} label="이전">
           <PagerChevron dir="left" />
         </PageBtn>

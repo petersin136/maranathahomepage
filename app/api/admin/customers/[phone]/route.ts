@@ -62,6 +62,7 @@ export async function GET(
     if (auth.role !== "designer" || row.artist_id === auth.artistId) return row;
     const next = { ...row };
     delete next.final_amount;
+    delete next.total_amount;
     return next;
   });
 

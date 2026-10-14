@@ -68,9 +68,18 @@ export async function GET(
     }
   }
 
+  let booking = data;
+  if (auth.role === "designer" && data.artist_id !== auth.artistId) {
+    const next = { ...data };
+    delete next.final_amount;
+    delete next.deposit_amount;
+    delete next.total_amount;
+    booking = next;
+  }
+
   return NextResponse.json({
     ok: true,
-    booking: data,
+    booking,
     customer: {
       priorCount: previous.length,
       visitLabel: previous.length === 0 ? "첫 방문" : "단골",

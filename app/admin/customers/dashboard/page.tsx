@@ -6,7 +6,8 @@ import { WEEKDAY_LABELS } from "@/lib/admin/customers-data";
 import Link from "next/link";
 import { customerProfileHref, useCustomerFilters } from "@/components/admin/CustomerFilters";
 
-function won(value: number) {
+function won(value: number | null | undefined) {
+  if (value == null) return "—";
   return `${value.toLocaleString("ko-KR")}원`;
 }
 

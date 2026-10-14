@@ -35,9 +35,14 @@ function stripOtherDesignerAmounts<T extends { artist_id?: string | null }>(
   if (role !== "designer") return rows;
   return rows.map((row) => {
     if (row.artist_id === artistId) return row;
-    const next = { ...row } as T & { final_amount?: unknown; deposit_amount?: unknown };
+    const next = { ...row } as T & {
+      final_amount?: unknown;
+      deposit_amount?: unknown;
+      total_amount?: unknown;
+    };
     delete next.final_amount;
     delete next.deposit_amount;
+    delete next.total_amount;
     return next;
   });
 }

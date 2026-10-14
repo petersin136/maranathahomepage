@@ -1,18 +1,20 @@
 import type { Metadata } from "next";
-import { Bodoni_Moda, Montserrat } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import "./pretendard-variable.css";
 
-const bodoni = Bodoni_Moda({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+const bodoni = localFont({
+  src: "./fonts/bodoni-moda-latin.woff2",
+  weight: "400 700",
+  style: "normal",
   variable: "--font-bodoni",
   display: "swap"
 });
 
-const montserrat = Montserrat({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
+const montserrat = localFont({
+  src: "./fonts/montserrat-latin.woff2",
+  weight: "300 600",
+  style: "normal",
   variable: "--font-montserrat",
   display: "swap"
 });
