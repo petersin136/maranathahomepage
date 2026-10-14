@@ -16,24 +16,25 @@ html:has(.ADMIN-CALENDAR) main {
   letter-spacing: -0.02em;
   color: #1c1a19;
 
-  --cal-hour-rule: #e3ddd3;
-  --cal-now: #c25e2e;
+  --cal-hour-rule: #e4e4e2;
+  --cal-now: #c45f33;
   --cal-ink: #1c1a19;
   --cal-ink-2: #4d4641;
   --cal-sub: #7b6e67;
   --cal-muted: #8c847a;
-  --cal-line: #beb7ae;
+  --cal-line: #c8c4c1;
   --cal-soft: #f4efe9;
+  --cal-half-rule: #f0f0ee;
   --cal-tone-cut-bg: #f5f4f0;
   --cal-tone-cut-fg: #78716c;
-  --cal-tone-clinic-bg: #eef6fb;
-  --cal-tone-clinic-fg: #4b89b8;
-  --cal-tone-consult-bg: #f8f0f7;
-  --cal-tone-consult-fg: #8e658e;
-  --cal-tone-perm-bg: #fdf2ed;
-  --cal-tone-perm-fg: #e06d53;
+  --cal-tone-clinic-bg: #eef5fb;
+  --cal-tone-clinic-fg: #4c7ca2;
+  --cal-tone-consult-bg: #f7f0f7;
+  --cal-tone-consult-fg: #866a83;
+  --cal-tone-perm-bg: #fdf2ee;
+  --cal-tone-perm-fg: #bf7768;
   --cal-tone-color-bg: #edf6f3;
-  --cal-tone-color-fg: #3b8272;
+  --cal-tone-color-fg: #4e7970;
 }
 
 .ADMIN-CALENDAR .cal-icon {
@@ -69,13 +70,17 @@ html:has(.ADMIN-CALENDAR) main {
 .ADMIN-CALENDAR .cal-brief-card-label,
 .ADMIN-CALENDAR .cal-brief-card-sub,
 .ADMIN-CALENDAR .cal-brief-card-unit,
-.ADMIN-CALENDAR .cal-care-avatar-label,
 .ADMIN-CALENDAR .cal-care-name,
 .ADMIN-CALENDAR .cal-care-memo,
 .ADMIN-CALENDAR .cal-care-empty-label,
 .ADMIN-CALENDAR .cal-empty-title,
 .ADMIN-CALENDAR .cal-empty-desc,
-.ADMIN-CALENDAR .cal-empty-btn-label {
+.ADMIN-CALENDAR .cal-empty-btn-label,
+.ADMIN-CALENDAR .cal-month-more,
+.ADMIN-CALENDAR .cal-month-side-title,
+.ADMIN-CALENDAR .cal-month-side-count,
+.ADMIN-CALENDAR .cal-month-empty-title,
+.ADMIN-CALENDAR .cal-month-empty-desc {
   text-box-trim: trim-both;
   text-box-edge: cap alphabetic;
 }
@@ -88,7 +93,13 @@ html:has(.ADMIN-CALENDAR) main {
 .ADMIN-CALENDAR .cal-booking-time,
 .ADMIN-CALENDAR .cal-brief-card-num,
 .ADMIN-CALENDAR .cal-care-time,
-.ADMIN-CALENDAR .cal-care-new {
+.ADMIN-CALENDAR .cal-care-new,
+.ADMIN-CALENDAR .cal-month-num,
+.ADMIN-CALENDAR .cal-month-wd-label,
+.ADMIN-CALENDAR .cal-month-chip-time,
+.ADMIN-CALENDAR .cal-month-side-date,
+.ADMIN-CALENDAR .cal-month-item-time,
+.ADMIN-CALENDAR .cal-month-card-new {
   text-box-trim: trim-both;
   text-box-edge: text alphabetic;
 }
@@ -345,9 +356,10 @@ html:has(.ADMIN-CALENDAR) main {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   margin-left: 8px;
+  border-radius: 4px;
   background: #f4efe9;
 }
 
@@ -489,7 +501,7 @@ html:has(.ADMIN-CALENDAR) main {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-top: 218px;
+  margin-top: 195px;
 }
 
 .ADMIN-CALENDAR .cal-empty-title {
@@ -500,13 +512,13 @@ html:has(.ADMIN-CALENDAR) main {
 }
 
 .ADMIN-CALENDAR .cal-empty-desc {
-  margin-top: 13px;
+  margin-top: 14px;
   letter-spacing: 0;
   font-size: 14px;
   font-weight: 400;
   line-height: 21px;
   text-align: center;
-  color: #807b77;
+  color: #807f7d;
 }
 
 .ADMIN-CALENDAR .cal-empty-btn {
@@ -514,8 +526,8 @@ html:has(.ADMIN-CALENDAR) main {
   align-items: center;
   justify-content: center;
   width: 186px;
-  height: 45px;
-  margin-top: 35px;
+  height: 44px;
+  margin-top: 38px;
   border-radius: 4px;
   background: #2c3a2e;
   color: #fff;
@@ -535,9 +547,17 @@ html:has(.ADMIN-CALENDAR) main {
   margin-top: 35px;
 }
 
+.ADMIN-CALENDAR .cal-day-layout.is-three {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .ADMIN-CALENDAR .cal-grid {
   min-width: 0;
   border-right: 1px solid var(--cal-hour-rule);
+}
+
+.ADMIN-CALENDAR .cal-day-layout.is-three .cal-grid {
+  border-right: none;
 }
 
 .ADMIN-CALENDAR .cal-grid-head-bar {
@@ -592,7 +612,7 @@ html:has(.ADMIN-CALENDAR) main {
   min-width: 0;
   padding-top: 2px;
   padding-left: 20px;
-  border-left: 1px solid var(--rule);
+  border-left: 1px solid var(--cal-half-rule);
 }
 
 .ADMIN-CALENDAR .cal-avatar {
@@ -603,7 +623,7 @@ html:has(.ADMIN-CALENDAR) main {
   height: 40px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: var(--cal-sub);
+  background: #7a6f69;
 }
 
 .ADMIN-CALENDAR .cal-avatar-char {
@@ -672,7 +692,7 @@ html:has(.ADMIN-CALENDAR) main {
 }
 
 .ADMIN-CALENDAR .cal-slot-line.is-half {
-  background: var(--rule);
+  background: var(--cal-half-rule);
 }
 
 .ADMIN-CALENDAR .cal-time-col {
@@ -698,13 +718,13 @@ html:has(.ADMIN-CALENDAR) main {
 .ADMIN-CALENDAR .cal-col {
   position: relative;
   min-width: 0;
-  border-left: 1px solid var(--rule);
+  border-left: 1px solid var(--cal-half-rule);
 }
 
 .ADMIN-CALENDAR .cal-cell {
   position: absolute;
-  left: 2px;
-  right: 2px;
+  left: 4px;
+  right: 4px;
   height: 48px;
   padding-top: 3px;
   padding-bottom: 2px;
@@ -733,10 +753,10 @@ html:has(.ADMIN-CALENDAR) main {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 25px;
+  height: 25px;
   margin-top: 0.5px;
-  border-radius: 4px;
+  border-radius: 3px;
   background: #2c3a2e;
   color: #fff;
   transform: translate(-50%, -50%);
@@ -767,8 +787,8 @@ html:has(.ADMIN-CALENDAR) main {
 
 .ADMIN-CALENDAR .cal-booking {
   position: absolute;
-  left: 2px;
-  right: 2px;
+  left: 4px;
+  right: 4px;
   display: block;
   padding-top: 3px;
   padding-bottom: 2px;
@@ -784,7 +804,7 @@ html:has(.ADMIN-CALENDAR) main {
   padding-left: 16px;
   padding-right: 16px;
   overflow: hidden;
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 .ADMIN-CALENDAR .cal-booking.is-short .cal-booking-inner {
@@ -874,6 +894,10 @@ html:has(.ADMIN-CALENDAR) main {
   background: var(--cal-now);
 }
 
+.ADMIN-CALENDAR .cal-date-chip.is-month {
+  width: 148px;
+}
+
 .ADMIN-CALENDAR .cal-legacy {
   margin-top: 33px;
 }
@@ -881,8 +905,8 @@ html:has(.ADMIN-CALENDAR) main {
 /* ── 정리 시간(슬롯 경계까지 남는 구간) ─ */
 .ADMIN-CALENDAR .cal-buffer {
   position: absolute;
-  left: 2px;
-  right: 2px;
+  left: 4px;
+  right: 4px;
   z-index: 1;
   padding-top: 2px;
   padding-bottom: 2px;
@@ -953,7 +977,7 @@ html:has(.ADMIN-CALENDAR) main {
   justify-content: center;
   min-width: 0;
   padding-top: 2px;
-  border-left: 1px solid var(--rule);
+  border-left: 1px solid var(--cal-half-rule);
 }
 
 .ADMIN-CALENDAR .cal-week-day.is-off,
@@ -1147,23 +1171,30 @@ html:has(.ADMIN-CALENDAR) main {
 .ADMIN-CALENDAR .cal-care-list {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 17px;
   margin: 14px 0 0;
   padding: 0;
   list-style: none;
+}
+
+.ADMIN-CALENDAR .cal-care-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .ADMIN-CALENDAR .cal-care-card {
   position: relative;
   display: flex;
   align-items: center;
-  width: 100%;
-  min-height: 55px;
-  padding: 9px 12px 9px 14px;
+  flex: 1;
+  min-width: 0;
+  min-height: 51px;
+  padding: 10px 12px 10px 16px;
   overflow: hidden;
-  border: 1px solid var(--cal-hour-rule);
+  border: none;
   border-radius: 4px;
-  background: #fff;
+  background: var(--cal-tone-cut-bg);
   text-align: left;
 }
 
@@ -1177,40 +1208,17 @@ html:has(.ADMIN-CALENDAR) main {
   background: currentColor;
 }
 
-.ADMIN-CALENDAR .cal-care-card.tone-cut { color: var(--cal-tone-cut-fg); }
-.ADMIN-CALENDAR .cal-care-card.tone-clinic { color: var(--cal-tone-clinic-fg); }
-.ADMIN-CALENDAR .cal-care-card.tone-consult { color: var(--cal-tone-consult-fg); }
-.ADMIN-CALENDAR .cal-care-card.tone-perm { color: var(--cal-tone-perm-fg); }
-.ADMIN-CALENDAR .cal-care-card.tone-color { color: var(--cal-tone-color-fg); }
-
-.ADMIN-CALENDAR .cal-care-card:hover {
-  background: #faf8f5;
-}
-
-.ADMIN-CALENDAR .cal-care-avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: #f5f4f0;
-}
-
-.ADMIN-CALENDAR .cal-care-avatar-label {
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 13px;
-  white-space: nowrap;
-  color: var(--cal-sub);
-}
+.ADMIN-CALENDAR .cal-care-card.tone-cut { color: var(--cal-tone-cut-fg); background: var(--cal-tone-cut-bg); }
+.ADMIN-CALENDAR .cal-care-card.tone-clinic { color: var(--cal-tone-clinic-fg); background: var(--cal-tone-clinic-bg); }
+.ADMIN-CALENDAR .cal-care-card.tone-consult { color: var(--cal-tone-consult-fg); background: var(--cal-tone-consult-bg); }
+.ADMIN-CALENDAR .cal-care-card.tone-perm { color: var(--cal-tone-perm-fg); background: var(--cal-tone-perm-bg); }
+.ADMIN-CALENDAR .cal-care-card.tone-color { color: var(--cal-tone-color-fg); background: var(--cal-tone-color-bg); }
 
 .ADMIN-CALENDAR .cal-care-text {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  margin-left: 13px;
+  flex: 1;
 }
 
 .ADMIN-CALENDAR .cal-care-top {
@@ -1219,14 +1227,24 @@ html:has(.ADMIN-CALENDAR) main {
 }
 
 .ADMIN-CALENDAR .cal-care-time {
+  width: 48px;
+  flex-shrink: 0;
+  padding-top: 11px;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 14px;
   color: var(--cal-ink);
 }
 
+.ADMIN-CALENDAR .cal-care-chevron {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  margin-left: 8px;
+  color: #8a847c;
+}
+
 .ADMIN-CALENDAR .cal-care-name {
-  margin-left: 4px;
   font-size: 14px;
   font-weight: 700;
   line-height: 14px;
@@ -1259,10 +1277,10 @@ html:has(.ADMIN-CALENDAR) main {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 55px;
+  height: 52px;
   margin-top: 14px;
-  border: 1px solid var(--cal-hour-rule);
   border-radius: 4px;
+  background: #f5f4f0;
 }
 
 .ADMIN-CALENDAR .cal-care-empty-label {
@@ -1270,4 +1288,336 @@ html:has(.ADMIN-CALENDAR) main {
   font-weight: 400;
   line-height: 13px;
   color: var(--cal-sub);
+}
+
+/* ── 월간 ───────────────────────────── */
+.ADMIN-CALENDAR .cal-month {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  align-items: stretch;
+  margin-top: 35px;
+  min-height: calc(100dvh - 248px);
+  border-top: 1px solid var(--cal-line);
+}
+
+.ADMIN-CALENDAR .cal-month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: 40px repeat(var(--cal-month-rows), minmax(112px, 1fr));
+  min-width: 0;
+  background: #fff;
+}
+
+.ADMIN-CALENDAR .cal-month-grid > * {
+  border-right: 1px solid #e6e2db;
+  border-bottom: 1px solid #e6e2db;
+}
+
+.ADMIN-CALENDAR .cal-month-grid > *:nth-child(7n) {
+  border-right: none;
+}
+
+.ADMIN-CALENDAR .cal-month-wd {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+}
+
+.ADMIN-CALENDAR .cal-month-wd-label {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 11px;
+  letter-spacing: 0.08em;
+  color: #a39e97;
+}
+
+.ADMIN-CALENDAR .cal-month-cell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 8px 6px 6px;
+  background: #fff;
+}
+
+.ADMIN-CALENDAR .cal-month-cell.is-day {
+  cursor: pointer;
+}
+
+.ADMIN-CALENDAR .cal-month-cell.is-closed {
+  background: #f4efe9;
+}
+
+.ADMIN-CALENDAR .cal-month-cell.is-selected {
+  position: relative;
+  z-index: 1;
+  box-shadow: inset 0 0 0 1.5px #1c1a19;
+}
+
+.ADMIN-CALENDAR .cal-month-num {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  height: 16px;
+  margin-left: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 13px;
+  font-variant-numeric: tabular-nums;
+  color: #1c1a19;
+}
+
+.ADMIN-CALENDAR .cal-month-num.is-holiday {
+  color: #e24b4b;
+}
+
+.ADMIN-CALENDAR .cal-month-dot {
+  width: 6px;
+  height: 6px;
+  margin-left: 5px;
+  border-radius: 50%;
+  background: var(--cal-now);
+}
+
+.ADMIN-CALENDAR .cal-month-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  margin-top: 6px;
+}
+
+.ADMIN-CALENDAR .cal-month-chip {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 20px;
+  min-width: 0;
+  padding: 0 6px;
+  border-radius: 3px;
+  color: #1c1a19;
+  text-align: left;
+}
+
+.ADMIN-CALENDAR .cal-month-chip.tone-cut { background: var(--cal-tone-cut-bg); }
+.ADMIN-CALENDAR .cal-month-chip.tone-clinic { background: var(--cal-tone-clinic-bg); }
+.ADMIN-CALENDAR .cal-month-chip.tone-consult { background: var(--cal-tone-consult-bg); }
+.ADMIN-CALENDAR .cal-month-chip.tone-perm { background: var(--cal-tone-perm-bg); }
+.ADMIN-CALENDAR .cal-month-chip.tone-color { background: var(--cal-tone-color-bg); }
+
+.ADMIN-CALENDAR .cal-month-chip-time {
+  flex-shrink: 0;
+  margin-right: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 11px;
+}
+
+.ADMIN-CALENDAR .cal-month-chip-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ADMIN-CALENDAR .cal-month-more {
+  padding-left: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 14px;
+  color: #9a948c;
+}
+
+.ADMIN-CALENDAR .cal-month-side {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 18px 18px 16px;
+  border-left: 1px solid #e6e2db;
+  background: #f6f4ef;
+}
+
+.ADMIN-CALENDAR .cal-month-side-head {
+  display: flex;
+  align-items: center;
+  height: 22px;
+}
+
+.ADMIN-CALENDAR .cal-month-info {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: #1c1a19;
+}
+
+.ADMIN-CALENDAR .cal-month-side-title {
+  margin-left: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 15px;
+  color: #1c1a19;
+}
+
+.ADMIN-CALENDAR .cal-month-side-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.ADMIN-CALENDAR .cal-month-side-date {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 14px;
+  color: #1c1a19;
+}
+
+.ADMIN-CALENDAR .cal-month-side-count {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 13px;
+  color: #8a847c;
+}
+
+.ADMIN-CALENDAR .cal-month-empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 18%;
+  text-align: center;
+}
+
+.ADMIN-CALENDAR .cal-month-empty-title {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
+  color: #1c1a19;
+}
+
+.ADMIN-CALENDAR .cal-month-empty-desc {
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 19px;
+  color: #9a948c;
+}
+
+.ADMIN-CALENDAR .cal-month-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  margin: 18px 0 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.ADMIN-CALENDAR .cal-month-item {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+}
+
+.ADMIN-CALENDAR .cal-month-item-time {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 13px;
+  color: #1c1a19;
+}
+
+.ADMIN-CALENDAR .cal-month-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 52px;
+  padding: 8px 8px 8px 14px;
+  overflow: hidden;
+  border: 1px solid #e3ddd3;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.ADMIN-CALENDAR .cal-month-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background: currentColor;
+}
+
+.ADMIN-CALENDAR .cal-month-card.tone-cut { color: var(--cal-tone-cut-fg); }
+.ADMIN-CALENDAR .cal-month-card.tone-clinic { color: var(--cal-tone-clinic-fg); }
+.ADMIN-CALENDAR .cal-month-card.tone-consult { color: var(--cal-tone-consult-fg); }
+.ADMIN-CALENDAR .cal-month-card.tone-perm { color: var(--cal-tone-perm-fg); }
+.ADMIN-CALENDAR .cal-month-card.tone-color { color: var(--cal-tone-color-fg); }
+
+.ADMIN-CALENDAR .cal-month-card:hover {
+  background: #faf8f5;
+}
+
+.ADMIN-CALENDAR .cal-month-card-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.ADMIN-CALENDAR .cal-month-card-top {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.ADMIN-CALENDAR .cal-month-card-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 14px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: #1c1a19;
+}
+
+.ADMIN-CALENDAR .cal-month-card-new {
+  flex-shrink: 0;
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 11px;
+  color: inherit;
+}
+
+.ADMIN-CALENDAR .cal-month-card-sub {
+  max-width: 100%;
+  margin-top: 6px;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: #8a847c;
+}
+
+.ADMIN-CALENDAR .cal-month-chevron {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  margin-left: 6px;
+  color: #c9c3bb;
 }

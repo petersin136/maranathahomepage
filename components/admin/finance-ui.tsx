@@ -17,10 +17,8 @@ export const INPUT =
 
 const FINANCE_TABS = [
   { href: "/admin/sales", label: "매출" },
-  { href: "/admin/settlements", label: "정산" },
-  { href: "/admin/expenses", label: "비용" },
-  { href: "/admin/tax", label: "세무" },
-  { href: "/admin/export", label: "내보내기" }
+  { href: "/admin/expenses", label: "지출" },
+  { href: "/admin/settlements", label: "정산" }
 ] as const;
 
 export function won(value: number | null | undefined) {
@@ -31,6 +29,37 @@ export function pct(value: number | null | undefined, digits = 1) {
   if (value == null || Number.isNaN(value)) return "—";
   const sign = value > 0 ? "+" : "";
   return `${sign}${value.toFixed(digits)}%`;
+}
+
+export function FinanceSearch() {
+  const [q, setQ] = useState("");
+  return (
+    <div className="flex items-center gap-[8px]">
+      <label className="flex h-[36px] w-[308px] items-center gap-[8px] rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-[12px]">
+        <Icon src="/admin-icons/lnb/search-bold.png" className="h-[16px] w-[16px]" />
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="고객명, 연락처 검색"
+          className={`min-w-0 flex-1 bg-transparent text-[15px] font-bold leading-none text-[#1C1C1C] outline-none placeholder:text-[#9A948C] ${TRIM_KR}`}
+        />
+      </label>
+      <button
+        type="button"
+        aria-label="알림"
+        className="flex h-[36px] w-[36px] items-center justify-center rounded-[8px] border-[1.5px] border-[#9A948C] bg-white text-[#1C1C1C]"
+      >
+        <svg viewBox="0 0 16 16" className="h-[16px] w-[16px]" fill="none" aria-hidden="true">
+          <path
+            d="M8 1.7a3.1 3.1 0 0 1 3.1 3.1v1.5c0 .55.18 1.08.52 1.52l.58.68H3.8l.58-.68c.34-.44.52-.97.52-1.52V4.8A3.1 3.1 0 0 1 8 1.7Z"
+            stroke="currentColor"
+            strokeWidth="1.3"
+          />
+          <path d="M6.55 12.15a1.45 1.45 0 0 0 2.9 0" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+        </svg>
+      </button>
+    </div>
+  );
 }
 
 export function Icon({ src, className }: { src: string; className?: string }) {
@@ -82,13 +111,15 @@ export function FinanceHeader({
   const pathname = usePathname();
   return (
     <div className={embedded ? undefined : "sticky top-0 z-20 bg-white pt-10"}>
-      <div className="flex items-center justify-between gap-6 pt-6">
-        <h1 className="flex items-baseline gap-2 text-[30px] font-bold leading-none tracking-[-0.02em]">
-          매출·정산
-          {subtitle ? <span className="text-[15px] font-normal tracking-normal text-[#8A847C]">{subtitle}</span> : null}
+      <div className="flex items-center justify-between gap-6">
+        <h1 className={`text-[24px] font-bold leading-none tracking-[-0.02em] text-[#1C1C1C] ${TRIM_KR}`}>
+          매출/정산
         </h1>
-        {right}
+        {right ?? <FinanceSearch />}
       </div>
+      {subtitle ? (
+        <p className={`mt-[14px] text-[16px] font-medium leading-none text-[#8A847C] ${TRIM_KR}`}>{subtitle}</p>
+      ) : null}
       <nav className="mt-[66px] flex border-b border-[#E6E1DA]">
         {FINANCE_TABS.map((t) => {
           const on = pathname === t.href || pathname.startsWith(`${t.href}/`);
@@ -97,11 +128,11 @@ export function FinanceHeader({
               key={t.href}
               href={t.href}
               className={clsx(
-                "-mb-px flex items-end border-b-2 px-[18px] pb-[14px] text-[16px] leading-none",
-                on ? "border-[#1C1C1C] text-[#1C1C1C]" : "border-transparent text-[#8A847C] hover:text-[#1C1C1C]"
+                "-mb-px flex items-end border-b-2 px-[18px] pb-[12px] text-[15px] leading-none",
+                on ? "border-[#1C1C1C] text-[#1C1C1C]" : "border-transparent text-[#B7B2AA]"
               )}
             >
-              <span className={clsx(TRIM_KR, on ? "font-bold" : "font-normal")}>{t.label}</span>
+              <span className={clsx(TRIM_KR, on ? "font-bold" : "font-medium")}>{t.label}</span>
             </Link>
           );
         })}
@@ -111,9 +142,17 @@ export function FinanceHeader({
 }
 
 /** 탭 아래 필터·액션 줄 */
-export function Toolbar({ left, right }: { left?: React.ReactNode; right?: React.ReactNode }) {
+export function Toolbar({
+  left,
+  right,
+  className
+}: {
+  left?: React.ReactNode;
+  right?: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <div className="mt-[34px] flex items-center gap-[6px]">
+    <div className={clsx("flex items-center gap-[6px]", className ?? "mt-[34px]")}>
       {left}
       {right ? <div className="ml-auto flex items-center gap-2">{right}</div> : null}
     </div>
@@ -235,17 +274,21 @@ export function shiftMonth(year: number, month: number, delta: number) {
 export function MonthPicker({
   year,
   month,
-  onChange
+  onChange,
+  label,
+  width = 202
 }: {
   year: number;
   month: number;
   onChange: (year: number, month: number) => void;
+  label?: string;
+  width?: number;
 }) {
   const [viewYear, setViewYear] = useState(year);
   useEffect(() => setViewYear(year), [year]);
 
   return (
-    <ChipDropdown label={`${year}년 ${month}월`}>
+    <ChipDropdown label={label ?? `${year}년 ${month}월`} width={width}>
       {(close) => (
         <div className="w-[248px] px-4 py-2">
           <div className="flex items-center justify-between">

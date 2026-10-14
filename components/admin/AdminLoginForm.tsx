@@ -64,7 +64,7 @@ export default function AdminLoginForm() {
       const data = await res.json();
       if (!res.ok || !data.ok) {
         setLoginError(true);
-        setErrorMessage("이메일 또는 비밀번호를 확인해주세요.");
+        setErrorMessage(data.error || "이메일 또는 비밀번호를 확인해주세요.");
         return;
       }
       try {

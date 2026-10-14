@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { clsx } from "clsx";
 import type { CalendarTone } from "@/lib/admin/calendar-tone";
@@ -13,6 +13,7 @@ import {
   parseTimeToMinutes,
   type OccupiedInterval
 } from "@/lib/booking/overlap";
+import { isKoreanHoliday } from "@/lib/admin/kr-holidays";
 import { todayKst } from "@/lib/admin/sales-data";
 import { AdminDatePicker } from "@/components/admin/AdminDatePicker";
 import BookingCreateModal from "@/components/admin/BookingCreateModal";
@@ -34,6 +35,7 @@ export type CalDayBooking = {
   booking_date: string;
   booking_time: string;
   artist_id: string;
+  artist_name?: string | null;
   customer_name: string;
   customer_phone?: string | null;
   status: string;
@@ -85,6 +87,8 @@ function ChevronDown({ className }: { className?: string }) {
   );
 }
 
+const WEEKDAY_KR = ["일", "월", "화", "수", "목", "금", "토"] as const;
+
 function formatChipDate(ymd: string) {
   const [y, m, d] = ymd.split("-").map(Number);
   const dow = new Date(y, m - 1, d).getDay();
@@ -100,6 +104,17 @@ export function weekDays(ymd: string) {
   const base = new Date(y, m - 1, d);
   const monday = d - ((base.getDay() + 6) % 7);
   return Array.from({ length: 7 }, (_, i) => ymdOf(new Date(y, m - 1, monday + i)));
+}
+
+function formatMonthChip(ymd: string) {
+  const [y, m] = ymd.split("-");
+  return `${y}.${m}`;
+}
+
+function formatMonthStatus(ymd: string) {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const dow = new Date(y, m - 1, d).getDay();
+  return `${y}. ${String(m).padStart(2, "0")}. ${String(d).padStart(2, "0")} (${WEEKDAY_KR[dow]})`;
 }
 
 function formatWeekRange(ymd: string) {
@@ -237,7 +252,6 @@ type ViewProps = {
   onPickSearch: (hit: SearchHit) => void;
   onRefresh: () => void;
   onOpenBooking: (id: string) => void;
-  legacy?: ReactNode;
 };
 
 export function CalendarDesktopView({
@@ -258,8 +272,7 @@ export function CalendarDesktopView({
   onQuery,
   onPickSearch,
   onRefresh,
-  onOpenBooking,
-  legacy
+  onOpenBooking
 }: ViewProps) {
   const [staffOpen, setStaffOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -369,17 +382,13 @@ export function CalendarDesktopView({
         ))}
       </div>
 
-      {tab === "month" ? (
-        <div className="cal-legacy">{legacy}</div>
-      ) : (
-        <>
           <div className="cal-toolbar">
             <AdminDatePicker
               value={date}
               onChange={onDate}
-              display={isWeek ? formatWeekRange(date) : formatChipDate(date)}
+              display={tab === "month" ? formatMonthChip(date) : isWeek ? formatWeekRange(date) : formatChipDate(date)}
               ariaLabel="날짜"
-              className="cal-chip cal-date-chip"
+              className={clsx("cal-chip cal-date-chip", tab === "month" && "is-month")}
               textClassName="cal-date-text"
               leading={
                 <svg viewBox="0 0 16 16" className="cal-date-icon" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round">
@@ -489,7 +498,9 @@ export function CalendarDesktopView({
               <p className="cal-empty-desc">
                 운영 시간(오픈·마감)과 함께 근무할 디자이너를 등록하시면
                 <br />
-                캘린더 타임테이블이 자동으로 활성화됩니다.
+                {tab === "month"
+                  ? "캘린더 스케줄이 자동으로 활성화됩니다."
+                  : "캘린더 타임테이블이 자동으로 활성화됩니다."}
               </p>
               <Link href="/admin/artists" className="cal-empty-btn">
                 <span className="cal-empty-btn-label">매장 설정 바로가기</span>
@@ -508,8 +519,19 @@ export function CalendarDesktopView({
                 onCreateAt={(day, time) => setCreateSlot({ date: day, time, artistId: weekArtist.id })}
               />
             ) : null
+          ) : tab === "month" ? (
+            <MonthBoard
+              date={date}
+              onDate={onDate}
+              artists={artists}
+              selectedIds={selectedIds}
+              bookings={bookings}
+              today={today}
+              query={query}
+              onOpenBooking={onOpenBooking}
+            />
           ) : (
-            <div className="cal-day-layout">
+            <div className={clsx("cal-day-layout", columns.length === 3 && "is-three")}>
               <DayGrid
                 columns={columns}
                 bookings={dayBookings}
@@ -518,11 +540,11 @@ export function CalendarDesktopView({
                 onOpenBooking={onOpenBooking}
                 onCreateAt={(time, artistId) => setCreateSlot({ time, artistId })}
               />
-              <Briefing columns={columns} bookings={dayBookings} onOpenBooking={onOpenBooking} />
+              {columns.length === 3 ? null : (
+                <Briefing columns={columns} bookings={dayBookings} onOpenBooking={onOpenBooking} />
+              )}
             </div>
           )}
-        </>
-      )}
       {createSlot ? (
         <BookingCreateModal
           artists={artists.map((a) => ({ id: a.id, label: [a.name_kr, a.role].filter(Boolean).join(" ") }))}
@@ -943,8 +965,6 @@ function Briefing({
   const care = active
     .filter((b) => b.memo.trim())
     .sort((x, y) => x.booking_time.localeCompare(y.booking_time));
-  const artistOf = (id: string) => columns.find((a) => a.id === id);
-
   return (
     <aside className="cal-brief">
       <div className="cal-brief-head">
@@ -987,26 +1007,27 @@ function Briefing({
           </div>
         ) : (
           <ul className="cal-care-list">
-            {care.map((b) => {
-              const artist = artistOf(b.artist_id);
+            {care.map((b, index) => {
+              const time = b.booking_time.slice(0, 5);
+              const showTime = index === 0 || care[index - 1].booking_time.slice(0, 5) !== time;
               return (
-                <li key={b.id}>
+                <li key={b.id} className="cal-care-row">
+                  <span className="cal-care-time">{showTime ? time : ""}</span>
                   <button
                     type="button"
                     onClick={() => onOpenBooking(b.id)}
                     className={clsx("cal-care-card", TONE_CLASS[b.tone])}
                   >
-                    <span className="cal-care-avatar">
-                      <span className="cal-care-avatar-label">{artist ? shortName(artist.name_kr) : ""}</span>
-                    </span>
                     <span className="cal-care-text">
                       <span className="cal-care-top">
-                        <span className="cal-care-time">{b.booking_time.slice(0, 5)}</span>
                         <span className="cal-care-name">{b.customer_name}</span>
                         {b.is_new ? <span className="cal-care-new">NEW</span> : null}
                       </span>
                       <span className="cal-care-memo">{b.memo}</span>
                     </span>
+                    <svg viewBox="0 0 16 16" className="cal-care-chevron" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+                      <path d="M6 3.5 10.5 8 6 12.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
                   </button>
                 </li>
               );
@@ -1015,6 +1036,178 @@ function Briefing({
         )}
       </div>
     </aside>
+  );
+}
+
+const MONTH_CHIP_LIMIT = 3;
+const MONTH_HEADS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"] as const;
+
+function monthCells(ymd: string) {
+  const [y, m] = ymd.split("-").map(Number);
+  const lead = (new Date(y, m - 1, 1).getDay() + 6) % 7;
+  const days = new Date(y, m, 0).getDate();
+  const cells: { date: string | null; day: number | null }[] = [];
+  for (let i = 0; i < lead; i++) cells.push({ date: null, day: null });
+  for (let d = 1; d <= days; d++) {
+    cells.push({
+      date: `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`,
+      day: d
+    });
+  }
+  while (cells.length % 7 !== 0) cells.push({ date: null, day: null });
+  return cells;
+}
+
+function artistLine(artists: CalArtist[], booking: CalDayBooking) {
+  const artist = artists.find((a) => a.id === booking.artist_id);
+  const who = artist ? [artist.name_kr, artist.role].filter(Boolean).join(" ") : booking.artist_name || "";
+  return [(booking.service_names || []).join(" / "), who].filter(Boolean).join(" · ");
+}
+
+function MonthBoard({
+  date,
+  onDate,
+  artists,
+  selectedIds,
+  bookings,
+  today,
+  query,
+  onOpenBooking
+}: {
+  date: string;
+  onDate: (date: string) => void;
+  artists: CalArtist[];
+  selectedIds: string[];
+  bookings: CalDayBooking[];
+  today: string;
+  query: string;
+  onOpenBooking: (id: string) => void;
+}) {
+  const cells = useMemo(() => monthCells(date), [date]);
+  const rows = Math.max(1, cells.length / 7);
+  const q = query.trim().toLowerCase();
+  const qDigits = q.replace(/\D/g, "");
+  const selected = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const visibleArtists = artists.filter((a) => selected.has(a.id));
+
+  const byDate = useMemo(() => {
+    const map = new Map<string, CalDayBooking[]>();
+    for (const booking of bookings) {
+      if (!isBlocking(booking.status)) continue;
+      if (!selected.has(booking.artist_id)) continue;
+      const artist = artists.find((a) => a.id === booking.artist_id);
+      if (!matchesQuery(booking, artist, q, qDigits)) continue;
+      const list = map.get(booking.booking_date) ?? [];
+      list.push(booking);
+      map.set(booking.booking_date, list);
+    }
+    for (const list of map.values()) list.sort((a, b) => a.booking_time.localeCompare(b.booking_time));
+    return map;
+  }, [artists, bookings, q, qDigits, selected]);
+
+  const dayList = byDate.get(date) ?? [];
+  const closedDow = (dow: number) =>
+    visibleArtists.length > 0 && visibleArtists.every((a) => a.day_off != null && Number(a.day_off) === dow);
+
+  return (
+    <div className="cal-month">
+      <div className="cal-month-grid" style={{ ["--cal-month-rows" as string]: rows }}>
+        {MONTH_HEADS.map((label) => (
+          <div key={label} className="cal-month-wd">
+            <span className="cal-month-wd-label">{label}</span>
+          </div>
+        ))}
+        {cells.map((cell, i) => {
+          const list = cell.date ? (byDate.get(cell.date) ?? []) : [];
+          const shown = list.slice(0, MONTH_CHIP_LIMIT);
+          const hidden = list.length - shown.length;
+          const dow = cell.date ? new Date(`${cell.date}T00:00:00`).getDay() : -1;
+          const holiday = cell.date ? isKoreanHoliday(cell.date) : false;
+          const closed = cell.date ? closedDow(dow) && list.length === 0 : false;
+          return (
+            <div
+              key={cell.date ?? `pad-${i}`}
+              className={clsx(
+                "cal-month-cell",
+                cell.date && "is-day",
+                cell.date === date && "is-selected",
+                closed && "is-closed"
+              )}
+              onClick={() => cell.date && onDate(cell.date)}
+            >
+              {cell.day != null ? (
+                <span className={clsx("cal-month-num", holiday && "is-holiday")}>
+                  {cell.day}
+                  {cell.date === today ? <span className="cal-month-dot" /> : null}
+                </span>
+              ) : null}
+              {shown.length > 0 ? (
+                <span className="cal-month-chips">
+                  {shown.map((booking) => (
+                    <button
+                      key={booking.id}
+                      type="button"
+                      className={clsx("cal-month-chip", TONE_CLASS[booking.tone])}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (cell.date) onDate(cell.date);
+                        onOpenBooking(booking.id);
+                      }}
+                    >
+                      <span className="cal-month-chip-time">{booking.booking_time.slice(0, 5)}</span>
+                      <span className="cal-month-chip-name">{booking.customer_name}</span>
+                    </button>
+                  ))}
+                  {hidden > 0 ? <span className="cal-month-more">+ {hidden}건</span> : null}
+                </span>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+      <aside className="cal-month-side">
+        <div className="cal-month-side-head">
+          <svg viewBox="0 0 16 16" className="cal-month-info" fill="none" aria-hidden>
+            <circle cx="8" cy="8" r="6.25" stroke="currentColor" strokeWidth="1.2" />
+            <path d="M8 7.15v3.7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            <circle cx="8" cy="5.05" r="0.7" fill="currentColor" />
+          </svg>
+          <span className="cal-month-side-title">예약 현황</span>
+        </div>
+        <div className="cal-month-side-meta">
+          <span className="cal-month-side-date">{formatMonthStatus(date)}</span>
+          <span className="cal-month-side-count">총 {dayList.length}건</span>
+        </div>
+        {dayList.length === 0 ? (
+          <div className="cal-month-empty">
+            <p className="cal-month-empty-title">등록된 예약이 없습니다.</p>
+            <p className="cal-month-empty-desc">새 예약을 등록해 스케줄을 시작해 보세요.</p>
+          </div>
+        ) : (
+          <ul className="cal-month-list">
+            {dayList.map((booking) => (
+              <li key={booking.id}>
+                <button type="button" className="cal-month-item" onClick={() => onOpenBooking(booking.id)}>
+                  <span className="cal-month-item-time">{booking.booking_time.slice(0, 5)}</span>
+                  <span className={clsx("cal-month-card", TONE_CLASS[booking.tone])}>
+                    <span className="cal-month-card-text">
+                      <span className="cal-month-card-top">
+                        <span className="cal-month-card-name">{booking.customer_name}</span>
+                        {booking.is_new ? <span className="cal-month-card-new">NEW</span> : null}
+                      </span>
+                      <span className="cal-month-card-sub">{artistLine(artists, booking)}</span>
+                    </span>
+                    <svg viewBox="0 0 16 16" className="cal-month-chevron" fill="none" aria-hidden>
+                      <path d="M6 3.5 10.5 8 6 12.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </aside>
+    </div>
   );
 }
 
@@ -1028,13 +1221,11 @@ function currentMinutes() {
 }
 
 export default function AdminCalendarDesktop({
-  legacy,
   tab,
   onTab,
   onOpenBooking,
   reloadKey
 }: {
-  legacy: ReactNode;
   tab: CalTab;
   onTab: (tab: CalTab) => void;
   onOpenBooking: (id: string) => void;
@@ -1077,8 +1268,12 @@ export default function AdminCalendarDesktop({
   }, [tick, reloadKey]);
 
   const days = weekDays(date);
-  const from = tab === "week" ? days[0] : date;
-  const to = tab === "week" ? days[6] : date;
+  const [year, month] = date.split("-").map(Number);
+  const monthLast = new Date(year, month, 0).getDate();
+  const monthFrom = `${year}-${String(month).padStart(2, "0")}-01`;
+  const monthTo = `${year}-${String(month).padStart(2, "0")}-${String(monthLast).padStart(2, "0")}`;
+  const from = tab === "week" ? days[0] : tab === "month" ? monthFrom : date;
+  const to = tab === "week" ? days[6] : tab === "month" ? monthTo : date;
 
   useEffect(() => {
     let cancelled = false;
@@ -1132,7 +1327,6 @@ export default function AdminCalendarDesktop({
       }}
       onRefresh={() => setTick((n) => n + 1)}
       onOpenBooking={onOpenBooking}
-      legacy={legacy}
     />
   );
 }

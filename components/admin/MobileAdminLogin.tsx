@@ -90,13 +90,13 @@ export default function MobileAdminLogin({
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        setLoginError("이메일 또는 비밀번호를 확인해주세요.");
+        setLoginError(data.error || "이메일 또는 비밀번호를 확인해주세요.");
         return;
       }
       router.replace(next);
       router.refresh();
     } catch {
-      setLoginError("이메일 또는 비밀번호를 확인해주세요.");
+      setLoginError("네트워크 오류가 발생했습니다.");
     } finally {
       setLoading(false);
     }

@@ -1,15 +1,15 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { clsx } from "clsx";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
-  ChipDropdown,
+  CheckBox,
   Empty,
   FinanceHeader,
-  INPUT,
-  PanelOption,
-  PrimaryButton,
+  Icon,
+  MonthPicker,
   RefreshButton,
   Section,
   ShareBar,
@@ -18,26 +18,27 @@ import {
   TABLE_ROW,
   TD,
   TH,
+  TRIM_KR,
   Toolbar,
   pct,
   won
 } from "@/components/admin/finance-ui";
-import { AdminDatePicker } from "@/components/admin/AdminDatePicker";
 import type { SalesDashboard, SalesPreset } from "@/lib/admin/sales-data";
 
-const PRESETS: { key: SalesPreset; label: string }[] = [
-  { key: "today", label: "오늘" },
-  { key: "this_week", label: "이번 주" },
-  { key: "this_month", label: "이번 달" },
-  { key: "last_month", label: "지난 달" }
-];
+type Staff = { id: string; name_kr: string | null; role: string | null };
+
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+function monthBounds(year: number, month: number) {
+  const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const mm = pad2(month);
+  return { from: `${year}-${mm}-01`, to: `${year}-${mm}-${pad2(last)}` };
+}
 
 function shortChartDate(ymd: string) {
   return ymd.length >= 10 ? `${ymd.slice(5, 7)}/${ymd.slice(8, 10)}` : ymd;
-}
-
-function dotted(ymd: string) {
-  return ymd ? ymd.slice(2).replaceAll("-", ". ") : "";
 }
 
 export default function AdminSalesPage({
@@ -50,11 +51,14 @@ export default function AdminSalesPage({
   const [preset, setPreset] = useState<SalesPreset>(initial?.period.preset ?? "this_month");
   const [from, setFrom] = useState(initial?.period.from ?? "");
   const [to, setTo] = useState(initial?.period.to ?? "");
-  const [customFrom, setCustomFrom] = useState(initial?.period.from ?? "");
-  const [customTo, setCustomTo] = useState(initial?.period.to ?? "");
   const [data, setData] = useState<SalesDashboard | null>(initial);
   const [error, setError] = useState<string | null>(initialError);
   const [refreshing, setRefreshing] = useState(false);
+  const [year, setYear] = useState(() => Number((initial?.period.from ?? "2026-10-01").slice(0, 4)));
+  const [month, setMonth] = useState(() => Number((initial?.period.from ?? "2026-10-01").slice(5, 7)));
+  const [staff, setStaff] = useState<Staff[] | null>(null);
+  const [artistFilter, setArtistFilter] = useState<string[]>([]);
+  const [excelBusy, setExcelBusy] = useState(false);
 
   const load = useCallback(async (nextPreset: SalesPreset, nextFrom?: string, nextTo?: string) => {
     setRefreshing(true);
@@ -72,8 +76,6 @@ export default function AdminSalesPage({
       setPreset(nextPreset);
       setFrom(json.period.from);
       setTo(json.period.to);
-      setCustomFrom(json.period.from);
-      setCustomTo(json.period.to);
     } catch (e) {
       setError(e instanceof Error ? e.message : "로드 실패");
     } finally {
@@ -81,78 +83,173 @@ export default function AdminSalesPage({
     }
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/admin/artists")
+      .then((res) => res.json())
+      .then((json) => {
+        if (cancelled) return;
+        setStaff(json.ok ? (json.artists as Staff[]) : []);
+      })
+      .catch(() => {
+        if (!cancelled) setStaff([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const [staffOpen, setStaffOpen] = useState(false);
   const showIncentive = useMemo(() => (data?.artists ?? []).some((a) => a.incentive != null), [data]);
   const emptyCompleted = data != null && data.summary.completedCount === 0;
-  const presetLabel = PRESETS.find((p) => p.key === preset)?.label ?? "직접 선택";
+  const setupEmpty = staff != null && staff.length === 0;
   const s = data?.summary;
   const a = data?.attrition;
+  const visibleArtists = useMemo(() => {
+    const rows = data?.artists ?? [];
+    if (artistFilter.length === 0) return rows;
+    return rows.filter((r) => r.artistId != null && artistFilter.includes(r.artistId));
+  }, [data, artistFilter]);
+
+  const downloadExcel = async () => {
+    if (excelBusy) return;
+    setExcelBusy(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams({ year: String(year), month: String(month) });
+      const res = await fetch(`/api/admin/export?${params.toString()}`);
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error || "다운로드에 실패했습니다.");
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") || "";
+      const utfMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+      const filename = utfMatch ? decodeURIComponent(utfMatch[1]) : `헤어업_${year}년${pad2(month)}월_마감자료.xlsx`;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "다운로드에 실패했습니다.");
+    } finally {
+      setExcelBusy(false);
+    }
+  };
 
   return (
     <div className="pb-16 font-sans-kr text-[#1C1C1C]">
-      <div className="sticky top-0 z-20 bg-white pt-10">
-      <FinanceHeader embedded subtitle={from && to ? `${dotted(from)} ~ ${dotted(to)}` : undefined} />
+      <div className="sticky top-0 z-20 bg-white pt-[63px]">
+      <FinanceHeader embedded />
 
       <Toolbar
+        className="mt-[38px]"
         left={
           <>
-            <ChipDropdown label={presetLabel}>
-              {(close) => (
-                <>
-                  {PRESETS.map((p) => (
-                    <PanelOption
-                      key={p.key}
-                      label={p.label}
-                      selected={preset === p.key}
-                      onClick={() => {
-                        close();
-                        void load(p.key);
-                      }}
-                    />
-                  ))}
-                  <form
-                    className="mt-1 border-t border-[#F3EFEA] px-5 pb-2 pt-3"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      if (!customFrom || !customTo) return;
-                      close();
-                      void load("custom", customFrom, customTo);
-                    }}
-                  >
-                    <p className="text-[13px] font-bold text-[#9A948C]">직접 선택</p>
-                    <div className="mt-2 flex items-center gap-2">
-                      <AdminDatePicker
-                        value={customFrom}
-                        onChange={setCustomFrom}
-                        ariaLabel="시작일"
-                        className={clsx(INPUT, "w-[168px]")}
-                      />
-                      <span className="text-[#9A948C]">~</span>
-                      <AdminDatePicker
-                        value={customTo}
-                        onChange={setCustomTo}
-                        ariaLabel="종료일"
-                        className={clsx(INPUT, "w-[168px]")}
-                      />
-                    </div>
-                    <PrimaryButton type="submit" className="mt-3 w-full">
-                      조회
-                    </PrimaryButton>
-                  </form>
-                </>
-              )}
-            </ChipDropdown>
-            <RefreshButton
-              spinning={refreshing}
-              onClick={() => void load(preset, customFrom, customTo)}
+            <MonthPicker
+              year={year}
+              month={month}
+              width={179}
+              label={`${year}.${pad2(month)}`}
+              onChange={(y, m) => {
+                setYear(y);
+                setMonth(m);
+                const range = monthBounds(y, m);
+                void load("custom", range.from, range.to);
+              }}
             />
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setStaffOpen((v) => !v)}
+                className="flex h-[34px] w-[186px] items-center rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white pl-3 pr-3 text-[13px] font-semibold leading-none text-[#1C1C1C]"
+              >
+                <Icon src="/admin-icons/lnb/filter.png" className="h-[15px] w-[15px] text-[#9A948C]" />
+                <span className={clsx(TRIM_KR, "ml-2")}>담당자</span>
+                <span className="ml-2 inline-flex h-[28px] w-[29px] items-center justify-center bg-[#F3EFEA] text-[12px] font-semibold text-[#9A948C]">
+                  <span className={TRIM_KR}>{artistFilter.length}</span>
+                </span>
+                <span className={clsx(TRIM_KR, "ml-2")}>선택</span>
+                <Icon
+                  src={
+                    staffOpen || artistFilter.length > 0
+                      ? "/admin-icons/lnb/chevron-down-bold.png"
+                      : "/admin-icons/lnb/chevron-down.png"
+                  }
+                  className={clsx("ml-auto h-[16px] w-[16px] text-[#9A948C]", staffOpen && "rotate-180")}
+                />
+              </button>
+              {staffOpen ? (
+                <div className="absolute left-0 top-[40px] z-30 min-w-full rounded-[12px] border border-[#EFEBE6] bg-white py-2 shadow-[0_8px_24px_rgba(28,28,28,0.08)]">
+                  {staff == null || staff.length === 0 ? (
+                    <p className="px-5 py-2 text-[14px] text-[#8A847C]">담당자 없음</p>
+                  ) : (
+                    staff.map((person) => {
+                      const checked = artistFilter.includes(person.id);
+                      return (
+                        <div key={person.id} className="px-5 py-2 hover:bg-[#F6F4F0]">
+                          <CheckBox
+                            checked={checked}
+                            label={[person.name_kr, person.role].filter(Boolean).join(" ")}
+                            onChange={(next) =>
+                              setArtistFilter((cur) =>
+                                next ? [...cur, person.id] : cur.filter((id) => id !== person.id)
+                              )
+                            }
+                          />
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              ) : null}
+            </div>
+            <RefreshButton spinning={refreshing} onClick={() => void load(preset, from, to)} />
           </>
+        }
+        right={
+          <button
+            type="button"
+            disabled={excelBusy}
+            onClick={() => void downloadExcel()}
+            className="inline-flex h-[34px] items-center gap-[6px] rounded-[8px] border-[1.5px] border-[#C9C3BB] bg-white px-[12px] text-[13px] font-semibold leading-none text-[#1C1C1C] hover:bg-[#F6F4F0] disabled:opacity-40"
+          >
+            <svg viewBox="0 0 16 16" className="h-[14px] w-[14px]" fill="none" aria-hidden="true">
+              <path d="M8 2.2v7.2M5.2 6.8 8 9.6l2.8-2.8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M3.2 11.2v1.4c0 .6.5 1 1.1 1h7.4c.6 0 1.1-.4 1.1-1v-1.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+            </svg>
+            <span className={TRIM_KR}>엑셀 다운로드</span>
+          </button>
         }
       />
 
       {error ? <p className="mt-4 text-[13px] text-[#E24B4B]">{error}</p> : null}
-      {refreshing && !data ? <p className="mt-6 text-[13px] text-[#8A847C]">불러오는 중…</p> : null}
+      </div>
 
-      {data && s && a ? (
+      {setupEmpty ? (
+        <div className="flex flex-col items-center" style={{ marginTop: 188 }}>
+          <p className={`text-center text-[16px] font-bold leading-[16px] text-[#1C1A19] ${TRIM_KR}`}>
+            매장 기본 설정을 먼저 완료해 주세요.
+          </p>
+          <p className={`mt-[13px] text-center text-[14px] font-normal leading-[21px] text-[#807B77] ${TRIM_KR}`}>
+            매장 정보와 디자이너가 등록되어야 매출 데이터를 집계할 수 있습니다.
+          </p>
+          <Link
+            href="/admin/settings"
+            className="mt-[35px] flex h-[45px] w-[186px] items-center justify-center rounded-[4px] bg-[#2C3A2E] text-white"
+          >
+            <span className={`text-[15px] font-bold leading-[15px] ${TRIM_KR}`}>매장 설정 바로가기</span>
+          </Link>
+        </div>
+      ) : null}
+
+      {!setupEmpty && refreshing && !data ? <p className="mt-6 text-[13px] text-[#8A847C]">불러오는 중…</p> : null}
+
+      {!setupEmpty && data && s && a ? (
           <StatStrip
             items={[
               { label: "총 매출", value: won(s.totalRevenue), hint: `직전 기간 대비 ${pct(s.revenueChangeRate)}` },
@@ -181,9 +278,8 @@ export default function AdminSalesPage({
             ]}
           />
       ) : null}
-      </div>
 
-      {data && s && a ? (
+      {!setupEmpty && data && s && a ? (
         <>
           <Section title="일별 매출" meta={emptyCompleted ? undefined : `${data.daily.length}일`}>
             {emptyCompleted ? (
@@ -221,7 +317,7 @@ export default function AdminSalesPage({
           </Section>
 
           <div className="grid grid-cols-[3fr_2fr] gap-12">
-            <Section title="디자이너별 매출" meta={`${data.artists.length}명`}>
+            <Section title="디자이너별 매출" meta={`${visibleArtists.length}명`}>
               <table className="mt-4 w-full table-fixed text-left text-[16px] font-medium leading-[20px]">
                 <thead>
                   <tr className={TABLE_HEAD_ROW}>
@@ -234,7 +330,7 @@ export default function AdminSalesPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {data.artists.map((r) => (
+                  {visibleArtists.map((r) => (
                     <tr key={`${r.artistId ?? r.artistName}`} className={TABLE_ROW}>
                       <td className={clsx(TD, "truncate pl-1")}>{r.artistName}</td>
                       <td className={clsx(TD, "text-right tabular-nums")}>{won(r.revenue)}</td>
@@ -257,7 +353,7 @@ export default function AdminSalesPage({
                   ))}
                 </tbody>
               </table>
-              {data.artists.length === 0 ? <Empty>해당 기간에 완료된 예약이 없습니다.</Empty> : null}
+              {visibleArtists.length === 0 ? <Empty>해당 기간에 완료된 예약이 없습니다.</Empty> : null}
             </Section>
 
             <div>
