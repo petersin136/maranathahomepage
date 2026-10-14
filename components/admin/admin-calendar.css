@@ -96,7 +96,6 @@ html:has(.ADMIN-CALENDAR) main {
 .ADMIN-CALENDAR .cal-care-new,
 .ADMIN-CALENDAR .cal-month-num,
 .ADMIN-CALENDAR .cal-month-wd-label,
-.ADMIN-CALENDAR .cal-month-chip-time,
 .ADMIN-CALENDAR .cal-month-side-date,
 .ADMIN-CALENDAR .cal-month-item-time,
 .ADMIN-CALENDAR .cal-month-card-new {
@@ -311,8 +310,9 @@ html:has(.ADMIN-CALENDAR) main {
 .ADMIN-CALENDAR .cal-date-chip {
   width: 236px;
   flex-shrink: 0;
+  justify-content: center;
   padding-left: 14px;
-  padding-right: 11px;
+  padding-right: 14px;
 }
 
 .ADMIN-CALENDAR .cal-date-icon {
@@ -323,6 +323,7 @@ html:has(.ADMIN-CALENDAR) main {
 }
 
 .ADMIN-CALENDAR .cal-date-text {
+  flex: 0 1 auto;
   margin-left: 8px;
   font-size: 14px;
   font-weight: 500;
@@ -334,7 +335,7 @@ html:has(.ADMIN-CALENDAR) main {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
-  margin-left: auto;
+  margin-left: 8px;
   color: #939391;
 }
 
@@ -356,8 +357,9 @@ html:has(.ADMIN-CALENDAR) main {
 .ADMIN-CALENDAR .cal-staff-chip {
   width: 236px;
   flex-shrink: 0;
+  justify-content: center;
   padding-left: 16px;
-  padding-right: 13px;
+  padding-right: 16px;
 }
 
 .ADMIN-CALENDAR .cal-staff-chip.is-selected {
@@ -412,7 +414,7 @@ html:has(.ADMIN-CALENDAR) main {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
-  margin-left: auto;
+  margin-left: 8px;
   color: #939391;
 }
 
@@ -700,6 +702,21 @@ html:has(.ADMIN-CALENDAR) main {
   margin-left: 0;
   line-height: 17px;
   text-box-trim: none;
+}
+
+.ADMIN-CALENDAR .cal-artist-name.is-owner {
+  position: relative;
+}
+
+.ADMIN-CALENDAR .cal-owner-top {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 3px);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 15px;
+  white-space: nowrap;
+  color: #1c1a19;
 }
 
 .ADMIN-CALENDAR .cal-closed-badge {
@@ -1056,6 +1073,7 @@ html:has(.ADMIN-CALENDAR) main {
 }
 
 .ADMIN-CALENDAR .cal-staff-single-label {
+  flex: 0 1 auto;
   margin-left: 8px;
   min-width: 0;
   overflow: hidden;
@@ -1395,11 +1413,11 @@ html:has(.ADMIN-CALENDAR) main {
 }
 
 .ADMIN-CALENDAR .cal-month-wd-label {
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 11px;
-  letter-spacing: 0.08em;
-  color: #a39e97;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 14px;
+  letter-spacing: 0.06em;
+  color: #b0aca8;
 }
 
 .ADMIN-CALENDAR .cal-month-cell {
@@ -1422,7 +1440,8 @@ html:has(.ADMIN-CALENDAR) main {
 .ADMIN-CALENDAR .cal-month-cell.is-selected {
   position: relative;
   z-index: 1;
-  box-shadow: inset 0 0 0 1.5px #1c1a19;
+  outline: 2px solid #1c1a19;
+  outline-offset: -2px;
 }
 
 .ADMIN-CALENDAR .cal-month-num {
@@ -1463,9 +1482,9 @@ html:has(.ADMIN-CALENDAR) main {
   align-items: center;
   justify-content: flex-start;
   width: 100%;
-  height: 26px;
+  height: 28px;
   min-width: 0;
-  padding: 0 10px;
+  padding: 0 10px 0 14px;
   border-radius: 4px;
   color: #1c1a19;
   text-align: left;
@@ -1480,24 +1499,24 @@ html:has(.ADMIN-CALENDAR) main {
 .ADMIN-CALENDAR .cal-month-chip-time {
   flex-shrink: 0;
   margin-right: 6px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
-  line-height: 13px;
+  line-height: 28px;
 }
 
 .ADMIN-CALENDAR .cal-month-chip-name {
   min-width: 0;
   overflow: hidden;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
-  line-height: 13px;
+  line-height: 28px;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .ADMIN-CALENDAR .cal-month-more {
-  padding-left: 10px;
-  font-size: 12px;
+  padding-left: 14px;
+  font-size: 13px;
   font-weight: 500;
   line-height: 16px;
   color: #9a948c;
@@ -1538,7 +1557,7 @@ html:has(.ADMIN-CALENDAR) main {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 16px;
+  margin-top: 22px;
 }
 
 .ADMIN-CALENDAR .cal-month-side-date {
@@ -1605,9 +1624,9 @@ html:has(.ADMIN-CALENDAR) main {
 .ADMIN-CALENDAR .cal-month-item-time {
   padding-top: 4px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 14px;
-  color: #1c1a19;
+  color: #11100f;
 }
 
 .ADMIN-CALENDAR .cal-month-card {

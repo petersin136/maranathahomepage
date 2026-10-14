@@ -159,9 +159,7 @@ function ownerTitle(artist: CalArtist) {
   const role = artist.role?.trim() || "";
   const match = role.match(/^owner\s*&\s*(.+)$/i);
   if (!match) return null;
-  const raw = artist.name_en?.trim() || "";
-  const en = raw ? raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase() : "";
-  return { top: en ? `Owner ${en}` : "Owner", bottom: match[1].trim() };
+  return { name: artist.name_kr.trim(), top: "Owner", bottom: match[1].trim() };
 }
 
 function avatarInitial(name: string) {
@@ -657,13 +655,14 @@ function DayGrid({
                 <span className="cal-avatar-char">{avatarInitial(artist.name_kr)}</span>
               </span>
               {owner ? (
-                <span className="cal-artist-meta">
-                  <span className="cal-artist-name-row">
-                    <span className="cal-artist-name">{owner.top}</span>
-                    {badge}
+                <>
+                  <span className="cal-artist-name is-owner">
+                    <span className="cal-owner-top">{owner.top}</span>
+                    {owner.name}
                   </span>
                   <span className="cal-artist-role">{owner.bottom}</span>
-                </span>
+                  {badge}
+                </>
               ) : (
                 <>
                   <span className="cal-artist-name">{artist.name_kr}</span>
