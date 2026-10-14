@@ -309,7 +309,8 @@ html:has(.ADMIN-CALENDAR) main {
 }
 
 .ADMIN-CALENDAR .cal-date-chip {
-  width: 202px;
+  width: 236px;
+  flex-shrink: 0;
   padding-left: 14px;
   padding-right: 11px;
 }
@@ -324,7 +325,7 @@ html:has(.ADMIN-CALENDAR) main {
 .ADMIN-CALENDAR .cal-date-text {
   margin-left: 8px;
   font-size: 14px;
-  font-weight: 400;
+  font-weight: 500;
   line-height: 14px;
   color: #1c1a19;
 }
@@ -353,7 +354,8 @@ html:has(.ADMIN-CALENDAR) main {
 }
 
 .ADMIN-CALENDAR .cal-staff-chip {
-  width: 186px;
+  width: 236px;
+  flex-shrink: 0;
   padding-left: 16px;
   padding-right: 13px;
 }
@@ -482,7 +484,7 @@ html:has(.ADMIN-CALENDAR) main {
   border: var(--input-border-width) solid var(--input-border);
   border-radius: 4px;
   background: #fff;
-  color: #8c8c8a;
+  color: #1c1a19;
 }
 
 .ADMIN-CALENDAR .cal-refresh-icon {
@@ -943,14 +945,6 @@ html:has(.ADMIN-CALENDAR) main {
   background: var(--cal-now);
 }
 
-.ADMIN-CALENDAR .cal-date-chip.is-month {
-  width: 148px;
-}
-
-.ADMIN-CALENDAR .cal-date-chip.is-week {
-  width: 236px;
-  flex-shrink: 0;
-}
 
 .ADMIN-CALENDAR .cal-legacy {
   margin-top: 33px;
@@ -1058,9 +1052,7 @@ html:has(.ADMIN-CALENDAR) main {
 }
 
 .ADMIN-CALENDAR .cal-staff-chip.is-single {
-  width: auto;
-  max-width: 280px;
-  flex-shrink: 0;
+  width: 236px;
 }
 
 .ADMIN-CALENDAR .cal-staff-single-label {

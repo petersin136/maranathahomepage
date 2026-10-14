@@ -109,7 +109,7 @@ export function weekDays(ymd: string) {
 
 function formatMonthChip(ymd: string) {
   const [y, m] = ymd.split("-");
-  return `${y}.${m}`;
+  return `${y}. ${m}`;
 }
 
 function formatMonthStatus(ymd: string) {
