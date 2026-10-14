@@ -196,9 +196,10 @@ export default function AdminShell({
           ) : null}
 
           <div className="flex items-center gap-[10px]">
-            <span className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full bg-[#7C726C] text-[#F4F1EC]">
-              <LnbIcon src="/admin-icons/lnb/user.png" className="h-[18px] w-[18px]" />
-            </span>
+            <LnbIcon
+              src="/admin-icons/lnb/profile-circle-user.png"
+              className="h-[36px] w-[36px] text-[#796E68]"
+            />
             <span className="min-w-0 flex-1">
               <span className="block truncate font-sans-kr text-[15px] font-medium leading-[1.2] text-[#1C1C1C]">
                 {profileName}

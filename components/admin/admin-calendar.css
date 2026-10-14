@@ -119,19 +119,43 @@ html:has(.ADMIN-CALENDAR) main {
   color: var(--ink);
 }
 
+.ADMIN-CALENDAR .cal-search-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 24px;
+  margin-right: -8px;
+}
+
 .ADMIN-CALENDAR .cal-search {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 300px;
+  width: 256px;
   height: 36px;
-  margin-top: 24px;
-  margin-right: -8px;
   padding-left: 12px;
   padding-right: 12px;
   border: var(--input-border-width) solid var(--input-border);
   border-radius: 8px;
   background: #fff;
+}
+
+.ADMIN-CALENDAR .cal-bell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border: var(--input-border-width) solid var(--input-border);
+  border-radius: 8px;
+  background: #fff;
+  color: #9a948c;
+}
+
+.ADMIN-CALENDAR .cal-bell-icon {
+  width: 18px;
+  height: 18px;
 }
 
 .ADMIN-CALENDAR .cal-search-icon {
@@ -615,6 +639,21 @@ html:has(.ADMIN-CALENDAR) main {
   border-left: 1px solid var(--cal-half-rule);
 }
 
+.ADMIN-CALENDAR .cal-artist-meta {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  margin-left: 11px;
+  gap: 4px;
+}
+
+.ADMIN-CALENDAR .cal-artist-name-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
 .ADMIN-CALENDAR .cal-avatar {
   display: flex;
   align-items: center;
@@ -642,6 +681,10 @@ html:has(.ADMIN-CALENDAR) main {
   color: var(--cal-ink);
 }
 
+.ADMIN-CALENDAR .cal-artist-meta .cal-artist-name {
+  margin-left: 0;
+}
+
 .ADMIN-CALENDAR .cal-artist-role {
   margin-left: 7px;
   font-size: 15px;
@@ -649,6 +692,12 @@ html:has(.ADMIN-CALENDAR) main {
   line-height: 15px;
   white-space: nowrap;
   color: var(--cal-muted);
+}
+
+.ADMIN-CALENDAR .cal-artist-meta .cal-artist-role {
+  margin-left: 0;
+  line-height: 17px;
+  text-box-trim: none;
 }
 
 .ADMIN-CALENDAR .cal-closed-badge {
@@ -898,6 +947,11 @@ html:has(.ADMIN-CALENDAR) main {
   width: 148px;
 }
 
+.ADMIN-CALENDAR .cal-date-chip.is-week {
+  width: 236px;
+  flex-shrink: 0;
+}
+
 .ADMIN-CALENDAR .cal-legacy {
   margin-top: 33px;
 }
@@ -999,8 +1053,30 @@ html:has(.ADMIN-CALENDAR) main {
 }
 
 .ADMIN-CALENDAR .cal-week-day-label.is-today {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--cal-ink);
+}
+
+.ADMIN-CALENDAR .cal-staff-chip.is-single {
+  width: auto;
+  max-width: 280px;
+  flex-shrink: 0;
+}
+
+.ADMIN-CALENDAR .cal-staff-single-label {
+  margin-left: 8px;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: #31302d;
+}
+
+.ADMIN-CALENDAR .cal-booking.is-week .cal-booking-new {
+  margin-left: 6px;
 }
 
 .ADMIN-CALENDAR .cal-grid-body.is-week {
@@ -1293,11 +1369,11 @@ html:has(.ADMIN-CALENDAR) main {
 /* ── 월간 ───────────────────────────── */
 .ADMIN-CALENDAR .cal-month {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  column-gap: 22px;
   align-items: stretch;
   margin-top: 35px;
   min-height: calc(100dvh - 248px);
-  border-top: 1px solid var(--cal-line);
 }
 
 .ADMIN-CALENDAR .cal-month-grid {
@@ -1317,10 +1393,12 @@ html:has(.ADMIN-CALENDAR) main {
   border-right: none;
 }
 
-.ADMIN-CALENDAR .cal-month-wd {
+.ADMIN-CALENDAR .cal-month-grid > .cal-month-wd {
   display: flex;
   align-items: center;
   justify-content: center;
+  border-top: 2px solid var(--cal-line);
+  border-bottom: 2px solid var(--cal-line);
   background: #fff;
 }
 
@@ -1337,7 +1415,7 @@ html:has(.ADMIN-CALENDAR) main {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  padding: 8px 6px 6px;
+  padding: 8px 10px 8px;
   background: #fff;
 }
 
@@ -1360,7 +1438,7 @@ html:has(.ADMIN-CALENDAR) main {
   align-items: center;
   align-self: flex-start;
   height: 16px;
-  margin-left: 4px;
+  margin-left: 2px;
   font-size: 13px;
   font-weight: 500;
   line-height: 13px;
@@ -1383,19 +1461,20 @@ html:has(.ADMIN-CALENDAR) main {
 .ADMIN-CALENDAR .cal-month-chips {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   min-width: 0;
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 .ADMIN-CALENDAR .cal-month-chip {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   width: 100%;
-  height: 20px;
+  height: 26px;
   min-width: 0;
-  padding: 0 6px;
-  border-radius: 3px;
+  padding: 0 10px;
+  border-radius: 4px;
   color: #1c1a19;
   text-align: left;
 }
@@ -1408,27 +1487,27 @@ html:has(.ADMIN-CALENDAR) main {
 
 .ADMIN-CALENDAR .cal-month-chip-time {
   flex-shrink: 0;
-  margin-right: 4px;
-  font-size: 11px;
+  margin-right: 6px;
+  font-size: 13px;
   font-weight: 500;
-  line-height: 11px;
+  line-height: 13px;
 }
 
 .ADMIN-CALENDAR .cal-month-chip-name {
   min-width: 0;
   overflow: hidden;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
-  line-height: 11px;
+  line-height: 13px;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .ADMIN-CALENDAR .cal-month-more {
-  padding-left: 6px;
-  font-size: 11px;
+  padding-left: 10px;
+  font-size: 12px;
   font-weight: 500;
-  line-height: 14px;
+  line-height: 16px;
   color: #9a948c;
 }
 
@@ -1437,9 +1516,9 @@ html:has(.ADMIN-CALENDAR) main {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  padding: 18px 18px 16px;
-  border-left: 1px solid #e6e2db;
-  background: #f6f4ef;
+  padding: 22px 20px 18px;
+  border-radius: 0;
+  background: #f9f8f4;
 }
 
 .ADMIN-CALENDAR .cal-month-side-head {
@@ -1479,18 +1558,20 @@ html:has(.ADMIN-CALENDAR) main {
 
 .ADMIN-CALENDAR .cal-month-side-count {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 700;
   line-height: 13px;
   color: #8a847c;
 }
 
+.ADMIN-CALENDAR .cal-month-side-count-num {
+  color: #1c1a19;
+}
+
 .ADMIN-CALENDAR .cal-month-empty {
   display: flex;
-  flex: 1;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding-bottom: 18%;
+  margin-top: 86px;
   text-align: center;
 }
 
@@ -1514,7 +1595,7 @@ html:has(.ADMIN-CALENDAR) main {
   flex-direction: column;
   gap: 8px;
   min-height: 0;
-  margin: 18px 0 0;
+  margin: 28px 0 0;
   padding: 0;
   overflow: auto;
   list-style: none;
@@ -1523,23 +1604,24 @@ html:has(.ADMIN-CALENDAR) main {
 .ADMIN-CALENDAR .cal-month-item {
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr);
-  align-items: center;
+  align-items: start;
   gap: 8px;
   width: 100%;
   text-align: left;
 }
 
 .ADMIN-CALENDAR .cal-month-item-time {
+  padding-top: 4px;
   font-size: 13px;
   font-weight: 600;
-  line-height: 13px;
+  line-height: 14px;
   color: #1c1a19;
 }
 
 .ADMIN-CALENDAR .cal-month-card {
   position: relative;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   min-width: 0;
   min-height: 52px;
   padding: 8px 8px 8px 14px;
@@ -1607,7 +1689,7 @@ html:has(.ADMIN-CALENDAR) main {
   margin-top: 6px;
   overflow: hidden;
   font-size: 12px;
-  font-weight: 400;
+  font-weight: 700;
   line-height: 12px;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -1618,6 +1700,7 @@ html:has(.ADMIN-CALENDAR) main {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
+  margin-top: 1px;
   margin-left: 6px;
   color: #c9c3bb;
 }

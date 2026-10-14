@@ -24,6 +24,7 @@ export type CalTab = "day" | "week" | "month";
 export type CalArtist = {
   id: string;
   name_kr: string;
+  name_en?: string | null;
   role: string | null;
   lunch_start: string | null;
   lunch_minutes: number | null;
@@ -152,6 +153,15 @@ function hhmm(total: number) {
 
 function durationLabel(minutes: number) {
   return minutes % 60 === 0 ? `${minutes / 60}h` : `${minutes}min`;
+}
+
+function ownerTitle(artist: CalArtist) {
+  const role = artist.role?.trim() || "";
+  const match = role.match(/^owner\s*&\s*(.+)$/i);
+  if (!match) return null;
+  const raw = artist.name_en?.trim() || "";
+  const en = raw ? raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase() : "";
+  return { top: en ? `Owner ${en}` : "Owner", bottom: match[1].trim() };
 }
 
 function avatarInitial(name: string) {
@@ -321,19 +331,24 @@ export function CalendarDesktopView({
       <div className="cal-head">
         <h1 className="cal-title">캘린더</h1>
         <div ref={searchRef} className="cal-search-wrap">
-          <label className="cal-search">
-            <CalIcon src="/admin-icons/lnb/search-bold.png" className="cal-search-icon" />
-            <input
-              value={query}
-              onChange={(e) => {
-                onQuery(e.target.value);
-                setSearchOpen(true);
-              }}
-              onFocus={() => setSearchOpen(true)}
-              placeholder="고객명, 연락처 검색"
-              className="cal-search-input"
-            />
-          </label>
+          <div className="cal-search-row">
+            <label className="cal-search">
+              <CalIcon src="/admin-icons/lnb/search-bold.png" className="cal-search-icon" />
+              <input
+                value={query}
+                onChange={(e) => {
+                  onQuery(e.target.value);
+                  setSearchOpen(true);
+                }}
+                onFocus={() => setSearchOpen(true)}
+                placeholder="고객명, 연락처 검색"
+                className="cal-search-input"
+              />
+            </label>
+            <button type="button" className="cal-bell" aria-label="알림">
+              <CalIcon src="/admin-icons/lnb/bell.png" className="cal-bell-icon" />
+            </button>
+          </div>
           {searchOpen && query.trim() ? (
             <div className="cal-search-panel">
               {searchHits.length === 0 ? (
@@ -388,7 +403,7 @@ export function CalendarDesktopView({
               onChange={onDate}
               display={tab === "month" ? formatMonthChip(date) : isWeek ? formatWeekRange(date) : formatChipDate(date)}
               ariaLabel="날짜"
-              className={clsx("cal-chip cal-date-chip", tab === "month" && "is-month")}
+              className={clsx("cal-chip cal-date-chip", tab === "month" && "is-month", tab === "week" && "is-week")}
               textClassName="cal-date-text"
               leading={
                 <svg viewBox="0 0 16 16" className="cal-date-icon" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round">
@@ -406,10 +421,10 @@ export function CalendarDesktopView({
                   <button
                     type="button"
                     onClick={() => setStaffOpen((v) => !v)}
-                    className={clsx("cal-chip cal-staff-chip", weekArtist && "is-selected")}
+                    className="cal-chip cal-staff-chip is-single"
                   >
                     <CalIcon src="/admin-icons/lnb/filter.png" className="cal-filter-icon" />
-                    <span className="cal-staff-label cal-staff-one">
+                    <span className="cal-staff-single-label">
                       담당자 : {weekArtist ? [weekArtist.name_kr, weekArtist.role].filter(Boolean).join(" ") : "미등록"}
                     </span>
                     <ChevronDown className={clsx("cal-staff-chevron", staffOpen && "is-open")} />
@@ -629,18 +644,33 @@ function DayGrid({
           const lunch = lunchInterval(artist);
           if (lunch) occupied.push(lunch);
           const closed = filterAvailableTimes(CANDIDATE_TIMES, SLOT_MINUTES, occupied).length === 0;
+          const role = artist.role?.trim() || "";
+          const owner = ownerTitle(artist);
+          const badge = closed ? (
+            <span className="cal-closed-badge">
+              <span className="cal-closed-badge-label">마감</span>
+            </span>
+          ) : null;
           return (
             <div key={artist.id} className="cal-artist-head">
               <span className="cal-avatar">
                 <span className="cal-avatar-char">{avatarInitial(artist.name_kr)}</span>
               </span>
-              <span className="cal-artist-name">{artist.name_kr}</span>
-              {artist.role ? <span className="cal-artist-role">{artist.role}</span> : null}
-              {closed ? (
-                <span className="cal-closed-badge">
-                  <span className="cal-closed-badge-label">마감</span>
+              {owner ? (
+                <span className="cal-artist-meta">
+                  <span className="cal-artist-name-row">
+                    <span className="cal-artist-name">{owner.top}</span>
+                    {badge}
+                  </span>
+                  <span className="cal-artist-role">{owner.bottom}</span>
                 </span>
-              ) : null}
+              ) : (
+                <>
+                  <span className="cal-artist-name">{artist.name_kr}</span>
+                  {role ? <span className="cal-artist-role">{role}</span> : null}
+                  {badge}
+                </>
+              )}
             </div>
           );
         })}
@@ -1167,16 +1197,14 @@ function MonthBoard({
       </div>
       <aside className="cal-month-side">
         <div className="cal-month-side-head">
-          <svg viewBox="0 0 16 16" className="cal-month-info" fill="none" aria-hidden>
-            <circle cx="8" cy="8" r="6.25" stroke="currentColor" strokeWidth="1.2" />
-            <path d="M8 7.15v3.7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-            <circle cx="8" cy="5.05" r="0.7" fill="currentColor" />
-          </svg>
+          <CalIcon src="/admin-icons/lnb/clock-five.png" className="cal-month-info" />
           <span className="cal-month-side-title">예약 현황</span>
         </div>
         <div className="cal-month-side-meta">
           <span className="cal-month-side-date">{formatMonthStatus(date)}</span>
-          <span className="cal-month-side-count">총 {dayList.length}건</span>
+          <span className="cal-month-side-count">
+            총 <span className="cal-month-side-count-num">{dayList.length}</span>건
+          </span>
         </div>
         {dayList.length === 0 ? (
           <div className="cal-month-empty">
