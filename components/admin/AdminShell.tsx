@@ -7,6 +7,7 @@ import { clsx } from "clsx";
 import { type AdminHref } from "@/lib/admin/nav";
 import { usePendingCount } from "@/components/admin/pending-count";
 import { createClient } from "@/lib/supabase/browser";
+import type { AdminShellSession } from "@/lib/admin/shell-session";
 
 /**
  * LNB 시안은 1024px 목업. 데스크톱 프레임 1440 = ×1.40625.
@@ -75,10 +76,12 @@ function lnbActive(pathname: string, item: (typeof LNB_ITEMS)[number]) {
 
 export default function AdminShell({
   children,
-  email
+  email,
+  session
 }: {
   children: React.ReactNode;
   email?: string | null;
+  session?: AdminShellSession | null;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -130,6 +133,8 @@ export default function AdminShell({
     pathname.startsWith("/admin/tax") ||
     pathname.startsWith("/admin/export");
 
+  const items = session?.role === "designer" ? LNB_ITEMS.filter((item) => item.href !== "/admin/settings") : LNB_ITEMS;
+
   return (
     <div className={clsx("bg-white text-hu-black", finance ? "h-dvh overflow-hidden" : "min-h-screen")}>
       <aside className="fixed inset-y-0 left-0 z-30 flex w-[242px] flex-col bg-[#F9F8F4]">
@@ -138,7 +143,7 @@ export default function AdminShell({
         </Link>
 
         <nav className="mt-[37px] flex flex-col px-[11px]">
-          {LNB_ITEMS.map((item) => {
+          {items.map((item) => {
             const active = lnbActive(pathname, item);
             const badge = item.badge === "bookings" ? pendingCount : null;
             return (

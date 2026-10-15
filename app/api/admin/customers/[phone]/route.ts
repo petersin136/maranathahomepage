@@ -63,6 +63,7 @@ export async function GET(
     const next = { ...row };
     delete next.final_amount;
     delete next.total_amount;
+    delete next.deposit_amount;
     return next;
   });
 

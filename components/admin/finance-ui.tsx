@@ -6,6 +6,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { clsx } from "clsx";
 import { AdminBellButton } from "@/components/admin/AdminBellButton";
 import { AdminPageTitle } from "@/components/admin/AdminPageTitle";
+import { useAdminSession } from "@/components/admin/admin-session";
 
 export const TRIM_KR = "[text-box-edge:cap_alphabetic] [text-box-trim:trim-both]";
 export const TRIM_LATIN = "[text-box-edge:text_alphabetic] [text-box-trim:trim-both]";
@@ -99,6 +100,8 @@ export function FinanceHeader({
   embedded?: boolean;
 }) {
   const pathname = usePathname();
+  const session = useAdminSession();
+  const tabs = session?.role === "designer" ? FINANCE_TABS.filter((tab) => tab.href !== "/admin/expenses") : FINANCE_TABS;
   return (
     <div className={embedded ? undefined : "sticky top-0 z-20 bg-white pt-10 pl-[6px]"}>
       <div className="flex items-start justify-between gap-6">
@@ -109,7 +112,7 @@ export function FinanceHeader({
         <p className="mt-[14px] text-[16px] font-medium leading-normal text-[#8A847C]">{subtitle}</p>
       ) : null}
       <nav className={clsx("flex border-b border-[#E6E1DA]", subtitle ? "mt-[10px]" : "mt-12")}>
-        {FINANCE_TABS.map((t) => {
+        {tabs.map((t) => {
           const on = pathname === t.href || pathname.startsWith(`${t.href}/`);
           return (
             <Link
@@ -265,6 +268,51 @@ export function RefreshButton({ onClick, spinning }: { onClick: () => void; spin
     <IconButton label="새로고침" onClick={onClick} disabled={spinning}>
       <Icon src="/admin-icons/lnb/refresh.png" className={clsx("h-[16px] w-[16px]", spinning && "animate-spin")} />
     </IconButton>
+  );
+}
+
+/** 매출·정산 담당자 칩. locked 면 본인 이름 하나로 고정되고 열리지 않는다. */
+export function ArtistFilterChip({
+  count,
+  open,
+  locked = false,
+  name,
+  onToggle,
+  menu
+}: {
+  count: number;
+  open: boolean;
+  locked?: boolean;
+  name?: string | null;
+  onToggle: () => void;
+  menu?: React.ReactNode;
+}) {
+  const active = open || count > 0;
+  return (
+    <div className="relative z-30">
+      <button
+        type="button"
+        aria-expanded={locked ? false : open}
+        aria-disabled={locked || undefined}
+        onClick={() => {
+          if (locked) return;
+          onToggle();
+        }}
+        className="flex h-[34px] w-[186px] items-center rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white pl-3 pr-3 text-[13px] font-semibold leading-none text-[#1C1C1C]"
+      >
+        <Icon src="/admin-icons/lnb/filter.png" className="h-[15px] w-[15px] text-[#9A948C]" />
+        <span className="ml-2 leading-normal">담당자</span>
+        <span className="ml-2 inline-flex h-[20px] min-w-[20px] items-center justify-center rounded-[4px] bg-[#F3EFEA] px-1 text-[12px] font-semibold leading-normal text-[#9A948C]">
+          {count}
+        </span>
+        <span className="ml-2 min-w-0 flex-1 truncate text-left leading-normal">{locked ? name || "선택" : "선택"}</span>
+        <Icon
+          src={active ? "/admin-icons/lnb/chevron-down-bold.png" : "/admin-icons/lnb/chevron-down.png"}
+          className={clsx("ml-auto h-[16px] w-[16px] shrink-0 text-[#9A948C]", !locked && open && "rotate-180")}
+        />
+      </button>
+      {!locked && open ? menu : null}
+    </div>
   );
 }
 

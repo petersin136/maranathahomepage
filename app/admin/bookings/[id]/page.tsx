@@ -92,6 +92,11 @@ function won(value: number | null | undefined) {
   return value != null ? `${value.toLocaleString("ko-KR")}원` : "—";
 }
 
+function expectedCharge(total: number | null | undefined, deposit: number | null | undefined) {
+  if (total == null) return null;
+  return Math.max(0, total - (deposit ?? 0));
+}
+
 export default function AdminBookingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -222,7 +227,7 @@ export default function AdminBookingDetailPage() {
 
       <dl
         className={clsx(
-          "mt-10 grid grid-cols-6 border-y-[1.5px] border-[#C9C3BB]",
+          "mt-10 grid grid-cols-7 border-y-[1.5px] border-[#C9C3BB]",
           voided && "text-[#9A948C]"
         )}
       >
@@ -243,6 +248,7 @@ export default function AdminBookingDetailPage() {
           value={won(booking.deposit_amount)}
           hint={booking.deposit_amount ? (booking.deposit_paid ? "입금 완료" : "미입금") : undefined}
         />
+        <Stat label="결제 예상 금액" value={won(expectedCharge(booking.total_amount, booking.deposit_amount))} />
         <Stat
           label="결제"
           value={won(booking.final_amount)}

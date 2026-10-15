@@ -16,6 +16,7 @@ function rejectDesigner(role: string) {
   return NextResponse.json({ ok: false, error: "접근 권한이 없습니다." }, { status: 403 });
 }
 
+// artists는 타인 조건 열람 방지로 본인 포함 계좌·수수료를 전면 차단한다.
 function stripDesignerArtist<T extends Record<string, unknown>>(row: T) {
   const next = { ...row };
   for (const key of DESIGNER_HIDDEN_ARTIST_FIELDS) delete next[key];

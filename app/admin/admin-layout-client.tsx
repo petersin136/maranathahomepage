@@ -2,7 +2,9 @@
 
 import { usePathname } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
+import { AdminSessionProvider } from "@/components/admin/admin-session";
 import { PendingCountProvider } from "@/components/admin/pending-count";
+import type { AdminShellSession } from "@/lib/admin/shell-session";
 
 const AUTH_PATHS = [
   "/admin/login",
@@ -13,9 +15,11 @@ const AUTH_PATHS = [
 
 export default function AdminLayoutClient({
   pendingCount,
+  session,
   children
 }: {
   pendingCount: number | null;
+  session: AdminShellSession | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -29,7 +33,9 @@ export default function AdminLayoutClient({
 
   return (
     <PendingCountProvider initialCount={pendingCount}>
-      <AdminShell>{children}</AdminShell>
+      <AdminSessionProvider value={session}>
+        <AdminShell session={session}>{children}</AdminShell>
+      </AdminSessionProvider>
     </PendingCountProvider>
   );
 }

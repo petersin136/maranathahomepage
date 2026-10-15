@@ -15,6 +15,7 @@ export async function GET(request: Request) {
   try {
     const data = await loadSettlementsDashboard(searchParams.get("year"), searchParams.get("month"));
     if (auth.role === "designer" && auth.artistId) {
+      // 정산은 본인 실지급 확인용이라 본인 계좌를 허용한다.
       const artists = data.artists.filter((row) => row.artistId === auth.artistId);
       const summary = {
         totalRevenue: artists.reduce((sum, row) => sum + row.revenue, 0),

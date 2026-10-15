@@ -55,8 +55,6 @@ const SLOT_HEIGHT = 48;
 const SLOT_COUNT = (CLOSING_MINUTES - OPEN_MINUTES) / SLOT_MINUTES;
 // 위 18 + 이름 13 + 10 + 시술 13 + 9 + 시간 13 + 아래 여유 10
 const BOOKING_TIME_MIN_HEIGHT = 86;
-// 시간 줄 다음 10 + 메모 13
-const BOOKING_MEMO_MIN_HEIGHT = BOOKING_TIME_MIN_HEIGHT + 23;
 const WEEKDAY_EN = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"] as const;
 
 const TONE_CLASS: Record<CalendarTone, string> = {
@@ -774,7 +772,7 @@ function DayGrid({
                 const short = b.duration_minutes <= SLOT_MINUTES;
                 const innerHeight = (b.duration_minutes / SLOT_MINUTES) * SLOT_HEIGHT - 5;
                 const showTime = !short && innerHeight >= BOOKING_TIME_MIN_HEIGHT;
-                const showMemo = showTime && innerHeight >= BOOKING_MEMO_MIN_HEIGHT;
+                const showMemo = !short && !!b.memo;
                 return (
                   <button
                     key={b.id}

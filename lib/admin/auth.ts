@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { NextResponse } from "next/server";
 import { getAdminUser, type AdminUserRow } from "@/lib/admin/admin-users";
+import type { AdminShellSession } from "@/lib/admin/shell-session";
 import { createClient } from "@/lib/supabase/server";
 import {
   ConfigError,
@@ -81,3 +82,22 @@ export async function requireAdminUser(): Promise<
 
   return { ok: true, user, role: row.role, artistId: row.artistId };
 }
+
+/** 셸이 그릴 역할. 클라이언트는 이 값만 받고, 역할을 다시 판단하지 않는다. */
+export const getAdminShellSession = cache(async (): Promise<AdminShellSession | null> => {
+  const auth = await requireAdminUser();
+  if (!auth.ok) return null;
+
+  let artistName: string | null = null;
+  if (auth.role === "designer" && auth.artistId) {
+    try {
+      const admin = getSupabaseAdmin();
+      const { data } = await admin.from("artists").select("name_kr").eq("id", auth.artistId).maybeSingle();
+      artistName = (data?.name_kr as string | null | undefined) ?? null;
+    } catch (e) {
+      console.error("[admin shell] artist name", e);
+    }
+  }
+
+  return { role: auth.role, artistId: auth.artistId, artistName };
+});

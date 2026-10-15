@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { clsx } from "clsx";
 import {
+  ArtistFilterChip,
   CheckBox,
   DownloadExportButton,
   FinanceHeader,
-  Icon,
   MonthPicker,
   RefreshButton,
   TABLE_HEAD_ROW,
@@ -18,6 +18,7 @@ import {
   useOutsideClose,
   won
 } from "@/components/admin/finance-ui";
+import { useAdminSession } from "@/components/admin/admin-session";
 import type { SalesDashboard } from "@/lib/admin/sales-data";
 import { METHOD_LABEL, monthEnd, monthStart, salesBoardView, todayKst } from "@/lib/admin/sales-data";
 
@@ -89,8 +90,10 @@ export default function AdminSalesPage({
   const [refreshing, setRefreshing] = useState(false);
   const [year, setYear] = useState(() => Number((initial?.period.from ?? todayKst()).slice(0, 4)));
   const [month, setMonth] = useState(() => Number((initial?.period.from ?? todayKst()).slice(5, 7)));
+  const session = useAdminSession();
+  const lockedArtistId = session?.role === "designer" ? session.artistId : null;
   const [staff, setStaff] = useState<Staff[] | null>(null);
-  const [artistFilter, setArtistFilter] = useState<string[]>([]);
+  const [artistFilter, setArtistFilter] = useState<string[]>(() => (lockedArtistId ? [lockedArtistId] : []));
   const [staffOpen, setStaffOpen] = useState(false);
   const closeStaff = useCallback(() => setStaffOpen(false), []);
   const staffRef = useOutsideClose(staffOpen, closeStaff);
@@ -103,6 +106,12 @@ export default function AdminSalesPage({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [staffOpen, closeStaff]);
+
+  useEffect(() => {
+    if (!lockedArtistId) return;
+    setArtistFilter((cur) => (cur.length === 1 && cur[0] === lockedArtistId ? cur : [lockedArtistId]));
+    setStaffOpen(false);
+  }, [lockedArtistId]);
 
   const load = useCallback(async (nextYear: number, nextMonth: number) => {
     setRefreshing(true);
@@ -126,6 +135,7 @@ export default function AdminSalesPage({
   }, []);
 
   useEffect(() => {
+    if (lockedArtistId) return;
     let cancelled = false;
     fetch("/api/admin/artists")
       .then((res) => res.json())
@@ -140,9 +150,9 @@ export default function AdminSalesPage({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [lockedArtistId]);
 
-  const setupEmpty = staff != null && staff.length === 0;
+  const setupEmpty = !lockedArtistId && staff != null && staff.length === 0;
 
   const view = useMemo(() => {
     if (!data) return null;
@@ -150,9 +160,9 @@ export default function AdminSalesPage({
       payments: data.payments ?? [],
       previousPayments: data.previousPayments ?? [],
       periodBookings: data.periodBookings ?? [],
-      artistIds: artistFilter
+      artistIds: lockedArtistId ? [lockedArtistId] : artistFilter
     });
-  }, [data, artistFilter]);
+  }, [data, artistFilter, lockedArtistId]);
 
   const s = view;
   const a = s?.attrition;
@@ -196,51 +206,39 @@ export default function AdminSalesPage({
               label={`${year}. ${String(month).padStart(2, "0")}`}
               onChange={(nextYear, nextMonth) => void load(nextYear, nextMonth)}
             />
-            <div ref={staffRef} className="relative z-30">
-              <button
-                type="button"
-                onClick={() => setStaffOpen((v) => !v)}
-                className="flex h-[34px] w-[186px] items-center rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white pl-3 pr-3 text-[13px] font-semibold leading-none text-[#1C1C1C]"
-              >
-                <Icon src="/admin-icons/lnb/filter.png" className="h-[15px] w-[15px] text-[#9A948C]" />
-                <span className="ml-2 leading-normal">담당자</span>
-                <span className="ml-2 inline-flex h-[20px] min-w-[20px] items-center justify-center rounded-[4px] bg-[#F3EFEA] px-1 text-[12px] font-semibold leading-normal text-[#9A948C]">
-                  {artistFilter.length}
-                </span>
-                <span className="ml-2 leading-normal">선택</span>
-                <Icon
-                  src={
-                    staffOpen || artistFilter.length > 0
-                      ? "/admin-icons/lnb/chevron-down-bold.png"
-                      : "/admin-icons/lnb/chevron-down.png"
-                  }
-                  className={clsx("ml-auto h-[16px] w-[16px] text-[#9A948C]", staffOpen && "rotate-180")}
-                />
-              </button>
-              {staffOpen ? (
-                <div className="absolute left-0 top-full z-50 mt-[6px] min-w-full rounded-[12px] border border-[#EFEBE6] bg-white py-2 shadow-[0_8px_24px_rgba(28,28,28,0.08)]">
-                  {staff == null || staff.length === 0 ? (
-                    <p className="px-5 py-2 text-[14px] text-[#8A847C]">담당자 없음</p>
-                  ) : (
-                    staff.map((person) => {
-                      const checked = artistFilter.includes(person.id);
-                      return (
-                        <div key={person.id} className="px-5 py-2 hover:bg-[#F6F4F0]">
-                          <CheckBox
-                            checked={checked}
-                            label={[person.name_kr, person.role].filter(Boolean).join(" ")}
-                            onChange={(next) =>
-                              setArtistFilter((cur) =>
-                                next ? [...cur, person.id] : cur.filter((id) => id !== person.id)
-                              )
-                            }
-                          />
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              ) : null}
+            <div ref={staffRef}>
+              <ArtistFilterChip
+                count={lockedArtistId ? 1 : artistFilter.length}
+                open={lockedArtistId ? false : staffOpen}
+                locked={!!lockedArtistId}
+                name={session?.artistName}
+                onToggle={() => setStaffOpen((v) => !v)}
+                menu={
+                  <div className="absolute left-0 top-full z-50 mt-[6px] min-w-full rounded-[12px] border border-[#EFEBE6] bg-white py-2 shadow-[0_8px_24px_rgba(28,28,28,0.08)]">
+                    {staff == null || staff.length === 0 ? (
+                      <p className="px-5 py-2 text-[14px] text-[#8A847C]">담당자 없음</p>
+                    ) : (
+                      staff.map((person) => {
+                        const checked = artistFilter.includes(person.id);
+                        return (
+                          <div key={person.id} className="px-5 py-2 hover:bg-[#F6F4F0]">
+                            <CheckBox
+                              checked={checked}
+                              label={[person.name_kr, person.role].filter(Boolean).join(" ")}
+                              onChange={(next) => {
+                                if (lockedArtistId) return;
+                                setArtistFilter((cur) =>
+                                  next ? [...cur, person.id] : cur.filter((id) => id !== person.id)
+                                );
+                              }}
+                            />
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                }
+              />
             </div>
             <RefreshButton spinning={refreshing} onClick={() => void load(year, month)} />
           </>
@@ -252,7 +250,7 @@ export default function AdminSalesPage({
             to={to}
             year={year}
             month={month}
-            artistIds={artistFilter}
+            artistIds={lockedArtistId ? [lockedArtistId] : artistFilter}
             onError={setError}
           />
         }

@@ -5,6 +5,7 @@ import type { Route } from "next";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { clsx } from "clsx";
+import { useAdminSession } from "@/components/admin/admin-session";
 import { STATE_META, customerState, type CustomerState, useCustomerFilters } from "@/components/admin/CustomerFilters";
 import { avgVisitCycleDays } from "@/lib/admin/customers-data";
 import { BOOKING_STATUS_LABEL, cancelReasonLabel } from "@/lib/admin/booking-labels";
@@ -193,8 +194,11 @@ export default function AdminCustomerDetailPage() {
     }
   };
 
+  const session = useAdminSession();
   const today = data?.today ?? "";
   const bookings = useMemo(() => data?.bookings ?? [], [data]);
+  const revenueHidden =
+    session?.role === "designer" && bookings.some((b) => b.artist_id !== session.artistId);
 
   const upcoming = useMemo(
     () => bookings.filter((b) => isUpcoming(b, today)).sort(byDateAsc),
@@ -317,7 +321,7 @@ export default function AdminCustomerDetailPage() {
           hint={next ? `${next.booking_time} · ${dDay(next.booking_date, today)}` : "예정된 예약 없음"}
         />
         <Stat label="방문 횟수" value={`${completed.length.toLocaleString("ko-KR")}회`} />
-        <Stat label="누적 결제" value={won(summary.revenue)} />
+        <Stat label="누적 결제" value={revenueHidden ? "—" : won(summary.revenue)} />
         <Stat label="평균 방문 주기" value={summary.cycle != null ? `${Math.round(summary.cycle)}일` : "—"} />
       </dl>
 
