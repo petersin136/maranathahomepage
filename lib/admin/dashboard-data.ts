@@ -90,6 +90,7 @@ export const getPendingBookings = cache(async () => {
 /** Badge count only. No row body. */
 export const getPendingCount = cache(async () => {
   const admin = getSupabaseAdmin();
+  const started = performance.now();
   const { count, error } = await admin
     .from("bookings")
     .select("*", { count: "exact", head: true })

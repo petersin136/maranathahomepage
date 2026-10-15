@@ -23,8 +23,10 @@ async function fetchCompletedInPaidRange(
   admin: ReturnType<typeof getSupabaseAdmin>,
   from: string,
   to: string,
-  artistIds: string[]
+  artistIds: string[],
+  label: string
 ) {
+  const started = performance.now();
   let query = admin
     .from("bookings")
     .select(SALE_FIELDS)
@@ -35,6 +37,7 @@ async function fetchCompletedInPaidRange(
   const { data, error } = await query.limit(5000);
 
   if (error) throw new Error(error.message);
+  console.log("[PERF]", JSON.stringify({ label, ms: Math.round(performance.now() - started) }));
   return data ?? [];
 }
 
@@ -59,11 +62,19 @@ export async function loadSalesDashboard(
   let artistsQuery = admin.from("artists").select("id, name_kr, name_en, role, commission_rate");
   if (artistIds.length > 0) artistsQuery = artistsQuery.in("id", artistIds);
 
+  const periodStarted = performance.now();
+  const artistsStarted = performance.now();
   const [currentCompleted, previousCompleted, periodBookingsRes, artistsRes] = await Promise.all([
-    fetchCompletedInPaidRange(admin, period.from, period.to, artistIds),
-    fetchCompletedInPaidRange(admin, period.prevFrom, period.prevTo, artistIds),
-    periodQuery.limit(5000),
-    artistsQuery
+    fetchCompletedInPaidRange(admin, period.from, period.to, artistIds, "bookings.current"),
+    fetchCompletedInPaidRange(admin, period.prevFrom, period.prevTo, artistIds, "bookings.previous"),
+    periodQuery.limit(5000).then((result) => {
+      console.log("[PERF]", JSON.stringify({ label: "bookings.period", ms: Math.round(performance.now() - periodStarted) }));
+      return result;
+    }),
+    artistsQuery.then((result) => {
+      console.log("[PERF]", JSON.stringify({ label: "artists", ms: Math.round(performance.now() - artistsStarted) }));
+      return result;
+    })
   ]);
 
   if (periodBookingsRes.error) throw new Error(periodBookingsRes.error.message);
@@ -77,11 +88,14 @@ export async function loadSalesDashboard(
     artists = (fallback.data ?? []).map((a) => ({ ...a, commission_rate: null }));
   }
 
-  return aggregateSales({
+  const aggStarted = performance.now();
+  const dashboard = aggregateSales({
     period,
     currentCompleted: currentCompleted as never,
     previousCompleted: previousCompleted as never,
     periodBookings: periodBookingsRes.data ?? [],
     artists
   });
+  console.log("[PERF]", JSON.stringify({ label: "aggregateSales", ms: Math.round(performance.now() - aggStarted) }));
+  return dashboard;
 }

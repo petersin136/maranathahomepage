@@ -55,7 +55,9 @@ export async function updateSession(request: NextRequest) {
 
   // getUser()는 매 요청 Auth 서버 왕복 → 탭 전환이 느려짐.
   // getClaims()는 JWT 검증(가능하면 로컬) + 만료 임박 시만 갱신.
+  const claimsStarted = performance.now();
   const { data } = await supabase.auth.getClaims();
+  console.log("[PERF]", JSON.stringify({ label: "middleware.getClaims", ms: Math.round(performance.now() - claimsStarted) }));
   const claims = data?.claims;
   const user =
     claims && typeof claims.sub === "string" ? { id: claims.sub } : null;
