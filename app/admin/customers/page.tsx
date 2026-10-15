@@ -315,7 +315,7 @@ export default function AdminCustomersPage() {
         </div>
       </div>
 
-      <div className="mt-8 min-h-0 flex-1 overflow-auto">
+      <div className="mt-8 min-h-0 flex-1 overflow-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         <table className="w-full table-fixed border-separate border-spacing-0 text-left text-[16px] font-medium leading-[20px]">
           <colgroup>
             <col className="w-[5.7%]" />

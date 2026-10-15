@@ -643,6 +643,16 @@ html:has(.ADMIN-CALENDAR) main {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.ADMIN-CALENDAR .cal-hscroll::-webkit-scrollbar,
+.ADMIN-CALENDAR .cal-vscroll::-webkit-scrollbar,
+.ADMIN-CALENDAR .cal-brief-body::-webkit-scrollbar,
+.ADMIN-CALENDAR .cal-month-grid::-webkit-scrollbar,
+.ADMIN-CALENDAR .cal-month-list::-webkit-scrollbar {
+  display: none;
 }
 
 .ADMIN-CALENDAR .cal-time-head {
@@ -1231,6 +1241,8 @@ html:has(.ADMIN-CALENDAR) main {
   min-height: 0;
   overflow: auto;
   padding: 27px 20px 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .ADMIN-CALENDAR .cal-brief-title {
@@ -1510,15 +1522,21 @@ html:has(.ADMIN-CALENDAR) main {
   flex: 1 1 auto;
   min-height: 0;
   margin-top: 35px;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .ADMIN-CALENDAR .cal-month-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   grid-template-rows: 40px repeat(var(--cal-month-rows), minmax(112px, 1fr));
+  align-content: start;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
   background: #fff;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .ADMIN-CALENDAR .cal-month-grid > * {
@@ -1657,6 +1675,8 @@ html:has(.ADMIN-CALENDAR) main {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  height: 100%;
+  overflow: hidden;
   padding: 22px 20px 18px;
   border-radius: 0;
   background: #f9f8f4;
@@ -1664,6 +1684,7 @@ html:has(.ADMIN-CALENDAR) main {
 
 .ADMIN-CALENDAR .cal-month-side-head {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   height: 22px;
 }
@@ -1685,6 +1706,7 @@ html:has(.ADMIN-CALENDAR) main {
 
 .ADMIN-CALENDAR .cal-month-side-meta {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   margin-top: 22px;
@@ -1733,6 +1755,7 @@ html:has(.ADMIN-CALENDAR) main {
 
 .ADMIN-CALENDAR .cal-month-list {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 8px;
   min-height: 0;
@@ -1740,6 +1763,8 @@ html:has(.ADMIN-CALENDAR) main {
   padding: 0;
   overflow: auto;
   list-style: none;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .ADMIN-CALENDAR .cal-month-item {

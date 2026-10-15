@@ -214,7 +214,7 @@ export default function AdminServicesPage() {
       <div className="mt-12 shrink-0">
         <SettingsNav />
       </div>
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div className="min-h-0 flex-1 overflow-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
       {error ? <p className="mt-6 text-[15px] font-medium text-[#E24B4B]">{error}</p> : null}
 
       <div className="mt-8 flex flex-wrap gap-2">
