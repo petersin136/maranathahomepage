@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { loadSettlementsDashboard, SettlementsQueryError } from "@/lib/admin/settlements-load";
 import { requireAdminUser } from "@/lib/admin/auth";
 import AdminSettlementsPage from "./settlements-client";
@@ -7,6 +8,7 @@ export const preferredRegion = "icn1";
 
 export default async function SettlementsPage() {
   const auth = await requireAdminUser();
+  if (auth.ok && auth.role === "designer" && !auth.artistId) redirect("/admin");
   try {
     const onlyArtistId = auth.ok && auth.role === "designer" && auth.artistId ? auth.artistId : undefined;
     const initial = await loadSettlementsDashboard(null, null, onlyArtistId);

@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { loadSalesDashboard, SalesQueryError } from "@/lib/admin/sales-load";
 import { requireAdminUser } from "@/lib/admin/auth";
 import AdminSalesPage from "./sales-client";
@@ -7,6 +8,7 @@ export const preferredRegion = "icn1";
 
 export default async function SalesPage() {
   const auth = await requireAdminUser();
+  if (auth.ok && auth.role === "designer" && !auth.artistId) redirect("/admin");
   const artistIds = auth.ok && auth.role === "designer" && auth.artistId ? [auth.artistId] : [];
   try {
     const initial = await loadSalesDashboard("this_month", null, null, artistIds);

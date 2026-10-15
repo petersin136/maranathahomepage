@@ -93,10 +93,13 @@ export async function GET(request: Request) {
             .order("expense_date", { ascending: true })
             .limit(5000);
 
+    let artistsQuery = admin.from("artists").select(ARTIST_FIELDS).order("sort_order", { ascending: true });
+    if (auth.role === "designer" && auth.artistId) artistsQuery = artistsQuery.eq("id", auth.artistId);
+
     const [salesRes, expensesRes, artistsRes, settingsRes] = await Promise.all([
       salesQuery.limit(5000),
       expensesQuery,
-      admin.from("artists").select(ARTIST_FIELDS).order("sort_order", { ascending: true }),
+      artistsQuery,
       admin.from("shop_settings").select("*").limit(1).maybeSingle()
     ]);
 
