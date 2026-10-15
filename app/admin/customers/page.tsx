@@ -199,8 +199,8 @@ export default function AdminCustomersPage() {
   const noMatch = !loading && rows.length > 0 && filtered.length === 0;
 
   return (
-    <div className="flex flex-col font-sans-kr text-[#1C1C1C]">
-      <div className="flex items-start justify-between gap-6 pl-[6px]">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden font-sans-kr text-[#1C1C1C]">
+      <div className="flex shrink-0 items-start justify-between gap-6 pl-[6px]">
         <AdminPageTitle className="flex items-baseline gap-2">
           고객관리
           <span className="text-[15px] font-normal text-[#8A847C]">
@@ -223,7 +223,7 @@ export default function AdminCustomersPage() {
 
       {error ? <p className="mt-4 text-[13px] text-[#9b4a4a]">{error}</p> : null}
 
-      <div ref={filterRef} className="mt-12 flex items-center justify-between gap-3">
+      <div ref={filterRef} className="mt-12 flex shrink-0 items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <FilterChip
             icon="/admin-icons/lnb/filter.png"
@@ -315,8 +315,8 @@ export default function AdminCustomersPage() {
         </div>
       </div>
 
-      <div className="mt-8">
-        <table className="w-full table-fixed text-left text-[16px] font-medium leading-[20px]">
+      <div className="mt-8 min-h-0 flex-1 overflow-auto">
+        <table className="w-full table-fixed border-separate border-spacing-0 text-left text-[16px] font-medium leading-[20px]">
           <colgroup>
             <col className="w-[5.7%]" />
             <col className="w-[8.7%]" />
@@ -328,7 +328,7 @@ export default function AdminCustomersPage() {
             <col className="w-[9.3%]" />
           </colgroup>
           <thead>
-            <tr className="border-b-[1.5px] border-[#C9C3BB] text-[15px] font-bold text-[#9A948C]">
+            <tr className="text-[15px] font-bold text-[#9A948C] [&>th]:sticky [&>th]:top-0 [&>th]:z-10 [&>th]:border-b-[1.5px] [&>th]:border-[#C9C3BB] [&>th]:bg-white">
               <th className="py-3 pl-1 font-bold">
                 <CheckBox
                   checked={allPageSelected}
@@ -433,7 +433,7 @@ export default function AdminCustomersPage() {
         ) : null}
       </div>
 
-      <div className="flex items-center justify-end gap-2 pt-5 text-[14px] text-[#8A847C]">
+      <div className="flex shrink-0 items-center justify-end gap-2 pt-5 text-[14px] text-[#8A847C]">
         <PageBtn disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} label="이전">
           <PagerChevron dir="left" />
         </PageBtn>

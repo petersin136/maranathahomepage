@@ -9,9 +9,13 @@ html:has(.ADMIN-CALENDAR) main {
 }
 
 .ADMIN-CALENDAR {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
   padding-left: 6px;
   padding-right: 8px;
-  padding-bottom: 40px;
   font-family: var(--font-sans-kr);
   letter-spacing: -0.02em;
   color: #1c1a19;
@@ -106,6 +110,7 @@ html:has(.ADMIN-CALENDAR) main {
 /* ── 헤더 ───────────────────────────── */
 .ADMIN-CALENDAR .cal-head {
   display: flex;
+  flex-shrink: 0;
   align-items: flex-start;
   justify-content: space-between;
 }
@@ -258,6 +263,7 @@ html:has(.ADMIN-CALENDAR) main {
 /* ── 탭 ─────────────────────────────── */
 .ADMIN-CALENDAR .cal-tabs {
   display: flex;
+  flex-shrink: 0;
   margin-top: 48px;
   border-bottom: 1px solid #e3e3ce;
 }
@@ -292,6 +298,7 @@ html:has(.ADMIN-CALENDAR) main {
 /* ── 툴바 ───────────────────────────── */
 .ADMIN-CALENDAR .cal-toolbar {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   margin-top: 32px;
 }
@@ -571,8 +578,11 @@ html:has(.ADMIN-CALENDAR) main {
 .ADMIN-CALENDAR .cal-day-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
-  align-items: start;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-height: 0;
   margin-top: 35px;
+  overflow: hidden;
 }
 
 .ADMIN-CALENDAR .cal-day-layout.is-three {
@@ -580,7 +590,11 @@ html:has(.ADMIN-CALENDAR) main {
 }
 
 .ADMIN-CALENDAR .cal-grid {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
   border-right: 1px solid var(--cal-hour-rule);
 }
 
@@ -589,9 +603,9 @@ html:has(.ADMIN-CALENDAR) main {
 }
 
 .ADMIN-CALENDAR .cal-grid-head-bar {
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 6;
+  flex-shrink: 0;
   display: grid;
   grid-template-columns: 83px minmax(0, 1fr);
   height: 69px;
@@ -624,8 +638,11 @@ html:has(.ADMIN-CALENDAR) main {
   width: max(100%, calc(var(--cal-cols) * 150px));
 }
 
-.ADMIN-CALENDAR .cal-hscroll {
-  overflow-x: auto;
+.ADMIN-CALENDAR .cal-hscroll,
+.ADMIN-CALENDAR .cal-vscroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
 }
 
 .ADMIN-CALENDAR .cal-time-head {
@@ -1069,7 +1086,10 @@ html:has(.ADMIN-CALENDAR) main {
 
 /* ── 주간 ───────────────────────────── */
 .ADMIN-CALENDAR .cal-grid.is-week {
+  flex: 1 1 auto;
+  height: auto;
   margin-top: 35px;
+  overflow: hidden;
   border-right: none;
 }
 
@@ -1172,13 +1192,16 @@ html:has(.ADMIN-CALENDAR) main {
 
 /* ── 스케줄 브리핑 ───────────────────── */
 .ADMIN-CALENDAR .cal-brief {
-  position: sticky;
-  top: 0;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .ADMIN-CALENDAR .cal-brief-head {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   height: 69px;
   padding-top: 2px;
@@ -1204,6 +1227,9 @@ html:has(.ADMIN-CALENDAR) main {
 }
 
 .ADMIN-CALENDAR .cal-brief-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
   padding: 27px 20px 0;
 }
 
@@ -1481,8 +1507,10 @@ html:has(.ADMIN-CALENDAR) main {
   grid-template-columns: minmax(0, 1fr) 300px;
   column-gap: 22px;
   align-items: stretch;
+  flex: 1 1 auto;
+  min-height: 0;
   margin-top: 35px;
-  min-height: calc(100dvh - 248px);
+  overflow: auto;
 }
 
 .ADMIN-CALENDAR .cal-month-grid {
@@ -1503,6 +1531,9 @@ html:has(.ADMIN-CALENDAR) main {
 }
 
 .ADMIN-CALENDAR .cal-month-grid > .cal-month-wd {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;

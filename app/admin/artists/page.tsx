@@ -111,8 +111,8 @@ export default function AdminArtistsPage() {
   };
 
   return (
-    <div className="font-sans-kr text-[#1C1C1C]">
-      <div className="flex items-start justify-between gap-6 pl-[6px]">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden font-sans-kr text-[#1C1C1C]">
+      <div className="flex shrink-0 items-start justify-between gap-6 pl-[6px]">
         <AdminPageTitle className="flex items-baseline gap-2">
           디자이너
           <span className="text-[15px] font-normal text-[#8A847C]">총 {artists.length}명</span>
@@ -121,9 +121,10 @@ export default function AdminArtistsPage() {
           <AdminBellButton />
         </div>
       </div>
-      <div className="mt-12">
+      <div className="mt-12 shrink-0">
         <SettingsNav />
       </div>
+      <div className="min-h-0 flex-1 overflow-auto">
       {error ? <p className="mt-6 text-[15px] font-medium text-[#E24B4B]">{error}</p> : null}
 
       <div className="mt-8 grid items-start gap-8 min-[1440px]:grid-cols-[minmax(0,1fr)_380px]">
@@ -295,6 +296,7 @@ export default function AdminArtistsPage() {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

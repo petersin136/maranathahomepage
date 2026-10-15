@@ -454,7 +454,7 @@ export default function AdminBookingsPage() {
   const empty = !loading && rows.length === 0;
 
   return (
-    <div className="flex h-[calc(100dvh-5rem)] flex-col overflow-hidden pl-[6px] pr-[8px] font-sans-kr text-[#1C1C1C]">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden pl-[6px] pr-[8px] font-sans-kr text-[#1C1C1C]">
       <div className="flex shrink-0 items-start justify-between gap-6">
         <AdminPageTitle>예약관리</AdminPageTitle>
         <div className="-mr-[8px] mt-[24px] flex items-start gap-[8px]">
@@ -681,7 +681,7 @@ export default function AdminBookingsPage() {
       </div>
 
       <div className="mt-[33px] min-h-0 flex-1 overflow-auto pt-[4px]">
-        <table className="w-full table-fixed text-left text-[16px] font-medium">
+        <table className="w-full table-fixed border-separate border-spacing-0 text-left text-[16px] font-medium">
           <colgroup>
             <col className="w-[var(--booking-col-check)]" />
             <col className="w-[var(--booking-col-date)]" />
@@ -704,7 +704,7 @@ export default function AdminBookingsPage() {
             <col className="w-[var(--booking-col-manage)]" />
           </colgroup>
           <thead>
-            <tr className="sticky top-0 z-10 border-b-[1.5px] border-[#C9C3BB] bg-white text-[15px] font-bold leading-none text-[#9A948C] [&>th]:bg-white">
+            <tr className="text-[15px] font-bold leading-none text-[#9A948C] [&>th]:sticky [&>th]:top-0 [&>th]:z-10 [&>th]:border-b-[1.5px] [&>th]:border-[#C9C3BB] [&>th]:bg-white">
               <th className="w-[var(--booking-col-check)] min-w-[66px] pl-[calc(var(--booking-cell-padx)+var(--booking-table-inset))] pr-[var(--booking-cell-padx)] pt-0 pb-[14px] text-left align-bottom font-bold">
                 <div className="flex h-[10px] items-center">
                 <CheckBox

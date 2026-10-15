@@ -69,16 +69,17 @@ export default function AdminSettingsPage() {
   };
 
   return (
-    <div className="font-sans-kr text-[#1C1C1C]">
-      <div className="flex items-start justify-between gap-6 pl-[6px]">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden font-sans-kr text-[#1C1C1C]">
+      <div className="flex shrink-0 items-start justify-between gap-6 pl-[6px]">
         <AdminPageTitle>사업자 정보</AdminPageTitle>
         <div className="mt-[24px]">
           <AdminBellButton />
         </div>
       </div>
-      <div className="mt-12">
+      <div className="mt-12 shrink-0">
         <SettingsNav />
       </div>
+      <div className="min-h-0 flex-1 overflow-auto">
 
       {error ? <p className="mt-6 text-[15px] font-medium text-[#E24B4B]">{error}</p> : null}
       {loading ? (
@@ -131,6 +132,7 @@ export default function AdminSettingsPage() {
           </p>
         </section>
       )}
+      </div>
     </div>
   );
 }

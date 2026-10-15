@@ -889,6 +889,7 @@ function WeekGrid({
         </div>
       </div>
 
+      <div className="cal-vscroll">
       <div className="cal-grid-body is-week" style={{ height: SLOT_COUNT * SLOT_HEIGHT }}>
         {slots.map((m, i) =>
           i === 0 ? null : (
@@ -987,6 +988,7 @@ function WeekGrid({
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );
