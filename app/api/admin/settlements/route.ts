@@ -13,9 +13,15 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   try {
-    const data = await loadSettlementsDashboard(searchParams.get("year"), searchParams.get("month"));
+    const onlyArtistId = auth.role === "designer" ? auth.artistId ?? undefined : undefined;
+    const data = await loadSettlementsDashboard(
+      searchParams.get("year"),
+      searchParams.get("month"),
+      onlyArtistId
+    );
     if (auth.role === "designer" && auth.artistId) {
       // 정산은 본인 실지급 확인용이라 본인 계좌를 허용한다.
+      // 조회 단계에서도 본인만 읽지만 방어용으로 한 번 더 거른다.
       const artists = data.artists.filter((row) => row.artistId === auth.artistId);
       const summary = {
         totalRevenue: artists.reduce((sum, row) => sum + row.revenue, 0),

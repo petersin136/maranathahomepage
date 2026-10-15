@@ -8,8 +8,10 @@ export const preferredRegion = "icn1";
 export default async function SettlementsPage() {
   const auth = await requireAdminUser();
   try {
-    const initial = await loadSettlementsDashboard(null, null);
+    const onlyArtistId = auth.ok && auth.role === "designer" && auth.artistId ? auth.artistId : undefined;
+    const initial = await loadSettlementsDashboard(null, null, onlyArtistId);
     if (auth.ok && auth.role === "designer" && auth.artistId) {
+      // 조회 단계에서도 본인만 읽지만 방어용으로 한 번 더 거른다.
       const artists = initial.artists.filter((row) => row.artistId === auth.artistId);
       const summary = {
         totalRevenue: artists.reduce((sum, row) => sum + row.revenue, 0),

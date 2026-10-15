@@ -22,7 +22,8 @@ const ARTIST_FIELDS =
 
 export async function loadSettlementsDashboard(
   yearRaw: string | null,
-  monthRaw: string | null
+  monthRaw: string | null,
+  onlyArtistId?: string
 ): Promise<SettlementDashboard> {
   const month = resolveSettlementMonth(yearRaw, monthRaw);
   if ("error" in month) throw new SettlementsQueryError(month.error, 400);
@@ -30,16 +31,21 @@ export async function loadSettlementsDashboard(
   const admin = getSupabaseAdmin();
   const paidRange = settlementPaidAtRange(month.from, month.to);
 
+  let bookingsQuery = admin
+    .from("bookings")
+    .select(BOOKING_FIELDS)
+    .eq("status", "completed")
+    .not("final_amount", "is", null)
+    .gte("paid_at", paidRange.gte)
+    .lt("paid_at", paidRange.lt);
+  if (onlyArtistId) bookingsQuery = bookingsQuery.eq("artist_id", onlyArtistId);
+
+  let artistsQuery = admin.from("artists").select(ARTIST_FIELDS).order("sort_order", { ascending: true });
+  if (onlyArtistId) artistsQuery = artistsQuery.eq("id", onlyArtistId);
+
   const [bookingsRes, artistsRes] = await Promise.all([
-    admin
-      .from("bookings")
-      .select(BOOKING_FIELDS)
-      .eq("status", "completed")
-      .not("final_amount", "is", null)
-      .gte("paid_at", paidRange.gte)
-      .lt("paid_at", paidRange.lt)
-      .limit(5000),
-    admin.from("artists").select(ARTIST_FIELDS).order("sort_order", { ascending: true })
+    bookingsQuery.limit(5000),
+    artistsQuery
   ]);
 
   if (bookingsRes.error) throw new Error(bookingsRes.error.message);

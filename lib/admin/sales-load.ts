@@ -56,18 +56,23 @@ export async function loadSalesDashboard(
     .lte("booking_date", period.to);
   if (artistIds.length > 0) periodQuery = periodQuery.in("artist_id", artistIds);
 
+  let artistsQuery = admin.from("artists").select("id, name_kr, name_en, role, commission_rate");
+  if (artistIds.length > 0) artistsQuery = artistsQuery.in("id", artistIds);
+
   const [currentCompleted, previousCompleted, periodBookingsRes, artistsRes] = await Promise.all([
     fetchCompletedInPaidRange(admin, period.from, period.to, artistIds),
     fetchCompletedInPaidRange(admin, period.prevFrom, period.prevTo, artistIds),
     periodQuery.limit(5000),
-    admin.from("artists").select("id, name_kr, name_en, role, commission_rate")
+    artistsQuery
   ]);
 
   if (periodBookingsRes.error) throw new Error(periodBookingsRes.error.message);
 
   let artists = artistsRes.data ?? [];
   if (artistsRes.error) {
-    const fallback = await admin.from("artists").select("id, name_kr, name_en, role");
+    let fallbackQuery = admin.from("artists").select("id, name_kr, name_en, role");
+    if (artistIds.length > 0) fallbackQuery = fallbackQuery.in("id", artistIds);
+    const fallback = await fallbackQuery;
     if (fallback.error) throw new Error(artistsRes.error.message);
     artists = (fallback.data ?? []).map((a) => ({ ...a, commission_rate: null }));
   }
