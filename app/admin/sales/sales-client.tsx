@@ -8,6 +8,7 @@ import {
   CheckBox,
   DownloadExportButton,
   FinanceHeader,
+  FinanceSticky,
   MonthPicker,
   RefreshButton,
   TABLE_HEAD_ROW,
@@ -215,7 +216,8 @@ export default function AdminSalesPage({
 
   return (
     <div className="pb-16 font-sans-kr text-[#1C1C1C]">
-      <FinanceHeader />
+      <FinanceSticky>
+      <FinanceHeader embedded />
 
       <Toolbar
         className="mt-[34px]"
@@ -277,6 +279,7 @@ export default function AdminSalesPage({
           />
         }
       />
+      </FinanceSticky>
 
       {error ? <p className="mt-4 text-[13px] text-[#E24B4B]">{error}</p> : null}
 
@@ -305,7 +308,7 @@ export default function AdminSalesPage({
 
       {!setupEmpty && s ? (
         <>
-          <div className="mt-6 grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             <article className="overflow-visible rounded-[8px] bg-[color:var(--accent)] px-5 py-5 text-white">
               <p className="text-[15px] font-bold leading-normal">총 매출액</p>
               <p className="mt-3 text-[20px] font-bold leading-normal tabular-nums">{won(s.totalRevenue)}</p>

@@ -139,6 +139,11 @@ export function FinanceHeader({
   );
 }
 
+/** 제목·탭·필터 줄. 본문만 스크롤되고 이 영역은 위에 남는다. */
+export function FinanceSticky({ children }: { children: React.ReactNode }) {
+  return <div className="sticky top-0 z-20 bg-white pt-10 pb-6 pl-[6px]">{children}</div>;
+}
+
 /** 탭 아래 필터·액션 줄 */
 export function Toolbar({
   left,

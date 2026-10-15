@@ -7,6 +7,7 @@ import {
   DownloadExportButton,
   Empty,
   FinanceHeader,
+  FinanceSticky,
   Icon,
   Modal,
   MonthPicker,
@@ -306,7 +307,8 @@ export default function AdminSettlementsPage({
 
   return (
     <div className="pb-16 font-sans-kr text-[#1C1C1C]">
-      <FinanceHeader subtitle={`${year}년 ${month}월 디자이너 정산`} />
+      <FinanceSticky>
+      <FinanceHeader embedded subtitle={`${year}년 ${month}월 디자이너 정산`} />
 
       <Toolbar
         left={
@@ -375,13 +377,14 @@ export default function AdminSettlementsPage({
           )
         }
       />
+      </FinanceSticky>
 
       {error ? <p className="mt-4 text-[13px] text-[#E24B4B]">{error}</p> : null}
       {refreshing && !data ? <p className="mt-6 text-[13px] text-[#8A847C]">불러오는 중…</p> : null}
 
       {data && s ? (
         <>
-          <div className="mt-6 grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             {kpi.map((card) => (
               <article
                 key={card.label}

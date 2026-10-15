@@ -7,6 +7,7 @@ import {
   CheckBox,
   DownloadExportButton,
   FinanceHeader,
+  FinanceSticky,
   INPUT,
   Modal,
   MonthPicker,
@@ -275,7 +276,8 @@ export default function AdminExpensesPage({
 
   return (
     <div className="pb-16 font-sans-kr text-[#1C1C1C]">
-      <FinanceHeader subtitle={`${year}년 ${month}월 지출`} />
+      <FinanceSticky>
+      <FinanceHeader embedded subtitle={`${year}년 ${month}월 지출`} />
 
       <Toolbar
         className="mt-[34px]"
@@ -344,13 +346,14 @@ export default function AdminExpensesPage({
           </>
         }
       />
+      </FinanceSticky>
 
       {error ? <p className="mt-4 text-[13px] text-[#E24B4B]">{error}</p> : null}
       {refreshing && !data ? <p className="mt-6 text-[13px] text-[#8A847C]">불러오는 중…</p> : null}
 
       {s ? (
         <>
-          <div className="mt-6 grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             <article className="overflow-visible rounded-[8px] bg-[color:var(--accent)] px-5 py-5 text-white">
               <p className="text-[15px] font-bold leading-normal">총 지출액</p>
               <p className="mt-3 text-[20px] font-bold leading-normal tabular-nums">{won(s.totalAmount)}</p>
