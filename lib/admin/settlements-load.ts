@@ -18,7 +18,7 @@ const BOOKING_FIELDS =
   "id, artist_id, booking_date, paid_at, customer_name, service_names, payment_method, final_amount";
 
 const ARTIST_FIELDS =
-  "id, name_kr, employment_type, commission_rate, bank_name, bank_account, bank_holder";
+  "id, name_kr, employment_type, commission_rate, bank_name, bank_account, bank_holder, sort_order";
 
 export async function loadSettlementsDashboard(
   yearRaw: string | null,
@@ -51,6 +51,7 @@ export async function loadSettlementsDashboard(
     from: month.from,
     to: month.to,
     artists: artistsRes.data ?? [],
-    bookings: (bookingsRes.data ?? []) as never
+    bookings: (bookingsRes.data ?? []) as never,
+    includeIdleArtists: true
   });
 }

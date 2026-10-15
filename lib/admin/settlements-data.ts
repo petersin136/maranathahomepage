@@ -71,6 +71,7 @@ type ArtistRow = {
   bank_name: string | null;
   bank_account: string | null;
   bank_holder: string | null;
+  sort_order?: number | null;
 };
 
 type BookingRow = {
@@ -184,12 +185,20 @@ export function aggregateSettlements(args: {
   to: string;
   artists: ArtistRow[];
   bookings: BookingRow[];
+  includeIdleArtists?: boolean;
 }): SettlementDashboard {
   const artistById = new Map(args.artists.map((a) => [a.id, a]));
   const grouped = new Map<
     string,
     { artist: ArtistRow; revenue: number; count: number; bookings: SettlementBookingRow[] }
   >();
+
+  if (args.includeIdleArtists) {
+    for (const artist of args.artists) {
+      if (!artist.id || grouped.has(artist.id)) continue;
+      grouped.set(artist.id, { artist, revenue: 0, count: 0, bookings: [] });
+    }
+  }
 
   for (const booking of args.bookings) {
     if (!booking.artist_id) continue;
@@ -276,7 +285,14 @@ export function aggregateSettlements(args: {
         bookings
       };
     })
-    .sort((a, b) => b.revenue - a.revenue || a.artistName.localeCompare(b.artistName, "ko"));
+    .sort((a, b) => {
+      const byRevenue = b.revenue - a.revenue;
+      if (byRevenue !== 0) return byRevenue;
+      const ao = artistById.get(a.artistId)?.sort_order;
+      const bo = artistById.get(b.artistId)?.sort_order;
+      if (ao != null && bo != null && ao !== bo) return ao - bo;
+      return a.artistName.localeCompare(b.artistName, "ko");
+    });
 
   const summary: SettlementSummary = {
     totalRevenue: artists.reduce((sum, a) => sum + a.revenue, 0),

@@ -356,7 +356,7 @@ export default function AdminSalesPage({
                         className="mr-2 inline-block h-[14px] w-[3px] shrink-0 rounded-full"
                         style={{ background: METHOD_TONE[m.method] }}
                       />
-                      <span className="font-bold tabular-nums">{Math.round(m.share)}%</span>
+                      <span className="font-bold tabular-nums">{m.share.toFixed(1)}%</span>
                       <span className="ml-2">{m.label}</span>
                     </span>
                     <span className="shrink-0 tabular-nums text-[color:var(--muted)]">{won(m.amount)}</span>
