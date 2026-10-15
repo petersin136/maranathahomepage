@@ -71,6 +71,27 @@ function signedWon(delta: number) {
   return "0원";
 }
 
+function displayMethodPercents(methods: { share: number; amount: number }[]): number[] {
+  const total = methods.reduce((sum, method) => sum + method.amount, 0);
+  if (total === 0) return methods.map(() => 0);
+  const floors = methods.map((method) => Math.floor(method.share));
+  let rest = 100 - floors.reduce((sum, value) => sum + value, 0);
+  const order = methods
+    .map((method, index) => ({
+      index,
+      frac: method.share - Math.floor(method.share),
+      amount: method.amount
+    }))
+    .sort((a, b) => b.frac - a.frac || b.amount - a.amount);
+  const percents = floors.slice();
+  for (const item of order) {
+    if (rest <= 0) break;
+    percents[item.index] += 1;
+    rest -= 1;
+  }
+  return percents;
+}
+
 function monthRange(year: number, month: number) {
   const from = monthStart(`${year}-${String(month).padStart(2, "0")}-01`);
   return { from, to: monthEnd(from) };
@@ -165,6 +186,7 @@ export default function AdminSalesPage({
   }, [data, artistFilter, lockedArtistId]);
 
   const s = view;
+  const methodPercents = s ? displayMethodPercents(s.methods) : [];
   const a = s?.attrition;
   const prevCount = s ? s.completedCount - s.completedChange : 0;
   const currentEmpty = !s || s.completedCount === 0;
@@ -266,12 +288,14 @@ export default function AdminSalesPage({
           <p className="mt-[13px] text-center text-[14px] font-normal leading-[21px] text-[#807B77]">
             매장 정보와 디자이너가 등록되어야 매출 데이터를 집계할 수 있습니다.
           </p>
-          <Link
-            href="/admin/settings"
-            className="mt-[35px] flex h-[45px] w-[186px] items-center justify-center rounded-[4px] bg-[#2C3A2E] text-white"
-          >
-            <span className="text-[15px] font-bold leading-normal">매장 설정 바로가기</span>
-          </Link>
+          {session?.role === "designer" ? null : (
+            <Link
+              href="/admin/settings"
+              className="mt-[35px] flex h-[45px] w-[186px] items-center justify-center rounded-[4px] bg-[#2C3A2E] text-white"
+            >
+              <span className="text-[15px] font-bold leading-normal">매장 설정 바로가기</span>
+            </Link>
+          )}
         </div>
       ) : null}
 
@@ -349,14 +373,14 @@ export default function AdminSalesPage({
                   : null}
               </div>
               <ul className="mt-4">
-                {s.methods.map((m) => (
+                {s.methods.map((m, index) => (
                   <li key={m.method} className="flex items-center justify-between py-[10px] text-[16px] font-medium">
                     <span className="flex min-w-0 items-center">
                       <span
                         className="mr-2 inline-block h-[14px] w-[3px] shrink-0 rounded-full"
                         style={{ background: METHOD_TONE[m.method] }}
                       />
-                      <span className="font-bold tabular-nums">{m.share.toFixed(1)}%</span>
+                      <span className="font-bold tabular-nums">{methodPercents[index]}%</span>
                       <span className="ml-2">{m.label}</span>
                     </span>
                     <span className="shrink-0 tabular-nums text-[color:var(--muted)]">{won(m.amount)}</span>

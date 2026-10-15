@@ -19,6 +19,8 @@ export type SettlementBookingRow = {
   amount: number;
 };
 
+export type SettlementRowStatus = "집계 중" | "정산대기" | "지급 완료";
+
 export type SettlementArtistRow = {
   artistId: string;
   artistName: string;
@@ -39,6 +41,8 @@ export type SettlementArtistRow = {
   bankHolder: string | null;
   bankDisplay: string | null;
   bookings: SettlementBookingRow[];
+  status: SettlementRowStatus;
+  paidAt: string | null;
 };
 
 export type SettlementSummary = {
@@ -46,6 +50,8 @@ export type SettlementSummary = {
   totalIncentive: number;
   totalWithholding: number;
   totalNetPay: number;
+  completedCount: number;
+  avgCommissionRate: number | null;
 };
 
 export type SettlementDashboard = {
@@ -53,7 +59,19 @@ export type SettlementDashboard = {
   month: number;
   from: string;
   to: string;
+  closed: boolean;
+  closedAt: string | null;
+  prevMonthPayout: number;
   summary: SettlementSummary;
+  artists: SettlementArtistRow[];
+};
+
+export type SettlementSnapshot = {
+  year: number;
+  month: number;
+  from: string;
+  to: string;
+  summary: Pick<SettlementSummary, "totalRevenue" | "totalIncentive" | "totalWithholding" | "totalNetPay">;
   artists: SettlementArtistRow[];
 };
 
@@ -162,6 +180,126 @@ export function settlementPaidAtRange(from: string, to: string) {
   return {
     gte: kstDayStartIso(from),
     lt: kstDayEndExclusiveIso(to)
+  };
+}
+
+export function yearMonthKey(year: number, month: number) {
+  return `${year}-${String(month).padStart(2, "0")}`;
+}
+
+export function shiftYearMonth(year: number, month: number, delta: number) {
+  const dt = new Date(Date.UTC(year, month - 1 + delta, 1));
+  return { year: dt.getUTCFullYear(), month: dt.getUTCMonth() + 1 };
+}
+
+export function isPastKstMonth(year: number, month: number, today = todayKst()) {
+  const [ty, tm] = today.split("-").map(Number);
+  return year < ty || (year === ty && month < tm);
+}
+
+export function remainderPercents(amounts: number[]): number[] {
+  const total = amounts.reduce((sum, value) => sum + value, 0);
+  if (total === 0) return amounts.map(() => 0);
+  const shares = amounts.map((value) => (value / total) * 100);
+  const floors = shares.map((share) => Math.floor(share));
+  let rest = 100 - floors.reduce((sum, value) => sum + value, 0);
+  const order = shares
+    .map((share, index) => ({
+      index,
+      frac: share - Math.floor(share),
+      amount: amounts[index]
+    }))
+    .sort((a, b) => b.frac - a.frac || b.amount - a.amount);
+  const percents = floors.slice();
+  for (const item of order) {
+    if (rest <= 0) break;
+    percents[item.index] += 1;
+    rest -= 1;
+  }
+  return percents;
+}
+
+export function bankAccountDisplay(
+  bankName: string | null | undefined,
+  bankAccount: string | null | undefined
+) {
+  const name = (bankName || "").trim();
+  const account = (bankAccount || "").trim();
+  if (!name && !account) return null;
+  return [name, account].filter(Boolean).join(" ");
+}
+
+function coreSummary(artists: SettlementArtistRow[]): Pick<
+  SettlementSummary,
+  "totalRevenue" | "totalIncentive" | "totalWithholding" | "totalNetPay"
+> {
+  return {
+    totalRevenue: artists.reduce((sum, row) => sum + row.revenue, 0),
+    totalIncentive: artists.reduce((sum, row) => sum + (row.incentive ?? 0), 0),
+    totalWithholding: artists.reduce((sum, row) => sum + (row.withholding ?? 0), 0),
+    totalNetPay: artists.reduce((sum, row) => sum + (row.netPay ?? 0), 0)
+  };
+}
+
+export function expandSettlementSummary(
+  artists: SettlementArtistRow[],
+  core?: Pick<SettlementSummary, "totalRevenue" | "totalIncentive" | "totalWithholding" | "totalNetPay">
+): SettlementSummary {
+  const base = core ?? coreSummary(artists);
+  return {
+    ...base,
+    completedCount: artists.reduce((sum, row) => sum + row.count, 0),
+    avgCommissionRate: base.totalRevenue > 0 ? (base.totalIncentive / base.totalRevenue) * 100 : null
+  };
+}
+
+export function toSettlementSnapshot(data: SettlementDashboard): SettlementSnapshot {
+  return {
+    year: data.year,
+    month: data.month,
+    from: data.from,
+    to: data.to,
+    summary: {
+      totalRevenue: data.summary.totalRevenue,
+      totalIncentive: data.summary.totalIncentive,
+      totalWithholding: data.summary.totalWithholding,
+      totalNetPay: data.summary.totalNetPay
+    },
+    artists: data.artists.map((row) => ({
+      ...row,
+      status: "집계 중" as SettlementRowStatus,
+      paidAt: null
+    }))
+  };
+}
+
+export function isSettlementSnapshot(value: unknown): value is SettlementSnapshot {
+  if (!value || typeof value !== "object") return false;
+  const row = value as SettlementSnapshot;
+  return Array.isArray(row.artists) && row.summary != null && typeof row.summary === "object";
+}
+
+export function attachSettlementStatus(
+  artists: SettlementArtistRow[],
+  closed: boolean,
+  payouts: Map<string, string>
+): SettlementArtistRow[] {
+  return artists.map((row) => ({
+    ...row,
+    status: !closed ? "집계 중" : payouts.has(row.artistId) ? "지급 완료" : "정산대기",
+    paidAt: closed ? payouts.get(row.artistId) ?? null : null
+  }));
+}
+
+export function scopeSettlementsForDesigner(
+  data: SettlementDashboard,
+  artistId: string
+): SettlementDashboard {
+  const artists = data.artists.filter((row) => row.artistId === artistId);
+  return {
+    ...data,
+    artists,
+    summary: expandSettlementSummary(artists)
   };
 }
 
@@ -282,7 +420,9 @@ export function aggregateSettlements(args: {
           artist.bank_account,
           artist.bank_holder
         ),
-        bookings
+        bookings,
+        status: "집계 중" as SettlementRowStatus,
+        paidAt: null
       };
     })
     .sort((a, b) => {
@@ -294,18 +434,16 @@ export function aggregateSettlements(args: {
       return a.artistName.localeCompare(b.artistName, "ko");
     });
 
-  const summary: SettlementSummary = {
-    totalRevenue: artists.reduce((sum, a) => sum + a.revenue, 0),
-    totalIncentive: artists.reduce((sum, a) => sum + (a.incentive ?? 0), 0),
-    totalWithholding: artists.reduce((sum, a) => sum + (a.withholding ?? 0), 0),
-    totalNetPay: artists.reduce((sum, a) => sum + (a.netPay ?? 0), 0)
-  };
+  const summary = expandSettlementSummary(artists);
 
   return {
     year: args.year,
     month: args.month,
     from: args.from,
     to: args.to,
+    closed: false,
+    closedAt: null,
+    prevMonthPayout: 0,
     summary,
     artists
   };

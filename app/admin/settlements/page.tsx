@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { loadSettlementsDashboard, SettlementsQueryError } from "@/lib/admin/settlements-load";
+import { loadSettlementsView, SettlementsQueryError } from "@/lib/admin/settlements-load";
 import { requireAdminUser } from "@/lib/admin/auth";
 import AdminSettlementsPage from "./settlements-client";
 
@@ -10,19 +10,12 @@ export default async function SettlementsPage() {
   const auth = await requireAdminUser();
   if (auth.ok && auth.role === "designer" && !auth.artistId) redirect("/admin");
   try {
-    const onlyArtistId = auth.ok && auth.role === "designer" && auth.artistId ? auth.artistId : undefined;
-    const initial = await loadSettlementsDashboard(null, null, onlyArtistId);
-    if (auth.ok && auth.role === "designer" && auth.artistId) {
-      // 조회 단계에서도 본인만 읽지만 방어용으로 한 번 더 거른다.
-      const artists = initial.artists.filter((row) => row.artistId === auth.artistId);
-      const summary = {
-        totalRevenue: artists.reduce((sum, row) => sum + row.revenue, 0),
-        totalIncentive: artists.reduce((sum, row) => sum + (row.incentive ?? 0), 0),
-        totalWithholding: artists.reduce((sum, row) => sum + (row.withholding ?? 0), 0),
-        totalNetPay: artists.reduce((sum, row) => sum + (row.netPay ?? 0), 0)
-      };
-      return <AdminSettlementsPage initial={{ ...initial, artists, summary }} initialError={null} />;
-    }
+    const initial = await loadSettlementsView({
+      yearRaw: null,
+      monthRaw: null,
+      role: auth.ok ? auth.role : "owner",
+      artistId: auth.ok ? auth.artistId : null
+    });
     return <AdminSettlementsPage initial={initial} initialError={null} />;
   } catch (e) {
     console.error("[admin/settlements page]", e);

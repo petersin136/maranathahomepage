@@ -1,8 +1,20 @@
 import {
   EXPENSE_CATEGORIES,
+  EXPENSE_NATURES,
+  EXPENSE_PROOF_BUCKETS,
   expenseCategoryLabel,
+  expenseNatureKey,
+  expenseProofBucket,
   isExpenseCategory,
-  type ExpenseCategory
+  isExpensePaymentMethod,
+  isExpenseProofType,
+  isMissingExpenseProof,
+  normalizeExpenseCategory,
+  parseExpenseCategory,
+  resolveExpenseProofType,
+  type ExpenseCategory,
+  type ExpensePaymentMethod,
+  type ExpenseProofType
 } from "@/lib/admin/expense-categories";
 import { isYmd, todayKst } from "@/lib/admin/sales-data";
 
@@ -16,6 +28,8 @@ export type ExpenseRow = {
   has_tax_invoice: boolean;
   receipt_url: string | null;
   is_recurring: boolean;
+  payment_method: ExpensePaymentMethod | null;
+  proof_type: ExpenseProofType;
   created_at: string;
 };
 
@@ -27,14 +41,37 @@ export type ExpenseCategoryShare = {
   share: number;
 };
 
+export type ExpenseNatureShare = {
+  key: string;
+  label: string;
+  amount: number;
+  share: number;
+  tone: string;
+};
+
+export type ExpenseProofShare = {
+  key: string;
+  label: string;
+  amount: number;
+  share: number;
+  tone: string;
+};
+
 export type ExpenseSummary = {
   totalAmount: number;
   prevTotalAmount: number;
   changeAmount: number;
   changeRate: number | null;
+  materialAmount: number;
+  prevMaterialAmount: number;
+  fixedAmount: number;
   withProofAmount: number;
   withoutProofAmount: number;
+  withoutProofCount: number;
+  monthRevenue: number;
   categories: ExpenseCategoryShare[];
+  natures: ExpenseNatureShare[];
+  proofs: ExpenseProofShare[];
 };
 
 export type RecurringImportPreview = {
@@ -47,6 +84,8 @@ export type RecurringImportPreview = {
     vendor: string | null;
     memo: string | null;
     has_tax_invoice: boolean;
+    payment_method: ExpensePaymentMethod | null;
+    proof_type: ExpenseProofType;
   }[];
 };
 
@@ -121,7 +160,7 @@ export function previousExpenseMonth(year: number, month: number) {
 
 /** 카테고리 + 거래처 조합 키 (중복 방지용). 거래처는 trim 후 소문자. */
 export function expenseDedupeKey(category: string, vendor: string | null | undefined) {
-  return `${category}::${(vendor || "").trim().toLowerCase()}`;
+  return `${normalizeExpenseCategory(category)}::${(vendor || "").trim().toLowerCase()}`;
 }
 
 export function mapRecurringDateToMonth(
@@ -139,19 +178,71 @@ function changeRate(current: number, previous: number): number | null {
   return ((current - previous) / previous) * 100;
 }
 
+export function mapExpenseRow(raw: Record<string, unknown>): ExpenseRow {
+  const proof = resolveExpenseProofType({
+    proof_type: raw.proof_type == null ? null : String(raw.proof_type),
+    has_tax_invoice: Boolean(raw.has_tax_invoice)
+  });
+  const paymentRaw = raw.payment_method == null ? "" : String(raw.payment_method);
+  return {
+    id: String(raw.id || ""),
+    expense_date: String(raw.expense_date || ""),
+    category: normalizeExpenseCategory(String(raw.category || "other")),
+    amount: Number(raw.amount || 0),
+    vendor: raw.vendor == null ? null : String(raw.vendor),
+    memo: raw.memo == null ? null : String(raw.memo),
+    has_tax_invoice: proof === "tax_invoice",
+    receipt_url: raw.receipt_url == null ? null : String(raw.receipt_url),
+    is_recurring: Boolean(raw.is_recurring),
+    payment_method: isExpensePaymentMethod(paymentRaw) ? paymentRaw : null,
+    proof_type: proof,
+    created_at: String(raw.created_at || "")
+  };
+}
+
+export function remainderPercents(amounts: number[]): number[] {
+  const total = amounts.reduce((sum, value) => sum + value, 0);
+  if (total === 0) return amounts.map(() => 0);
+  const shares = amounts.map((value) => (value / total) * 100);
+  const floors = shares.map((share) => Math.floor(share));
+  let rest = 100 - floors.reduce((sum, value) => sum + value, 0);
+  const order = shares
+    .map((share, index) => ({
+      index,
+      frac: share - Math.floor(share),
+      amount: amounts[index]
+    }))
+    .sort((a, b) => b.frac - a.frac || b.amount - a.amount);
+  const percents = floors.slice();
+  for (const item of order) {
+    if (rest <= 0) break;
+    percents[item.index] += 1;
+    rest -= 1;
+  }
+  return percents;
+}
+
+function sumBy(rows: ExpenseRow[], pred: (row: ExpenseRow) => boolean) {
+  return rows.reduce((sum, row) => (pred(row) ? sum + Number(row.amount || 0) : sum), 0);
+}
+
 export function buildExpenseSummary(
   current: ExpenseRow[],
-  previousTotal: number
+  previous: ExpenseRow[],
+  monthRevenue: number
 ): ExpenseSummary {
   const totalAmount = current.reduce((sum, e) => sum + Number(e.amount || 0), 0);
-  const withProofAmount = current
-    .filter((e) => e.has_tax_invoice)
-    .reduce((sum, e) => sum + Number(e.amount || 0), 0);
+  const prevTotalAmount = previous.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+  const materialAmount = sumBy(current, (e) => expenseNatureKey(e.category) === "material");
+  const prevMaterialAmount = sumBy(previous, (e) => expenseNatureKey(e.category) === "material");
+  const fixedAmount = sumBy(current, (e) => expenseNatureKey(e.category) === "fixed");
+  const withProofAmount = sumBy(current, (e) => !isMissingExpenseProof(e.proof_type));
   const withoutProofAmount = totalAmount - withProofAmount;
+  const withoutProofCount = current.filter((e) => isMissingExpenseProof(e.proof_type)).length;
 
   const byCategory = new Map<string, { amount: number; count: number }>();
   for (const e of current) {
-    const key = e.category || "other";
+    const key = normalizeExpenseCategory(String(e.category || "other"));
     const cur = byCategory.get(key) ?? { amount: 0, count: 0 };
     cur.amount += Number(e.amount || 0);
     cur.count += 1;
@@ -171,7 +262,6 @@ export function buildExpenseSummary(
     .filter((c) => c.amount > 0 || c.count > 0)
     .sort((a, b) => b.amount - a.amount);
 
-  // 알 수 없는 카테고리도 표시
   for (const [key, cur] of byCategory) {
     if (isExpenseCategory(key)) continue;
     categories.push({
@@ -184,14 +274,43 @@ export function buildExpenseSummary(
   }
   categories.sort((a, b) => b.amount - a.amount);
 
+  const natures: ExpenseNatureShare[] = EXPENSE_NATURES.map((n) => {
+    const amount = sumBy(current, (e) => expenseNatureKey(e.category) === n.key);
+    return {
+      key: n.key,
+      label: n.label,
+      amount,
+      share: totalAmount > 0 ? (amount / totalAmount) * 100 : 0,
+      tone: n.tone
+    };
+  });
+
+  const proofs: ExpenseProofShare[] = EXPENSE_PROOF_BUCKETS.map((b) => {
+    const amount = sumBy(current, (e) => expenseProofBucket(e.proof_type) === b.key);
+    return {
+      key: b.key,
+      label: b.label,
+      amount,
+      share: totalAmount > 0 ? (amount / totalAmount) * 100 : 0,
+      tone: b.tone
+    };
+  });
+
   return {
     totalAmount,
-    prevTotalAmount: previousTotal,
-    changeAmount: totalAmount - previousTotal,
-    changeRate: changeRate(totalAmount, previousTotal),
+    prevTotalAmount,
+    changeAmount: totalAmount - prevTotalAmount,
+    changeRate: changeRate(totalAmount, prevTotalAmount),
+    materialAmount,
+    prevMaterialAmount,
+    fixedAmount,
     withProofAmount,
     withoutProofAmount,
-    categories
+    withoutProofCount,
+    monthRevenue,
+    categories,
+    natures,
+    proofs
   };
 }
 
@@ -214,17 +333,16 @@ export function buildRecurringImportPreview(args: {
       continue;
     }
     existing.add(key);
+    const proof = resolveExpenseProofType(row);
     candidates.push({
-      expense_date: mapRecurringDateToMonth(
-        row.expense_date,
-        args.targetYear,
-        args.targetMonth
-      ),
-      category: row.category,
+      expense_date: mapRecurringDateToMonth(row.expense_date, args.targetYear, args.targetMonth),
+      category: normalizeExpenseCategory(String(row.category || "other")),
       amount: Number(row.amount || 0),
       vendor: row.vendor,
       memo: row.memo,
-      has_tax_invoice: Boolean(row.has_tax_invoice)
+      has_tax_invoice: proof === "tax_invoice",
+      payment_method: row.payment_method,
+      proof_type: proof
     });
   }
 
@@ -235,6 +353,19 @@ export function buildRecurringImportPreview(args: {
   };
 }
 
+export type NormalizedExpenseInput = {
+  expense_date: string;
+  category: ExpenseCategory;
+  amount: number;
+  vendor: string | null;
+  memo: string | null;
+  has_tax_invoice: boolean;
+  is_recurring: boolean;
+  payment_method: ExpensePaymentMethod | null;
+  proof_type: ExpenseProofType;
+  receipt_url: null;
+};
+
 export function normalizeExpenseInput(body: {
   expense_date?: string;
   category?: string;
@@ -243,23 +374,14 @@ export function normalizeExpenseInput(body: {
   memo?: string | null;
   has_tax_invoice?: boolean;
   is_recurring?: boolean;
-}):
-  | {
-      expense_date: string;
-      category: ExpenseCategory;
-      amount: number;
-      vendor: string | null;
-      memo: string | null;
-      has_tax_invoice: boolean;
-      is_recurring: boolean;
-      receipt_url: null;
-    }
-  | { error: string } {
+  payment_method?: string | null;
+  proof_type?: string | null;
+}): NormalizedExpenseInput | { error: string } {
   const expense_date = (body.expense_date || "").trim();
   if (!isYmd(expense_date)) return { error: "날짜가 올바르지 않습니다." };
 
-  const category = (body.category || "").trim();
-  if (!isExpenseCategory(category)) return { error: "카테고리가 올바르지 않습니다." };
+  const category = parseExpenseCategory((body.category || "").trim());
+  if (!category) return { error: "카테고리가 올바르지 않습니다." };
 
   const amount = Math.round(Number(body.amount));
   if (!Number.isFinite(amount) || amount < 0) {
@@ -269,14 +391,48 @@ export function normalizeExpenseInput(body: {
   const vendorRaw = body.vendor == null ? "" : String(body.vendor).trim();
   const memoRaw = body.memo == null ? "" : String(body.memo).trim();
 
+  const paymentRaw = body.payment_method == null ? "" : String(body.payment_method).trim();
+  const payment_method = paymentRaw === "" ? null : isExpensePaymentMethod(paymentRaw) ? paymentRaw : null;
+  if (paymentRaw && !payment_method) return { error: "결제 수단이 올바르지 않습니다." };
+
+  const proofRaw = body.proof_type == null ? "" : String(body.proof_type).trim();
+  let proof_type: ExpenseProofType;
+  if (proofRaw) {
+    if (!isExpenseProofType(proofRaw)) return { error: "증빙 상태가 올바르지 않습니다." };
+    proof_type = proofRaw;
+  } else {
+    proof_type = body.has_tax_invoice ? "tax_invoice" : "none";
+  }
+
   return {
     expense_date,
     category,
     amount,
     vendor: vendorRaw || null,
     memo: memoRaw || null,
-    has_tax_invoice: Boolean(body.has_tax_invoice),
+    has_tax_invoice: proof_type === "tax_invoice",
     is_recurring: Boolean(body.is_recurring),
+    payment_method,
+    proof_type,
     receipt_url: null
+  };
+}
+
+export function expenseInsertRow(input: NormalizedExpenseInput, extras: boolean) {
+  const base = {
+    expense_date: input.expense_date,
+    category: input.category,
+    amount: input.amount,
+    vendor: input.vendor,
+    memo: input.memo,
+    has_tax_invoice: input.has_tax_invoice,
+    is_recurring: input.is_recurring,
+    receipt_url: input.receipt_url
+  };
+  if (!extras) return base;
+  return {
+    ...base,
+    payment_method: input.payment_method,
+    proof_type: input.proof_type
   };
 }

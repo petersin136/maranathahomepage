@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { clsx } from "clsx";
 import { AdminDatePicker } from "@/components/admin/AdminDatePicker";
 import { useRefreshPendingCount } from "@/components/admin/pending-count";
+import { parseTimeToMinutes } from "@/lib/booking/overlap";
 import { CANDIDATE_TIMES } from "@/lib/booking/slots";
 
 export type CreateModalArtist = { id: string; label: string };
@@ -14,6 +15,7 @@ type ServiceOption = {
   category: string;
   name: string;
   price: number;
+  duration_minutes: number | null;
   artist_prices: Record<string, number>;
 };
 
@@ -30,6 +32,12 @@ const fieldClass =
   "h-[40px] w-full rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-3 text-[15px] font-medium text-[#1C1C1C] outline-none focus:border-[#1C1C1C]";
 const labelClass =
   "mb-2 block text-[14px] font-bold text-[#8A847C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]";
+
+function clockLabel(totalMinutes: number) {
+  const day = 24 * 60;
+  const normalized = ((totalMinutes % day) + day) % day;
+  return `${String(Math.floor(normalized / 60)).padStart(2, "0")}:${String(normalized % 60).padStart(2, "0")}`;
+}
 
 function todayYmd() {
   const d = new Date();
@@ -80,6 +88,22 @@ export default function BookingCreateModal({
       }, 0),
     [serviceIds, services, artistId]
   );
+
+  const durationMinutes = useMemo(
+    () =>
+      serviceIds.reduce(
+        (sum, id) => sum + (Number(services.find((x) => x.id === id)?.duration_minutes) || 0),
+        0
+      ),
+    [serviceIds, services]
+  );
+
+  const timeRange = useMemo(() => {
+    if (durationMinutes <= 0) return null;
+    const start = parseTimeToMinutes(time);
+    if (!Number.isFinite(start)) return null;
+    return { start: clockLabel(start), end: clockLabel(start + durationMinutes) };
+  }, [durationMinutes, time]);
 
   const submit = async () => {
     setBusy(true);
@@ -196,7 +220,17 @@ export default function BookingCreateModal({
               );
             })}
           </div>
-          <p className="mt-2 text-[14px] text-[#8A847C]">합계 {total.toLocaleString("ko-KR")}원</p>
+          <p className="mt-2 flex items-baseline text-[14px] text-[#8A847C]">
+            <span>합계 {total.toLocaleString("ko-KR")}원</span>
+            {timeRange ? (
+              <span className="ml-3 inline-flex items-baseline">
+                <span>{durationMinutes}분</span>
+                <span className="ml-2 text-[#1C1C1C]">
+                  {timeRange.start}–{timeRange.end}
+                </span>
+              </span>
+            ) : null}
+          </p>
         </div>
 
         <div className="mt-6 flex">

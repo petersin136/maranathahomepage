@@ -307,6 +307,11 @@ export function calcIncomeTax(taxableBase: number) {
   };
 }
 
+export function shopDisplayName(settings: ShopSettings | null | undefined) {
+  const name = settings?.business_name?.trim();
+  return name || "HAIR UP";
+}
+
 export function isShopSettingsConfigured(settings: ShopSettings | null | undefined) {
   if (!settings) return false;
   const name = (settings.business_name || "").trim();

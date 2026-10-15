@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { requireAdminUser, getSupabaseAdmin } from "@/lib/admin/auth";
-import { isExpenseCategory } from "@/lib/admin/expense-categories";
+import {
+  isExpensePaymentMethod,
+  isExpenseProofType,
+  parseExpenseCategory
+} from "@/lib/admin/expense-categories";
 import { isYmd } from "@/lib/admin/sales-data";
+import { EXPENSE_FIELDS, EXPENSE_FIELDS_BASE, missingExpenseExtraColumns } from "@/lib/admin/expenses-load";
 
 export const preferredRegion = "icn1";
-
-const FIELDS =
-  "id, expense_date, category, amount, vendor, memo, has_tax_invoice, receipt_url, is_recurring, created_at";
 
 function rejectDesigner(role: string) {
   if (role !== "designer") return null;
@@ -35,6 +37,8 @@ export async function PATCH(
     memo?: string | null;
     has_tax_invoice?: boolean;
     is_recurring?: boolean;
+    payment_method?: string | null;
+    proof_type?: string | null;
   };
   try {
     body = await request.json();
@@ -52,8 +56,8 @@ export async function PATCH(
     patch.expense_date = expense_date;
   }
   if (body.category !== undefined) {
-    const category = String(body.category || "").trim();
-    if (!isExpenseCategory(category)) {
+    const category = parseExpenseCategory(String(body.category || "").trim());
+    if (!category) {
       return NextResponse.json(
         { ok: false, error: "카테고리가 올바르지 않습니다." },
         { status: 400 }
@@ -76,8 +80,23 @@ export async function PATCH(
     const memo = body.memo == null ? "" : String(body.memo).trim();
     patch.memo = memo || null;
   }
-  if (body.has_tax_invoice !== undefined) {
+  if (body.payment_method !== undefined) {
+    const raw = body.payment_method == null ? "" : String(body.payment_method).trim();
+    if (raw && !isExpensePaymentMethod(raw)) {
+      return NextResponse.json({ ok: false, error: "결제 수단이 올바르지 않습니다." }, { status: 400 });
+    }
+    patch.payment_method = raw || null;
+  }
+  if (body.proof_type !== undefined) {
+    const raw = body.proof_type == null ? "" : String(body.proof_type).trim();
+    if (!isExpenseProofType(raw)) {
+      return NextResponse.json({ ok: false, error: "증빙 상태가 올바르지 않습니다." }, { status: 400 });
+    }
+    patch.proof_type = raw;
+    patch.has_tax_invoice = raw === "tax_invoice";
+  } else if (body.has_tax_invoice !== undefined) {
     patch.has_tax_invoice = Boolean(body.has_tax_invoice);
+    patch.proof_type = body.has_tax_invoice ? "tax_invoice" : "none";
   }
   if (body.is_recurring !== undefined) {
     patch.is_recurring = Boolean(body.is_recurring);
@@ -88,12 +107,21 @@ export async function PATCH(
   }
 
   const admin = getSupabaseAdmin();
-  const { data, error } = await admin
-    .from("expenses")
-    .update(patch)
-    .eq("id", id)
-    .select(FIELDS)
-    .single();
+  let { data, error } = await admin.from("expenses").update(patch).eq("id", id).select(EXPENSE_FIELDS).single();
+  if (error && missingExpenseExtraColumns(error)) {
+    const stripped = { ...patch };
+    delete stripped.payment_method;
+    delete stripped.proof_type;
+    if (Object.keys(stripped).length === 0) {
+      return NextResponse.json({ ok: false, error: "변경할 내용이 없습니다." }, { status: 400 });
+    }
+    ({ data, error } = await admin
+      .from("expenses")
+      .update(stripped)
+      .eq("id", id)
+      .select(EXPENSE_FIELDS_BASE)
+      .single());
+  }
 
   if (error || !data) {
     console.error("[admin/expenses PATCH]", error);

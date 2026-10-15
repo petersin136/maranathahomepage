@@ -12,6 +12,13 @@ export type DashBooking = {
   service_names: string[] | null;
 };
 
+export type DashMonthPoint = {
+  key: string;
+  label: string;
+  count: number;
+  current: boolean;
+};
+
 export type DashboardData = {
   today: string;
   weekStart: string;
@@ -24,6 +31,7 @@ export type DashboardData = {
   weekBookings: DashBooking[];
   monthBookings: DashBooking[];
   pendingBookings: DashBooking[];
+  monthTrend: DashMonthPoint[];
 };
 
 const BOOKING_FIELDS =
@@ -103,7 +111,9 @@ export async function fetchDashboardData(): Promise<DashboardData> {
   const monthStart = formatYmd(y, m, 1);
   const monthEnd = formatYmd(y, m, new Date(Date.UTC(y, m, 0)).getUTCDate());
 
-  const [todayRes, weekRes, monthRes, pendingBookings] = await Promise.all([
+  const trendFrom = shiftMonth(y, m, -5);
+  const trendStart = formatYmd(trendFrom.y, trendFrom.m, 1);
+  const [todayRes, weekRes, monthRes, pendingBookings, monthTrendRes] = await Promise.all([
     admin
       .from("bookings")
       .select(BOOKING_FIELDS)
@@ -128,9 +138,16 @@ export async function fetchDashboardData(): Promise<DashboardData> {
       .not("status", "in", EXCLUDED_STATUSES)
       .order("booking_date", { ascending: true })
       .order("booking_time", { ascending: true }),
-    getPendingBookings()
+    getPendingBookings(),
+    admin
+      .from("bookings")
+      .select("booking_date")
+      .gte("booking_date", trendStart)
+      .lte("booking_date", monthEnd)
+      .not("status", "in", EXCLUDED_STATUSES)
   ]);
 
+  if (monthTrendRes.error) throw new Error(monthTrendRes.error.message);
   const todayBookings = (todayRes.data ?? []) as DashBooking[];
 
   return {
@@ -144,9 +161,90 @@ export async function fetchDashboardData(): Promise<DashboardData> {
     todayBookings,
     weekBookings: (weekRes.data ?? []) as DashBooking[],
     monthBookings: (monthRes.data ?? []) as DashBooking[],
-    pendingBookings
+    pendingBookings,
+    monthTrend: buildMonthTrend(today, monthTrendRes.data ?? [])
   };
+}
+
+function shiftMonth(y: number, m: number, delta: number) {
+  const dt = new Date(Date.UTC(y, m - 1 + delta, 1));
+  return { y: dt.getUTCFullYear(), m: dt.getUTCMonth() + 1 };
+}
+
+function buildMonthTrend(today: string, rows: { booking_date: string | null }[]): DashMonthPoint[] {
+  const { y, m } = parseYmd(today);
+  const points: DashMonthPoint[] = [];
+  for (let back = 5; back >= 0; back -= 1) {
+    const shifted = shiftMonth(y, m, -back);
+    const key = `${shifted.y}-${String(shifted.m).padStart(2, "0")}`;
+    const yearChanged = points.length === 0 || points[points.length - 1].key.slice(0, 4) !== String(shifted.y);
+    points.push({
+      key,
+      label: yearChanged ? `${String(shifted.y).slice(2)}. ${shifted.m}월` : `${shifted.m}월`,
+      count: 0,
+      current: back === 0
+    });
+  }
+  const index = new Map(points.map((point, i) => [point.key, i]));
+  for (const row of rows) {
+    const key = (row.booking_date || "").slice(0, 7);
+    const at = index.get(key);
+    if (at == null) continue;
+    points[at].count += 1;
+  }
+  return points;
 }
 
 /** Request-scoped dedupe for Suspense children on the page. */
 export const getDashboardData = cache(fetchDashboardData);
+
+export type PopularService = {
+  serviceId: string;
+  name: string;
+  count: number;
+};
+
+const POPULAR_FIELDS = "id, booking_date, status, service_ids, service_names";
+
+/** 인기 시술은 매장 전체 트렌드라 designer 도 전체를 본다. 금액은 조회하지 않는다. */
+export async function fetchPopularServices(from: string, to: string): Promise<PopularService[]> {
+  const admin = getSupabaseAdmin();
+  const [bookingsRes, servicesRes] = await Promise.all([
+    admin
+      .from("bookings")
+      .select(POPULAR_FIELDS)
+      .eq("status", "completed")
+      .gte("booking_date", from)
+      .lte("booking_date", to),
+    admin.from("services").select("id, name")
+  ]);
+  if (bookingsRes.error) throw new Error(bookingsRes.error.message);
+  if (servicesRes.error) throw new Error(servicesRes.error.message);
+
+  const nameById = new Map(
+    (servicesRes.data ?? []).map((row) => [String(row.id), String(row.name ?? "")])
+  );
+  const counts = new Map<string, { name: string; count: number }>();
+
+  for (const row of bookingsRes.data ?? []) {
+    const ids = Array.isArray(row.service_ids) ? row.service_ids.map((id) => String(id)) : [];
+    const names = Array.isArray(row.service_names) ? row.service_names.map((name) => String(name ?? "")) : [];
+    const seen = new Set<string>();
+    ids.forEach((id, index) => {
+      const serviceId = id.trim();
+      if (!serviceId || seen.has(serviceId)) return;
+      seen.add(serviceId);
+      const current = (nameById.get(serviceId) ?? "").trim();
+      const snapshot = (names[index] ?? "").trim();
+      const name = current || snapshot || serviceId;
+      const prev = counts.get(serviceId);
+      if (prev) prev.count += 1;
+      else counts.set(serviceId, { name, count: 1 });
+    });
+  }
+
+  return [...counts.entries()]
+    .map(([serviceId, row]) => ({ serviceId, name: row.name, count: row.count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "ko"))
+    .slice(0, 5);
+}

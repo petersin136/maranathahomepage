@@ -28,20 +28,20 @@ export default function AdminExportPage() {
   const initial = useMemo(() => defaultLastMonth(), []);
   const [year, setYear] = useState(initial.year);
   const [month, setMonth] = useState(initial.month);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"xlsx" | "pdf" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
 
   const mm = String(month).padStart(2, "0");
-  const defaultName = `헤어업_${year}년${mm}월_마감자료.xlsx`;
+  const defaultName = `헤어업_${year}년${mm}월_마감자료`;
 
-  const download = async () => {
+  const download = async (format: "xlsx" | "pdf") => {
     if (busy) return;
-    setBusy(true);
+    setBusy(format);
     setError(null);
     setDone(null);
     try {
-      const params = new URLSearchParams({ year: String(year), month: String(month) });
+      const params = new URLSearchParams({ year: String(year), month: String(month), format });
       const res = await fetch(`/api/admin/export?${params.toString()}`);
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
@@ -50,7 +50,7 @@ export default function AdminExportPage() {
       const blob = await res.blob();
       const disposition = res.headers.get("Content-Disposition") || "";
       const utfMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
-      const filename = utfMatch ? decodeURIComponent(utfMatch[1]) : defaultName;
+      const filename = utfMatch ? decodeURIComponent(utfMatch[1]) : `${defaultName}.${format}`;
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -64,7 +64,7 @@ export default function AdminExportPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "다운로드에 실패했습니다.");
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   };
 
@@ -85,10 +85,15 @@ export default function AdminExportPage() {
           />
         }
         right={
-          <PrimaryButton disabled={busy} onClick={() => void download()} className="w-[136px]">
-            <Icon src="/admin-icons/lnb/exit.png" className="h-[14px] w-[14px]" />
-            {busy ? "생성 중..." : "엑셀 다운로드"}
-          </PrimaryButton>
+          <>
+            <PrimaryButton disabled={busy != null} onClick={() => void download("xlsx")} className="w-[120px]">
+              <Icon src="/admin-icons/lnb/exit.png" className="h-[14px] w-[14px]" />
+              {busy === "xlsx" ? "생성 중..." : "엑셀"}
+            </PrimaryButton>
+            <PrimaryButton disabled={busy != null} onClick={() => void download("pdf")} className="w-[120px]">
+              {busy === "pdf" ? "생성 중..." : "PDF"}
+            </PrimaryButton>
+          </>
         }
       />
 
@@ -99,7 +104,8 @@ export default function AdminExportPage() {
         <FieldList
           rows={[
             { label: "대상 기간", value: `${year}. ${mm}. 01 ~ ${year}. ${mm}. ${lastDay(year, month)}` },
-            { label: "시트 구성", value: "매출내역 · 지출내역 · 디자이너정산 · 요약" },
+            { label: "구성", value: "요약 · 매출내역 · 지출내역 · 디자이너정산" },
+            { label: "파일", value: "엑셀, 또는 같은 내용의 A4 세로 PDF" },
             { label: "집계 기준", value: "매출·정산은 결제 완료 시각, 지출은 지출일 기준" },
             { label: "개인정보", value: "고객 전화번호는 포함하지 않습니다" },
             { label: "파일명", value: defaultName }

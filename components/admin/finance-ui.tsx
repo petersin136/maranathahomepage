@@ -277,6 +277,7 @@ export function ArtistFilterChip({
   open,
   locked = false,
   name,
+  label = "담당자",
   onToggle,
   menu
 }: {
@@ -284,6 +285,7 @@ export function ArtistFilterChip({
   open: boolean;
   locked?: boolean;
   name?: string | null;
+  label?: string;
   onToggle: () => void;
   menu?: React.ReactNode;
 }) {
@@ -301,7 +303,7 @@ export function ArtistFilterChip({
         className="flex h-[34px] w-[186px] items-center rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white pl-3 pr-3 text-[13px] font-semibold leading-none text-[#1C1C1C]"
       >
         <Icon src="/admin-icons/lnb/filter.png" className="h-[15px] w-[15px] text-[#9A948C]" />
-        <span className="ml-2 leading-normal">담당자</span>
+        <span className="ml-2 leading-normal">{label}</span>
         <span className="ml-2 inline-flex h-[20px] min-w-[20px] items-center justify-center rounded-[4px] bg-[#F3EFEA] px-1 text-[12px] font-semibold leading-normal text-[#9A948C]">
           {count}
         </span>
@@ -342,13 +344,14 @@ export function DownloadExportButton({
   onError?: (message: string) => void;
   labeled?: boolean;
 }) {
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"xlsx" | "pdf" | null>(null);
 
-  const download = async () => {
+  const download = async (format: "xlsx" | "pdf") => {
     if (busy) return;
-    setBusy(true);
+    setBusy(format);
     try {
       const params = new URLSearchParams();
+      params.set("format", format);
       if (from && to) {
         params.set("from", from);
         params.set("to", to);
@@ -367,7 +370,7 @@ export function DownloadExportButton({
       const utfMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
       const mm = String((month ?? Number(from?.slice(5, 7))) || 0).padStart(2, "0");
       const yy = year ?? Number(from?.slice(0, 4));
-      const filename = utfMatch ? decodeURIComponent(utfMatch[1]) : `헤어업_${yy}년${mm}월_마감자료.xlsx`;
+      const filename = utfMatch ? decodeURIComponent(utfMatch[1]) : `헤어업_${yy}년${mm}월_마감자료.${format}`;
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -379,28 +382,37 @@ export function DownloadExportButton({
     } catch (e) {
       onError?.(e instanceof Error ? e.message : "다운로드에 실패했습니다.");
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   };
 
+  const line =
+    "inline-flex h-[34px] items-center gap-2 rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white px-3 text-[13px] font-semibold leading-normal text-[#1C1C1C] hover:bg-[#F6F4F0] disabled:opacity-40";
+
   if (labeled) {
     return (
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => void download()}
-        className="inline-flex h-[34px] items-center gap-2 rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white px-3 text-[13px] font-semibold leading-normal text-[#1C1C1C] hover:bg-[#F6F4F0] disabled:opacity-40"
-      >
-        <DownloadGlyph />
-        <span>{busy ? "다운로드 중" : "엑셀 다운로드"}</span>
-      </button>
+      <>
+        <button type="button" disabled={busy != null} onClick={() => void download("xlsx")} className={line}>
+          <DownloadGlyph />
+          <span>{busy === "xlsx" ? "준비 중" : "엑셀"}</span>
+        </button>
+        <button type="button" disabled={busy != null} onClick={() => void download("pdf")} className={line}>
+          <DownloadGlyph />
+          <span>{busy === "pdf" ? "준비 중" : "PDF"}</span>
+        </button>
+      </>
     );
   }
 
   return (
-    <IconButton label="다운로드" onClick={() => void download()} disabled={busy}>
-      <DownloadGlyph />
-    </IconButton>
+    <>
+      <IconButton label="엑셀 다운로드" onClick={() => void download("xlsx")} disabled={busy != null}>
+        <DownloadGlyph />
+      </IconButton>
+      <IconButton label="PDF 다운로드" onClick={() => void download("pdf")} disabled={busy != null}>
+        <DownloadGlyph />
+      </IconButton>
+    </>
   );
 }
 

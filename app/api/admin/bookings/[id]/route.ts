@@ -122,6 +122,7 @@ export async function PATCH(
     payment_method?: PaymentMethod | null;
     cash_receipt_issued?: boolean | null;
     serviceIds?: string[];
+    customer_name?: string;
   };
 
   try {
@@ -145,6 +146,45 @@ export async function PATCH(
     } else {
       patch.cancel_reason = null;
     }
+  }
+
+  const hasPaymentFields =
+    body.final_amount !== undefined ||
+    body.payment_method !== undefined ||
+    body.cash_receipt_issued !== undefined;
+
+  if (body.status === "completed" && !hasPaymentFields) {
+    return NextResponse.json(
+      { ok: false, error: "결제 정보를 입력해야 완료 처리할 수 있습니다." },
+      { status: 400 }
+    );
+  }
+
+  if (body.status === "noshow") {
+    const currentStatus = await db.admin.from("bookings").select("status").eq("id", id).maybeSingle();
+    if (currentStatus.error) {
+      console.error("[PATCH /api/admin/bookings/:id] status", currentStatus.error);
+      return NextResponse.json({ ok: false, error: "예약을 찾을 수 없습니다." }, { status: 500 });
+    }
+    if (!currentStatus.data) {
+      return NextResponse.json({ ok: false, error: "예약을 찾을 수 없습니다." }, { status: 404 });
+    }
+    if (currentStatus.data.status !== "confirmed") {
+      return NextResponse.json(
+        { ok: false, error: "확정된 예약만 노쇼 처리할 수 있습니다." },
+        { status: 400 }
+      );
+    }
+  }
+  if (body.customer_name !== undefined) {
+    const name = String(body.customer_name ?? "").trim();
+    if (!name) {
+      return NextResponse.json({ ok: false, error: "고객명을 입력해 주세요." }, { status: 400 });
+    }
+    if (name.length > 40) {
+      return NextResponse.json({ ok: false, error: "고객명은 40자까지 입력할 수 있습니다." }, { status: 400 });
+    }
+    patch.customer_name = name;
   }
   if (body.deposit_paid !== undefined) patch.deposit_paid = Boolean(body.deposit_paid);
   if (body.admin_memo !== undefined) patch.admin_memo = body.admin_memo;
@@ -249,11 +289,6 @@ export async function PATCH(
     patch.deposit_amount = depositAmount;
   }
 
-  const hasPaymentFields =
-    body.final_amount !== undefined ||
-    body.payment_method !== undefined ||
-    body.cash_receipt_issued !== undefined;
-
   if (hasPaymentFields) {
     if (body.payment_method !== undefined) {
       if (body.payment_method != null && !PAYMENT_METHODS.includes(body.payment_method)) {
@@ -318,13 +353,49 @@ export async function DELETE(
   if (!db.ok) return db.response;
 
   const { id } = await context.params;
+
+  const logs = await db.admin.from("message_logs").delete().eq("booking_id", id);
+  if (logs.error && logs.error.code !== "42P01") {
+    console.error("[DELETE /api/admin/bookings/:id] message_logs", logs.error);
+    return NextResponse.json(
+      { ok: false, error: "이 예약의 발송 기록을 지우지 못해 삭제할 수 없습니다." },
+      { status: 500 }
+    );
+  }
+
+  const reminders = await db.admin.from("customer_reminders").update({ booking_id: null }).eq("booking_id", id);
+  if (reminders.error && reminders.error.code !== "42P01") {
+    if (reminders.error.code === "23502") {
+      const removed = await db.admin.from("customer_reminders").delete().eq("booking_id", id);
+      if (removed.error) {
+        console.error("[DELETE /api/admin/bookings/:id] customer_reminders", removed.error);
+        return NextResponse.json(
+          { ok: false, error: "이 예약에 연결된 알림을 지우지 못해 삭제할 수 없습니다." },
+          { status: 500 }
+        );
+      }
+    } else {
+      console.error("[DELETE /api/admin/bookings/:id] customer_reminders", reminders.error);
+      return NextResponse.json(
+        { ok: false, error: "이 예약에 연결된 알림을 정리하지 못해 삭제할 수 없습니다." },
+        { status: 500 }
+      );
+    }
+  }
+
   const { data, error } = await db.admin.from("bookings").delete().eq("id", id).select("id");
 
   if (error) {
     console.error("[DELETE /api/admin/bookings/:id]", error);
+    const blocked = error.code === "23503";
     return NextResponse.json(
-      { ok: false, error: error.message || "삭제에 실패했습니다." },
-      { status: 500 }
+      {
+        ok: false,
+        error: blocked
+          ? "이 예약에 연결된 기록이 남아 삭제할 수 없습니다."
+          : "삭제에 실패했습니다."
+      },
+      { status: blocked ? 409 : 500 }
     );
   }
 

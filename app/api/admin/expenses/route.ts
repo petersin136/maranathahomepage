@@ -2,15 +2,18 @@ import { NextResponse } from "next/server";
 import { requireAdminUser, getSupabaseAdmin } from "@/lib/admin/auth";
 import {
   buildRecurringImportPreview,
+  expenseInsertRow,
   normalizeExpenseInput,
   previousExpenseMonth,
   resolveExpenseMonth
 } from "@/lib/admin/expenses-data";
 import {
   EXPENSE_FIELDS,
+  EXPENSE_FIELDS_BASE,
   ExpensesQueryError,
   fetchMonthExpenses,
-  loadExpensesDashboard
+  loadExpensesDashboard,
+  missingExpenseExtraColumns
 } from "@/lib/admin/expenses-load";
 
 export const preferredRegion = "icn1";
@@ -40,6 +43,30 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
+}
+
+async function insertExpenses(
+  admin: ReturnType<typeof getSupabaseAdmin>,
+  rows: Record<string, unknown>[],
+  single: boolean
+) {
+  const run = (fields: string, payload: Record<string, unknown>[]) => {
+    const q = admin.from("expenses").insert(payload).select(fields);
+    return single ? q.single() : q;
+  };
+
+  let { data, error } = await run(EXPENSE_FIELDS, rows);
+  if (error && missingExpenseExtraColumns(error)) {
+    const stripped = rows.map((row) => {
+      const next = { ...row };
+      delete next.payment_method;
+      delete next.proof_type;
+      return next;
+    });
+    ({ data, error } = await run(EXPENSE_FIELDS_BASE, stripped));
+  }
+  if (error || !data) throw new Error(error?.message || "등록에 실패했습니다.");
+  return data;
 }
 
 export async function POST(request: Request) {
@@ -88,25 +115,31 @@ export async function POST(request: Request) {
         });
       }
 
-      const rows = preview.candidates.map((c) => ({
-        expense_date: c.expense_date,
-        category: c.category,
-        amount: c.amount,
-        vendor: c.vendor,
-        memo: c.memo,
-        has_tax_invoice: c.has_tax_invoice,
-        is_recurring: true,
-        receipt_url: null
-      }));
+      const rows = preview.candidates.map((c) =>
+        expenseInsertRow(
+          {
+            expense_date: c.expense_date,
+            category: c.category as never,
+            amount: c.amount,
+            vendor: c.vendor,
+            memo: c.memo,
+            has_tax_invoice: c.has_tax_invoice,
+            is_recurring: true,
+            payment_method: c.payment_method,
+            proof_type: c.proof_type,
+            receipt_url: null
+          },
+          true
+        )
+      );
 
-      const { data, error } = await admin.from("expenses").insert(rows).select(EXPENSE_FIELDS);
-      if (error) throw new Error(error.message);
-
+      const data = await insertExpenses(admin, rows, false);
+      const list = Array.isArray(data) ? data : [data];
       return NextResponse.json({
         ok: true,
-        created: data?.length ?? 0,
+        created: list.length,
         skipped: preview.skipped,
-        expenses: data ?? []
+        expenses: list
       });
     } catch (e) {
       console.error("[admin/expenses import_recurring]", e);
@@ -123,12 +156,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { data, error } = await admin
-      .from("expenses")
-      .insert(normalized)
-      .select(EXPENSE_FIELDS)
-      .single();
-    if (error || !data) throw new Error(error?.message || "등록에 실패했습니다.");
+    const data = await insertExpenses(admin, [expenseInsertRow(normalized, true)], true);
     return NextResponse.json({ ok: true, expense: data });
   } catch (e) {
     console.error("[admin/expenses POST]", e);

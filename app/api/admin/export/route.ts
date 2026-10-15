@@ -3,15 +3,18 @@ import { requireAdminUser, getSupabaseAdmin } from "@/lib/admin/auth";
 import {
   buildMonthlyCloseWorkbook,
   monthlyCloseFilename,
+  summarizeMonthlyClose,
   type ExportExpenseRow,
   type ExportSaleRow
 } from "@/lib/admin/export-workbook";
+import { buildMonthlyClosePdf } from "@/lib/admin/export-pdf";
 import {
   aggregateSettlements,
   resolveSettlementMonth,
   settlementPaidAtRange
 } from "@/lib/admin/settlements-data";
 import { artistIdsFromSearchParams, isYmd } from "@/lib/admin/sales-data";
+import { missingExpenseExtraColumns } from "@/lib/admin/expenses-load";
 import type { ShopSettings } from "@/lib/admin/tax-data";
 import type { PaymentMethod } from "@/lib/bookings/types";
 
@@ -20,8 +23,8 @@ export const preferredRegion = "icn1";
 const SALE_FIELDS =
   "id, paid_at, booking_date, customer_name, artist_id, artist_name, service_names, payment_method, final_amount, cash_receipt_issued";
 
-const EXPENSE_FIELDS =
-  "expense_date, category, vendor, amount, has_tax_invoice, memo";
+const EXPENSE_FIELDS_BASE = "expense_date, category, vendor, amount, has_tax_invoice, memo";
+const EXPENSE_FIELDS = `${EXPENSE_FIELDS_BASE}, payment_method, proof_type`;
 
 const ARTIST_FIELDS =
   "id, name_kr, employment_type, commission_rate, bank_name, bank_account, bank_holder";
@@ -82,26 +85,31 @@ export async function GET(request: Request) {
       .order("paid_at", { ascending: true });
     if (artistIds.length > 0) salesQuery = salesQuery.in("artist_id", artistIds);
 
-    const expensesQuery =
-      auth.role === "designer"
-        ? Promise.resolve({ data: [], error: null })
-        : admin
-            .from("expenses")
-            .select(EXPENSE_FIELDS)
-            .gte("expense_date", range.from)
-            .lte("expense_date", range.to)
-            .order("expense_date", { ascending: true })
-            .limit(5000);
+    const expensesSelect = (fields: string) =>
+      admin
+        .from("expenses")
+        .select(fields)
+        .gte("expense_date", range.from)
+        .lte("expense_date", range.to)
+        .order("expense_date", { ascending: true })
+        .limit(5000);
 
     let artistsQuery = admin.from("artists").select(ARTIST_FIELDS).order("sort_order", { ascending: true });
     if (auth.role === "designer" && auth.artistId) artistsQuery = artistsQuery.eq("id", auth.artistId);
 
-    const [salesRes, expensesRes, artistsRes, settingsRes] = await Promise.all([
+    const [salesRes, expensesFirst, artistsRes, settingsRes] = await Promise.all([
       salesQuery.limit(5000),
-      expensesQuery,
+      auth.role === "designer"
+        ? Promise.resolve({ data: [] as Record<string, unknown>[], error: null })
+        : expensesSelect(EXPENSE_FIELDS),
       artistsQuery,
       admin.from("shop_settings").select("*").limit(1).maybeSingle()
     ]);
+
+    let expensesRes = expensesFirst;
+    if (auth.role !== "designer" && expensesRes.error && missingExpenseExtraColumns(expensesRes.error)) {
+      expensesRes = await expensesSelect(EXPENSE_FIELDS_BASE);
+    }
 
     if (salesRes.error) throw new Error(salesRes.error.message);
     if (expensesRes.error) throw new Error(expensesRes.error.message);
@@ -119,13 +127,16 @@ export async function GET(request: Request) {
       final_amount: Number(b.final_amount) || 0,
       cash_receipt_issued: b.cash_receipt_issued
     }));
-    const expenses: ExportExpenseRow[] = (expensesRes.data ?? []).map((e) => ({
-      expense_date: e.expense_date,
-      category: e.category,
-      vendor: e.vendor,
+    const expenseRaw = (expensesRes.data ?? []) as unknown as Record<string, unknown>[];
+    const expenses: ExportExpenseRow[] = expenseRaw.map((e) => ({
+      expense_date: String(e.expense_date || ""),
+      category: String(e.category || ""),
+      vendor: e.vendor == null ? null : String(e.vendor),
       amount: Number(e.amount) || 0,
       has_tax_invoice: Boolean(e.has_tax_invoice),
-      memo: e.memo
+      memo: e.memo == null ? null : String(e.memo),
+      payment_method: e.payment_method == null ? null : String(e.payment_method),
+      proof_type: e.proof_type == null ? null : String(e.proof_type)
     }));
 
     const settlements = aggregateSettlements({
@@ -146,7 +157,8 @@ export async function GET(request: Request) {
       }))
     });
 
-    const buffer = await buildMonthlyCloseWorkbook({
+    const generatedAtIso = new Date().toISOString();
+    const closeInput = {
       year: range.year,
       month: range.month,
       settings: (settingsRes.data as ShopSettings | null) ?? null,
@@ -156,18 +168,37 @@ export async function GET(request: Request) {
         artists: settlements.artists,
         summary: settlements.summary
       },
-      generatedAtIso: new Date().toISOString()
-    });
+      generatedAtIso
+    };
+    const format = searchParams.get("format") === "pdf" ? "pdf" : "xlsx";
+    const figures = summarizeMonthlyClose(sales, expenses);
+    const buffer =
+      format === "pdf"
+        ? await buildMonthlyClosePdf({
+            year: range.year,
+            month: range.month,
+            settings: closeInput.settings,
+            sales,
+            expenses,
+            artists: settlements.artists,
+            summary: settlements.summary,
+            generatedAtIso,
+            ...figures
+          })
+        : await buildMonthlyCloseWorkbook(closeInput);
 
-    const filename = monthlyCloseFilename(range.year, range.month);
+    const filename = monthlyCloseFilename(range.year, range.month, format);
     const encoded = encodeURIComponent(filename);
+    const contentType =
+      format === "pdf"
+        ? "application/pdf"
+        : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-    return new NextResponse(Buffer.from(buffer), {
+    return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
-        "Content-Type":
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="hairup-close.xlsx"; filename*=UTF-8''${encoded}`,
+        "Content-Type": contentType,
+        "Content-Disposition": `attachment; filename="hairup-close.${format}"; filename*=UTF-8''${encoded}`,
         "Cache-Control": "no-store"
       }
     });

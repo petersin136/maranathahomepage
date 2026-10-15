@@ -7,8 +7,11 @@ import { BOOKING_STATUS_LABEL, BOOKING_STATUS_OPTIONS, cancelReasonLabel } from 
 import type { BookingRow, BookingStatus } from "@/lib/bookings/types";
 import { AdminDatePicker } from "@/components/admin/AdminDatePicker";
 import BookingCreateModal from "@/components/admin/BookingCreateModal";
+import BookingPaymentModal from "@/components/admin/BookingPaymentModal";
+import { useBookingActions } from "@/lib/admin/useBookingActions";
 import { AdminBellButton } from "@/components/admin/AdminBellButton";
 import { AdminPageTitle } from "@/components/admin/AdminPageTitle";
+import { useAdminSession } from "@/components/admin/admin-session";
 import { useRefreshPendingCount } from "@/components/admin/pending-count";
 
 const PAGE_SIZE = 12;
@@ -187,6 +190,10 @@ export default function AdminBookingsPage() {
   const [openFilter, setOpenFilter] = useState<"period" | "artist" | null>(null);
   const [statusMenu, setStatusMenu] = useState<StatusMenu | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const session = useAdminSession();
+  const canDelete = session?.role !== "designer";
   const [now, setNow] = useState(() => Date.now());
   const filterRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -207,6 +214,14 @@ export default function AdminBookingsPage() {
       setLoading(false);
     }
   }, []);
+
+  const actions = useBookingActions({
+    onSuccess: async (result) => {
+      if (result.booking) {
+        setBookings((cur) => cur.map((row) => (row.id === result.booking!.id ? result.booking! : row)));
+      }
+    }
+  });
 
   useEffect(() => {
     void load();
@@ -381,6 +396,40 @@ export default function AdminBookingsPage() {
     if (done.size > 0) refreshPendingCount();
   };
 
+  const deleteSelected = async () => {
+    if (deleting || selected.length === 0) return;
+    const ids = selected.slice();
+    setDeleting(true);
+    setError(null);
+    const removed = new Set<string>();
+    let failed = 0;
+    let message = "삭제에 실패했습니다.";
+    await Promise.all(
+      ids.map(async (id) => {
+        try {
+          const res = await fetch(`/api/admin/bookings/${id}`, { method: "DELETE" });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !data.ok) {
+            failed += 1;
+            if (data.error) message = data.error;
+            return;
+          }
+          removed.add(id);
+        } catch {
+          failed += 1;
+        }
+      })
+    );
+    if (removed.size > 0) {
+      setBookings((cur) => cur.filter((row) => !removed.has(row.id)));
+      setSelected((cur) => cur.filter((id) => !removed.has(id)));
+      refreshPendingCount();
+    }
+    if (failed > 0) setError(removed.size > 0 ? `${failed}건은 삭제하지 못했습니다.` : message);
+    else setDeleteOpen(false);
+    setDeleting(false);
+  };
+
   const resetFilters = () => {
     setQuery("");
     setPeriod("all");
@@ -484,7 +533,7 @@ export default function AdminBookingsPage() {
         })}
       </div>
 
-      {error ? <p className="mt-4 text-[13px] text-[#E24B4B]">{error}</p> : null}
+      {error || actions.error ? <p className="mt-4 text-[13px] text-[#E24B4B]">{error || actions.error}</p> : null}
 
       <div ref={filterRef} className="mt-[34px] flex items-center">
         <div className="relative">
@@ -603,11 +652,21 @@ export default function AdminBookingsPage() {
                 type="button"
                 data-status-trigger
                 onClick={(e) => openStatusMenu("__bulk", null, e.currentTarget)}
-                className="ml-3 mr-2 flex h-[34px] items-center rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-3 text-[13px] font-semibold leading-none text-[#1C1C1C]"
+                className="ml-3 flex h-[34px] items-center rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-3 text-[13px] font-semibold leading-none text-[#1C1C1C]"
               >
                 <span className={TRIM_KR}>상태 일괄 변경</span>
                 <PillChevron up={statusMenu?.target === "__bulk"} className="ml-2" />
               </button>
+              {canDelete ? (
+                <button
+                  type="button"
+                  disabled={deleting}
+                  onClick={() => setDeleteOpen(true)}
+                  className="ml-2 mr-2 flex h-[34px] items-center rounded-[8px] border-[1.5px] border-[#B16242] bg-white px-3 text-[13px] font-semibold leading-none text-[#B16242] disabled:opacity-40"
+                >
+                  <span className={TRIM_KR}>삭제</span>
+                </button>
+              ) : null}
             </>
           ) : null}
           <button
@@ -841,7 +900,11 @@ export default function AdminBookingsPage() {
         >
           {(statusMenu.step === "cancel"
             ? CANCEL_REASONS.map((r) => ({ value: "cancelled" as BookingStatus, key: r.value, label: r.label, reason: r.value }))
-            : BOOKING_STATUS_OPTIONS.map((o) => ({ value: o.value, key: o.value as string, label: o.label, reason: undefined }))
+            : BOOKING_STATUS_OPTIONS.filter((o) => {
+                if (o.value !== "noshow") return true;
+                const ids = statusMenu.target === "__bulk" ? selected : [statusMenu.target];
+                return ids.length > 0 && ids.every((id) => bookings.find((row) => row.id === id)?.status === "confirmed");
+              }).map((o) => ({ value: o.value, key: o.value as string, label: o.label, reason: undefined }))
           ).map((opt, i) => (
             <button
               key={opt.key}
@@ -850,6 +913,15 @@ export default function AdminBookingsPage() {
               onClick={() => {
                 if (statusMenu.step === "status" && opt.value === "cancelled") {
                   setStatusMenu({ ...statusMenu, step: "cancel" });
+                  return;
+                }
+                if (opt.value === "completed") {
+                  const ids = statusMenu.target === "__bulk" ? selected : [statusMenu.target];
+                  setStatusMenu(null);
+                  if (ids.length === 1) {
+                    const row = bookings.find((item) => item.id === ids[0]);
+                    if (row) actions.openPayment(row);
+                  }
                   return;
                 }
                 void applyStatus(opt.value, opt.reason);
@@ -867,6 +939,55 @@ export default function AdminBookingsPage() {
               ) : null}
             </button>
           ))}
+        </div>
+      ) : null}
+
+      {actions.paymentTarget ? (
+        <BookingPaymentModal
+          booking={actions.paymentTarget}
+          busy={actions.busyId === actions.paymentTarget.id}
+          onClose={actions.closePayment}
+          onSave={(payload) => {
+            void actions.savePayment(payload);
+          }}
+        />
+      ) : null}
+
+      {deleteOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 font-sans-kr"
+          onClick={() => {
+            if (!deleting) setDeleteOpen(false);
+          }}
+        >
+          <div
+            className="w-full max-w-[420px] rounded-[12px] bg-white p-7 text-[#1C1C1C] shadow-[0_8px_24px_rgba(28,28,28,0.12)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-[18px] font-bold">예약 삭제</p>
+            <p className="mt-3 text-[14px] leading-[22px] text-[#3A3A3A]">
+              선택한 {selected.length}건을 영구 삭제합니다. 취소와 달리 목록에서 완전히 사라지고, 되돌릴 수 없습니다.
+            </p>
+            {error ? <p className="mt-3 text-[13px] text-[#E24B4B]">{error}</p> : null}
+            <div className="mt-7 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => setDeleteOpen(false)}
+                className="inline-flex h-[34px] items-center justify-center rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white px-4 text-[14px] font-semibold text-[#1C1C1C] disabled:opacity-40"
+              >
+                닫기
+              </button>
+              <button
+                type="button"
+                disabled={deleting || selected.length === 0}
+                onClick={() => void deleteSelected()}
+                className="inline-flex h-[34px] min-w-[96px] items-center justify-center rounded-[8px] bg-[#B16242] px-4 text-[14px] font-bold text-white disabled:opacity-40"
+              >
+                {deleting ? "삭제 중..." : "영구 삭제"}
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
 

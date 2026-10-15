@@ -640,7 +640,17 @@ html:has(.ADMIN-CALENDAR) main {
   min-width: 0;
   padding-top: 2px;
   padding-left: 20px;
+  border: 0;
   border-left: 1px solid var(--cal-half-rule);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ADMIN-CALENDAR .cal-artist-head:hover {
+  background: #f6f4f0;
 }
 
 .ADMIN-CALENDAR .cal-artist-meta {
@@ -786,6 +796,8 @@ html:has(.ADMIN-CALENDAR) main {
 .ADMIN-CALENDAR .cal-col {
   position: relative;
   min-width: 0;
+  container-type: inline-size;
+  container-name: cal-col;
   border-left: 1px solid var(--cal-half-rule);
 }
 
@@ -857,10 +869,13 @@ html:has(.ADMIN-CALENDAR) main {
   position: absolute;
   left: 4px;
   right: 4px;
+  z-index: 2;
   display: block;
   padding-top: 3px;
   padding-bottom: 2px;
   text-align: left;
+  container-type: size;
+  container-name: cal-booking;
 }
 
 .ADMIN-CALENDAR .cal-booking-inner {
@@ -928,9 +943,32 @@ html:has(.ADMIN-CALENDAR) main {
   font-size: 13px;
   font-weight: 400;
   line-height: 18px;
-  white-space: pre-wrap;
-  overflow-wrap: break-word;
+  white-space: normal;
+  overflow-wrap: anywhere;
   color: var(--cal-sub);
+}
+
+@container cal-col (min-width: 560px) {
+  .ADMIN-CALENDAR .cal-booking-inner {
+    overflow: visible;
+  }
+
+  .ADMIN-CALENDAR .cal-booking-svc,
+  .ADMIN-CALENDAR .cal-booking-memo {
+    white-space: nowrap;
+    overflow-wrap: normal;
+  }
+}
+
+@container cal-booking (max-height: 72px) {
+  .ADMIN-CALENDAR .cal-booking-inner {
+    padding-top: 8px;
+  }
+
+  .ADMIN-CALENDAR .cal-booking-svc,
+  .ADMIN-CALENDAR .cal-booking-memo {
+    margin-top: 6px;
+  }
 }
 
 .ADMIN-CALENDAR .cal-booking.tone-cut .cal-booking-inner { background: var(--cal-tone-cut-bg); }
@@ -1193,10 +1231,55 @@ html:has(.ADMIN-CALENDAR) main {
   flex-direction: column;
   align-items: flex-start;
   min-width: 0;
-  height: 84px;
+  min-height: 84px;
   padding: 18px 13px 14px;
   border-radius: 4px;
   background: #f5f4f0;
+}
+
+.ADMIN-CALENDAR .cal-brief-split {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ADMIN-CALENDAR .cal-brief-split li {
+  display: flex;
+  align-items: baseline;
+  width: 100%;
+}
+
+.ADMIN-CALENDAR .cal-brief-split-name {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 13px;
+  color: var(--cal-sub);
+}
+
+.ADMIN-CALENDAR .cal-brief-split-num {
+  margin-left: auto;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 18px;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: #2c3a2e;
+}
+
+.ADMIN-CALENDAR .cal-brief-split-num.is-zero {
+  color: var(--cal-muted);
+}
+
+.ADMIN-CALENDAR .cal-brief-split-unit {
+  margin-left: 2px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 12px;
+  color: var(--cal-ink-2);
 }
 
 .ADMIN-CALENDAR .cal-brief-card.is-wide {
@@ -1221,6 +1304,20 @@ html:has(.ADMIN-CALENDAR) main {
   white-space: nowrap;
   text-overflow: ellipsis;
   color: var(--cal-muted);
+}
+
+.ADMIN-CALENDAR .cal-brief-artist {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ADMIN-CALENDAR .cal-brief-artist:hover {
+  color: var(--cal-ink);
+  text-decoration: underline;
 }
 
 .ADMIN-CALENDAR .cal-brief-card-value {

@@ -19,6 +19,7 @@ import { AdminDatePicker } from "@/components/admin/AdminDatePicker";
 import BookingCreateModal from "@/components/admin/BookingCreateModal";
 import { AdminBellButton } from "@/components/admin/AdminBellButton";
 import { AdminPageTitle } from "@/components/admin/AdminPageTitle";
+import { useAdminSession } from "@/components/admin/admin-session";
 import "./admin-calendar.css";
 
 export type CalTab = "day" | "week" | "month";
@@ -260,6 +261,7 @@ type ViewProps = {
   onPickSearch: (hit: SearchHit) => void;
   onRefresh: () => void;
   onOpenBooking: (id: string) => void;
+  onFocusArtist: (id: string) => void;
 };
 
 export function CalendarDesktopView({
@@ -280,8 +282,10 @@ export function CalendarDesktopView({
   onQuery,
   onPickSearch,
   onRefresh,
-  onOpenBooking
+  onOpenBooking,
+  onFocusArtist
 }: ViewProps) {
+  const session = useAdminSession();
   const [staffOpen, setStaffOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [createSlot, setCreateSlot] = useState<{ date?: string; time?: string; artistId?: string } | null>(null);
@@ -513,9 +517,11 @@ export function CalendarDesktopView({
                   ? "캘린더 스케줄이 자동으로 활성화됩니다."
                   : "캘린더 타임테이블이 자동으로 활성화됩니다."}
               </p>
-              <Link href="/admin/artists" className="cal-empty-btn">
-                <span className="cal-empty-btn-label">매장 설정 바로가기</span>
-              </Link>
+              {session?.role === "designer" ? null : (
+                <Link href="/admin/artists" className="cal-empty-btn">
+                  <span className="cal-empty-btn-label">매장 설정 바로가기</span>
+                </Link>
+              )}
             </div>
           ) : isWeek ? (
             weekArtist ? (
@@ -550,9 +556,15 @@ export function CalendarDesktopView({
                 query={query}
                 onOpenBooking={onOpenBooking}
                 onCreateAt={(time, artistId) => setCreateSlot({ time, artistId })}
+                onFocusArtist={onFocusArtist}
               />
               {columns.length === 3 ? null : (
-                <Briefing columns={columns} bookings={dayBookings} onOpenBooking={onOpenBooking} />
+                <Briefing
+                  columns={columns}
+                  bookings={dayBookings}
+                  onOpenBooking={onOpenBooking}
+                  onFocusArtist={onFocusArtist}
+                />
               )}
             </div>
           )}
@@ -579,7 +591,8 @@ function DayGrid({
   nowMinutes,
   query,
   onOpenBooking,
-  onCreateAt
+  onCreateAt,
+  onFocusArtist
 }: {
   columns: CalArtist[];
   bookings: CalDayBooking[];
@@ -587,6 +600,7 @@ function DayGrid({
   query: string;
   onOpenBooking: (id: string) => void;
   onCreateAt: (time: string, artistId: string) => void;
+  onFocusArtist: (id: string) => void;
 }) {
   const q = query.trim().toLowerCase();
   const qDigits = q.replace(/\D/g, "");
@@ -648,7 +662,12 @@ function DayGrid({
             </span>
           ) : null;
           return (
-            <div key={artist.id} className="cal-artist-head">
+            <button
+              key={artist.id}
+              type="button"
+              className="cal-artist-head"
+              onClick={() => onFocusArtist(artist.id)}
+            >
               <span className="cal-avatar">
                 <span className="cal-avatar-char">{avatarInitial(artist.name_kr)}</span>
               </span>
@@ -668,7 +687,7 @@ function DayGrid({
                   {badge}
                 </>
               )}
-            </div>
+            </button>
           );
         })}
           </div>
@@ -973,19 +992,47 @@ function WeekGrid({
   );
 }
 
+function ArtistCountLinks({
+  columns,
+  active,
+  pick,
+  onFocusArtist
+}: {
+  columns: CalArtist[];
+  active: CalDayBooking[];
+  pick: (booking: CalDayBooking) => boolean;
+  onFocusArtist: (id: string) => void;
+}) {
+  return (
+    <span className="cal-brief-card-sub">
+      {columns.map((artist, index) => {
+        const count = active.filter((b) => b.artist_id === artist.id && pick(b)).length;
+        return (
+          <span key={artist.id}>
+            {index > 0 ? " · " : null}
+            <button type="button" className="cal-brief-artist" onClick={() => onFocusArtist(artist.id)}>
+              {shortName(artist.name_kr)} {count}
+            </button>
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
 function Briefing({
   columns,
   bookings,
-  onOpenBooking
+  onOpenBooking,
+  onFocusArtist
 }: {
   columns: CalArtist[];
   bookings: CalDayBooking[];
   onOpenBooking: (id: string) => void;
+  onFocusArtist: (id: string) => void;
 }) {
   const ids = new Set(columns.map((a) => a.id));
   const active = bookings.filter((b) => ids.has(b.artist_id) && isBlocking(b.status));
-  const perArtist = (pick: (b: CalDayBooking) => boolean) =>
-    columns.map((a) => `${shortName(a.name_kr)} ${active.filter((b) => b.artist_id === a.id && pick(b)).length}`).join(" · ");
   const total = active.length;
   const fresh = active.filter((b) => b.is_new).length;
   const revenue = active.reduce((sum, b) => sum + (Number(b.expected_amount) || 0), 0);
@@ -1004,7 +1051,7 @@ function Briefing({
         <div className="cal-brief-stats">
           <div className="cal-brief-card">
             <span className="cal-brief-card-label">총 예약</span>
-            <span className="cal-brief-card-sub">{perArtist(() => true)}</span>
+            <ArtistCountLinks columns={columns} active={active} pick={() => true} onFocusArtist={onFocusArtist} />
             <span className={clsx("cal-brief-card-value", total === 0 && "is-zero")}>
               <span className="cal-brief-card-num">{total.toLocaleString("ko-KR")}</span>
               <span className="cal-brief-card-unit">건</span>
@@ -1012,7 +1059,12 @@ function Briefing({
           </div>
           <div className="cal-brief-card">
             <span className="cal-brief-card-label">신규 고객</span>
-            <span className="cal-brief-card-sub">{perArtist((b) => b.is_new)}</span>
+            <ArtistCountLinks
+              columns={columns}
+              active={active}
+              pick={(b) => b.is_new}
+              onFocusArtist={onFocusArtist}
+            />
             <span className={clsx("cal-brief-card-value", fresh === 0 && "is-zero")}>
               <span className="cal-brief-card-num">{fresh.toLocaleString("ko-KR")}</span>
               <span className="cal-brief-card-unit">명</span>
@@ -1352,6 +1404,9 @@ export default function AdminCalendarDesktop({
       }}
       onRefresh={() => setTick((n) => n + 1)}
       onOpenBooking={onOpenBooking}
+      onFocusArtist={(id) =>
+        setSelectedIds((cur) => (cur.length === 1 && cur[0] === id ? artists.map((a) => a.id) : [id]))
+      }
     />
   );
 }

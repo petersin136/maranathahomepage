@@ -2,7 +2,9 @@ import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import { AdminBellButton } from "@/components/admin/AdminBellButton";
 import { AdminPageTitle } from "@/components/admin/AdminPageTitle";
+import { DashboardMonthChart } from "@/components/admin/DashboardMonthChart";
 import {
+  fetchPopularServices,
   getDashboardData,
   todayKst,
   type DashBooking
@@ -67,6 +69,12 @@ export default function AdminDashboardPage() {
           <MonthSection />
         </Suspense>
       </div>
+
+      <div className="mt-12 scroll-mt-8">
+        <Suspense fallback={<ListSkeleton title="인기 시술" subtitle="이번 달 · 완료 기준" />}>
+          <PopularSection />
+        </Suspense>
+      </div>
     </div>
   );
 }
@@ -74,13 +82,27 @@ export default function AdminDashboardPage() {
 async function DashboardStats() {
   const data = await getDashboardData();
 
+  const trendTotal = data.monthTrend.reduce((sum, point) => sum + point.count, 0);
+
   return (
-    <div className="mt-10 grid grid-cols-2 gap-3 min-[1440px]:grid-cols-4">
-      <StatCard href="#dash-today" label="오늘 예약" value={data.todayCount} />
-      <StatCard href="#dash-pending" label="확정 대기" value={data.pendingCount} />
-      <StatCard href="#dash-week" label="주간 예약" value={data.weekBookings.length} />
-      <StatCard href="#dash-month" label="월간 예약" value={data.monthBookings.length} />
-    </div>
+    <>
+      <div className="mt-10 grid grid-cols-2 gap-3 min-[1440px]:grid-cols-4">
+        <StatCard href="#dash-today" label="오늘 예약" value={data.todayCount} />
+        <StatCard href="#dash-pending" label="확정 대기" value={data.pendingCount} />
+        <StatCard href="#dash-week" label="주간 예약" value={data.weekBookings.length} />
+        <StatCard href="#dash-month" label="월간 예약" value={data.monthBookings.length} />
+      </div>
+
+      <div className="mt-12">
+        <SectionHead
+          title="최근 6개월"
+          subtitle={trendTotal === 0 ? "집계할 예약이 없습니다" : `예약 ${trendTotal}건 · 이번 달은 진한 막대`}
+        />
+        <div className="mt-5 h-[220px]">
+          <DashboardMonthChart points={data.monthTrend} />
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -148,6 +170,49 @@ async function MonthSection() {
   );
 }
 
+async function PopularSection() {
+  const data = await getDashboardData();
+  const services = await fetchPopularServices(data.monthStart, data.monthEnd);
+  return (
+    <div>
+      <SectionHead title="인기 시술" subtitle="이번 달 · 완료 기준" />
+      <div className="mt-5 overflow-x-auto">
+        <table className="w-full table-fixed text-left text-[16px] font-medium leading-[20px]">
+          <colgroup>
+            <col className="w-[18%]" />
+            <col className="w-[30%]" />
+            <col className="w-[18%]" />
+          </colgroup>
+          <thead>
+            <tr className="border-b-[1.5px] border-[#C9C3BB] text-[15px] font-bold text-[#9A948C]">
+              <th className="py-3 font-bold">순위</th>
+              <th className="py-3 font-bold">시술명</th>
+              <th className="py-3 text-right font-bold">건수</th>
+            </tr>
+          </thead>
+          <tbody>
+            {services.length === 0 ? (
+              <tr>
+                <td colSpan={3} className="py-16 text-center text-[14px] font-medium text-[#8A847C]">
+                  이번 달 완료된 시술이 없습니다.
+                </td>
+              </tr>
+            ) : (
+              services.map((row, index) => (
+                <tr key={row.serviceId} className="border-b border-[#F3EFEA]">
+                  <td className="truncate py-[15px] pr-3">{index + 1}</td>
+                  <td className="truncate py-[15px] pr-3">{row.name}</td>
+                  <td className="py-[15px] text-right">{row.count}건</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 const actionClass =
   "inline-flex h-[36px] items-center justify-center rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-3 text-[14px] font-bold text-[#1C1C1C]";
 
@@ -168,16 +233,22 @@ function StatCard({ href, label, value }: { href: string; label: string; value: 
 
 function StatsSkeleton() {
   return (
-    <div className="mt-10 grid grid-cols-2 gap-3 min-[1440px]:grid-cols-4" aria-hidden>
-      {["오늘 예약", "확정 대기", "주간 예약", "월간 예약"].map((label) => (
-        <div key={label} className="rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-5 py-5">
-          <p className="text-[15px] font-bold text-[#9A948C]">{label}</p>
-          <p className="mt-4 text-[30px] font-bold leading-none">
-            <span className="inline-block w-8 animate-pulse bg-[#9A948C]/20 text-transparent">0</span>
-          </p>
-        </div>
-      ))}
-    </div>
+    <>
+      <div className="mt-10 grid grid-cols-2 gap-3 min-[1440px]:grid-cols-4" aria-hidden>
+        {["오늘 예약", "확정 대기", "주간 예약", "월간 예약"].map((label) => (
+          <div key={label} className="rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-5 py-5">
+            <p className="text-[15px] font-bold text-[#9A948C]">{label}</p>
+            <p className="mt-4 text-[30px] font-bold leading-none">
+              <span className="inline-block w-8 animate-pulse bg-[#9A948C]/20 text-transparent">0</span>
+            </p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-12" aria-hidden>
+        <SectionHead title="최근 6개월" subtitle="예약" />
+        <div className="mt-5 h-[220px] animate-pulse rounded-[8px] bg-[#F3EFEA]" />
+      </div>
+    </>
   );
 }
 

@@ -206,12 +206,19 @@ function DetailCard({
   const [serviceIds, setServiceIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [nameEditing, setNameEditing] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [nameSaving, setNameSaving] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
 
   useEffect(() => {
     setEditing(false);
     setEditError(null);
     setServiceIds(detail?.service_ids ?? []);
-  }, [detail?.id]);
+    setNameEditing(false);
+    setNameDraft(detail?.customer_name ?? "");
+    setNameError(null);
+  }, [detail?.id, detail?.customer_name]);
 
   const openEditor = () => {
     if (!detail) return;
@@ -235,6 +242,37 @@ function DetailCard({
       return sum + (s.artist_prices?.[detail.artist_id] ?? s.price ?? 0);
     }, 0);
   }, [detail, serviceIds, services]);
+
+  const saveName = async () => {
+    if (!detail) return;
+    const next = nameDraft.trim();
+    if (!next) {
+      setNameError("고객명을 입력해 주세요.");
+      return;
+    }
+    if (next === detail.customer_name) {
+      setNameEditing(false);
+      setNameError(null);
+      return;
+    }
+    setNameSaving(true);
+    setNameError(null);
+    try {
+      const res = await fetch(`/api/admin/bookings/${detail.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customer_name: next })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || "이름 저장에 실패했습니다.");
+      setNameEditing(false);
+      onSaved();
+    } catch (e) {
+      setNameError(e instanceof Error ? e.message : "이름 저장에 실패했습니다.");
+    } finally {
+      setNameSaving(false);
+    }
+  };
 
   const saveServices = async () => {
     if (!detail) return;
@@ -273,9 +311,66 @@ function DetailCard({
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-[24px] font-bold leading-none tracking-[-0.02em]">
-                  {detail.customer_name}
-                </h3>
+                {nameEditing ? (
+                  <input
+                    value={nameDraft}
+                    autoFocus
+                    disabled={nameSaving}
+                    onChange={(e) => setNameDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        void saveName();
+                      }
+                      if (e.key === "Escape") {
+                        setNameDraft(detail.customer_name);
+                        setNameEditing(false);
+                        setNameError(null);
+                      }
+                    }}
+                    className="h-[36px] w-[180px] rounded-[8px] border-[1.5px] border-[#1C1C1C] bg-white px-3 text-[16px] font-bold text-[#1C1C1C] outline-none disabled:opacity-40"
+                  />
+                ) : (
+                  <h3 className="text-[24px] font-bold leading-none tracking-[-0.02em]">
+                    {detail.customer_name}
+                  </h3>
+                )}
+                {nameEditing ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled={nameSaving}
+                      onClick={() => {
+                        setNameDraft(detail.customer_name);
+                        setNameEditing(false);
+                        setNameError(null);
+                      }}
+                      className="text-[13px] font-bold text-[#8A847C] disabled:opacity-40"
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="button"
+                      disabled={nameSaving || !nameDraft.trim()}
+                      onClick={() => void saveName()}
+                      className="inline-flex h-[32px] items-center rounded-[8px] bg-[#2F3A2F] px-3 text-[13px] font-bold text-white disabled:opacity-40"
+                    >
+                      {nameSaving ? "저장 중" : "저장"}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNameDraft(detail.customer_name);
+                      setNameError(null);
+                      setNameEditing(true);
+                    }}
+                    className="text-[13px] font-bold text-[#1C1C1C] underline-offset-2 hover:underline"
+                  >
+                    수정
+                  </button>
+                )}
                 <span className="rounded-[4px] bg-[#F3EFEA] px-2 py-1 text-[12px] font-bold text-[#1C1C1C]">
                   {customer?.visitLabel || "첫 방문"}
                   {customer && customer.priorCount > 0 ? ` · 이전 ${customer.priorCount}회` : ""}
@@ -287,6 +382,7 @@ function DetailCard({
                   {BOOKING_STATUS_LABEL[detail.status] || detail.status}
                 </span>
               </div>
+              {nameError ? <p className="mt-2 text-[13px] text-[#E24B4B]">{nameError}</p> : null}
               <p className="mt-3 text-[16px] font-medium text-[#1C1C1C]">
                 {formatDayHeading(detail.booking_date)}
                 <span className="mx-2 text-[#C9C3BB]">/</span>
