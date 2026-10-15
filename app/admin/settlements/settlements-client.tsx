@@ -640,6 +640,7 @@ function ArtistRow({
 }) {
   const account = bankAccountDisplay(row.bankName, row.bankAccount);
   const payoutReady = row.status === "정산대기";
+  const payable = row.netPay != null && row.netPay > 0;
   return (
     <>
       <tr
@@ -693,7 +694,7 @@ function ArtistRow({
               {` · 예금주 ${row.bankHolder || "—"}`}
               {` · 상태 ${row.status}`}
             </p>
-            {owner ? (
+            {owner && ((row.status === "지급 완료" && row.paidAt) || payable) ? (
               <div className="mt-3">
                 {row.status === "지급 완료" && row.paidAt ? (
                   <p className="text-[13px] text-[#8A847C]">지급일시 {formatPaidAt(row.paidAt)}</p>

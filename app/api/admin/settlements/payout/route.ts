@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireAdminUser, getSupabaseAdmin } from "@/lib/admin/auth";
-import { resolveSettlementMonth, yearMonthKey } from "@/lib/admin/settlements-data";
+import {
+  isSettlementSnapshot,
+  resolveSettlementMonth,
+  yearMonthKey
+} from "@/lib/admin/settlements-data";
 
 export const preferredRegion = "icn1";
 
@@ -37,7 +41,11 @@ export async function POST(request: Request) {
   const ym = yearMonthKey(month.year, month.month);
   const admin = getSupabaseAdmin();
 
-  const closed = await admin.from("settlement_closes").select("id").eq("year_month", ym).maybeSingle();
+  const closed = await admin
+    .from("settlement_closes")
+    .select("id, snapshot")
+    .eq("year_month", ym)
+    .maybeSingle();
   if (closed.error) {
     console.error("[admin/settlements/payout] close", closed.error);
     return NextResponse.json({ ok: false, error: "마감 여부를 확인하지 못했습니다." }, { status: 500 });
@@ -47,6 +55,13 @@ export async function POST(request: Request) {
       { ok: false, error: "마감 후 지급 처리할 수 있습니다." },
       { status: 400 }
     );
+  }
+
+  const snapshot = closed.data.snapshot;
+  const artists = isSettlementSnapshot(snapshot) ? snapshot.artists : [];
+  const netPay = artists.find((row) => row.artistId === artistId)?.netPay;
+  if (typeof netPay !== "number" || netPay <= 0) {
+    return NextResponse.json({ ok: false, error: "지급할 금액이 없습니다." }, { status: 400 });
   }
 
   const existing = await admin

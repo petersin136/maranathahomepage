@@ -454,8 +454,8 @@ export default function AdminBookingsPage() {
   const empty = !loading && rows.length === 0;
 
   return (
-    <div className="flex flex-col pl-[6px] pr-[8px] font-sans-kr text-[#1C1C1C] min-[1440px]:h-[calc(100dvh-5rem)]">
-      <div className="flex items-start justify-between gap-6">
+    <div className="flex h-[calc(100dvh-5rem)] flex-col overflow-hidden pl-[6px] pr-[8px] font-sans-kr text-[#1C1C1C]">
+      <div className="flex shrink-0 items-start justify-between gap-6">
         <AdminPageTitle>예약관리</AdminPageTitle>
         <div className="-mr-[8px] mt-[24px] flex items-start gap-[8px]">
         <div ref={searchRef} className="relative">
@@ -511,7 +511,7 @@ export default function AdminBookingsPage() {
         </div>
       </div>
 
-      <div className="mt-12 flex border-b border-[#E6E1DA]">
+      <div className="mt-12 flex shrink-0 border-b border-[#E6E1DA]">
         {TABS.map((t) => {
           const on = t.key === tab;
           return (
@@ -535,7 +535,7 @@ export default function AdminBookingsPage() {
 
       {error || actions.error ? <p className="mt-4 text-[13px] text-[#E24B4B]">{error || actions.error}</p> : null}
 
-      <div ref={filterRef} className="mt-[34px] flex items-center">
+      <div ref={filterRef} className="mt-[34px] flex shrink-0 items-center">
         <div className="relative">
           <button
             type="button"
@@ -680,7 +680,7 @@ export default function AdminBookingsPage() {
         </div>
       </div>
 
-      <div className="mt-[33px] min-h-0 flex-1 pt-[4px] min-[1440px]:overflow-auto">
+      <div className="mt-[33px] min-h-0 flex-1 overflow-auto pt-[4px]">
         <table className="w-full table-fixed text-left text-[16px] font-medium">
           <colgroup>
             <col className="w-[var(--booking-col-check)]" />
@@ -704,7 +704,7 @@ export default function AdminBookingsPage() {
             <col className="w-[var(--booking-col-manage)]" />
           </colgroup>
           <thead>
-            <tr className="border-b-[1.5px] border-[#C9C3BB] text-[15px] font-bold leading-none text-[#9A948C]">
+            <tr className="sticky top-0 z-10 border-b-[1.5px] border-[#C9C3BB] bg-white text-[15px] font-bold leading-none text-[#9A948C] [&>th]:bg-white">
               <th className="w-[var(--booking-col-check)] min-w-[66px] pl-[calc(var(--booking-cell-padx)+var(--booking-table-inset))] pr-[var(--booking-cell-padx)] pt-0 pb-[14px] text-left align-bottom font-bold">
                 <div className="flex h-[10px] items-center">
                 <CheckBox
@@ -860,7 +860,7 @@ export default function AdminBookingsPage() {
         ) : null}
       </div>
 
-      <div className="mb-16 mt-auto flex shrink-0 items-center justify-end gap-2 pt-5 text-[14px] text-[#8A847C]">
+      <div className="mt-auto flex shrink-0 items-center justify-end gap-2 pt-5 text-[14px] text-[#8A847C]">
         <PageBtn disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} label="이전">
           <PagerChevron dir="left" />
         </PageBtn>
