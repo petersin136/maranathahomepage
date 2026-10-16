@@ -6,6 +6,7 @@ export type DashBooking = {
   booking_date: string;
   booking_time: string;
   customer_name: string;
+  artist_id: string | null;
   artist_name: string | null;
   status: string;
   deposit_paid: boolean;
@@ -35,7 +36,7 @@ export type DashboardData = {
 };
 
 const BOOKING_FIELDS =
-  "id, booking_date, booking_time, customer_name, artist_name, status, deposit_paid, service_names";
+  "id, booking_date, booking_time, customer_name, artist_id, artist_name, status, deposit_paid, service_names";
 
 /** Exclude cancelled / noshow from schedule lists & TODAY count (DB value is `noshow`). */
 const EXCLUDED_STATUSES = "(cancelled,noshow)";
@@ -90,13 +91,11 @@ export const getPendingBookings = cache(async () => {
 /** Badge count only. No row body. */
 export const getPendingCount = cache(async () => {
   const admin = getSupabaseAdmin();
-  const started = performance.now();
   const { count, error } = await admin
     .from("bookings")
     .select("*", { count: "exact", head: true })
     .eq("status", "pending");
   if (error) throw new Error(error.message);
-  console.log("[PERF]", JSON.stringify({ label: "bookings.pendingCount", ms: Math.round(performance.now() - started) }));
   return count ?? 0;
 });
 

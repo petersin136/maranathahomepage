@@ -33,12 +33,10 @@ export function requireSupabaseAdmin():
 
 const loadAdminUser = cache(async () => {
   const supabase = await createClient();
-  const started = performance.now();
   const {
     data: { user },
     error
   } = await supabase.auth.getUser();
-  console.log("[PERF]", JSON.stringify({ label: "auth.getUser", ms: Math.round(performance.now() - started) }));
   return { user: user ?? null, error };
 });
 
@@ -60,9 +58,7 @@ export async function requireAdminUser(): Promise<
 
   let row: AdminUserRow | null;
   try {
-    const started = performance.now();
     row = await getAdminUser(user.id);
-    console.log("[PERF]", JSON.stringify({ label: "admin_users", ms: Math.round(performance.now() - started) }));
   } catch (e) {
     console.error("[getAdminUser]", e);
     return {
