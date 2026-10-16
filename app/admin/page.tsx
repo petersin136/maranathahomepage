@@ -3,7 +3,8 @@ import { clsx } from "clsx";
 import { AdminBellButton } from "@/components/admin/AdminBellButton";
 import { AdminPageTitle } from "@/components/admin/AdminPageTitle";
 import { DashboardBoard } from "@/components/admin/DashboardBoard";
-import { fetchPopularServices, getDashboardData, todayKst } from "@/lib/admin/dashboard-data";
+import { getAdminShellSession } from "@/lib/admin/auth";
+import { fetchPopularServices, getDashboardData, loadMonthPay, monthRangeOf, todayKst } from "@/lib/admin/dashboard-data";
 
 export const dynamic = "force-dynamic";
 export const preferredRegion = "icn1";
@@ -18,8 +19,8 @@ export default function AdminDashboardPage() {
   const today = todayKst();
 
   return (
-    <div className="pb-16 font-sans-kr text-[#1C1C1C]">
-      <div className="pl-[6px]">
+    <div className="font-sans-kr text-[#1C1C1C]">
+      <div className="shrink-0 pl-[6px]">
         <div className="flex items-start justify-between gap-6">
           <AdminPageTitle>대시보드</AdminPageTitle>
           <div className="mt-[24px]">
@@ -39,28 +40,30 @@ export default function AdminDashboardPage() {
 }
 
 async function DashboardLoaded() {
-  const data = await getDashboardData();
-  const services = await fetchPopularServices(data.monthStart, data.monthEnd);
+  const [session, data] = await Promise.all([getAdminShellSession(), getDashboardData()]);
+  const range = monthRangeOf(data.today);
+  const [services, monthPay] = await Promise.all([
+    fetchPopularServices(range.start, range.end),
+    session?.role === "owner" ? loadMonthPay(data.today) : Promise.resolve(null)
+  ]);
   return (
-    <DashboardBoard
-      weekStart={data.weekStart}
-      weekEnd={data.weekEnd}
-      todayBookings={data.todayBookings}
-      weekBookings={data.weekBookings}
-      monthBookings={data.monthBookings}
-      pendingBookings={data.pendingBookings}
-      monthTrend={data.monthTrend}
-      services={services}
-    />
+    <div className="mt-8">
+      <DashboardBoard
+        todayBookings={data.todayBookings}
+        pendingCount={data.pendingCount}
+        monthTrend={data.monthTrend}
+        services={services}
+        monthPay={monthPay}
+      />
+    </div>
   );
 }
 
 function StatsSkeleton() {
   return (
-    <div aria-hidden>
-      <div className="mt-[58px] h-[34px] w-[186px] animate-pulse rounded-[8px] bg-[color:var(--sidebar-bg)]" />
-      <div className="mt-4 grid grid-cols-4 gap-2">
-        {["오늘 예약", "확정 대기", "주간 예약", "월간 예약"].map((label, index) => (
+    <div aria-hidden className="mt-8">
+      <div className="grid shrink-0 grid-cols-4 gap-2">
+        {["예약관리", "캘린더", "고객관리", "매출/정산"].map((label, index) => (
           <div
             key={label}
             className={clsx(
@@ -72,14 +75,14 @@ function StatsSkeleton() {
               {label}
             </p>
             <p className="mt-3 text-[20px] font-bold leading-normal">
-              <span className="inline-block w-10 animate-pulse rounded-[2px] bg-current opacity-20 text-transparent">0건</span>
+              <span className="inline-block w-16 animate-pulse rounded-[2px] bg-current opacity-20 text-transparent">0</span>
             </p>
           </div>
         ))}
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <div className="h-[360px] animate-pulse rounded-[8px] bg-[color:var(--sidebar-bg)]" />
-        <div className="h-[360px] animate-pulse rounded-[8px] bg-[color:var(--sidebar-bg)]" />
+        <div className="h-[280px] animate-pulse rounded-[8px] bg-[color:var(--sidebar-bg)]" />
+        <div className="h-[280px] animate-pulse rounded-[8px] bg-[color:var(--sidebar-bg)]" />
       </div>
     </div>
   );

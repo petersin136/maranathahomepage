@@ -133,6 +133,8 @@ export default function AdminShell({
     pathname.startsWith("/admin/tax") ||
     pathname.startsWith("/admin/export");
 
+  const salesBoard = pathname === "/admin/sales";
+
   const pinned =
     pathname.startsWith("/admin/calendar") ||
     pathname === "/admin/bookings" ||
@@ -241,7 +243,7 @@ export default function AdminShell({
 
       <div
         className={
-          pathname.startsWith("/admin/calendar") || pinned
+          pathname.startsWith("/admin/calendar") || pinned || salesBoard
             ? "h-full min-w-0 overflow-hidden pl-[242px]"
             : finance
               ? "h-full min-w-0 overflow-auto pl-[242px]"
@@ -253,9 +255,11 @@ export default function AdminShell({
             "w-full min-w-[1198px] px-10",
             pinned
               ? "flex h-full min-h-0 flex-col overflow-hidden py-10"
-              : finance
-                ? "min-h-screen pb-10"
-                : "min-h-screen py-10"
+              : salesBoard
+                ? "flex h-full min-h-0 flex-col overflow-hidden pb-10"
+                : finance
+                  ? "min-h-screen pb-10"
+                  : "min-h-screen py-10"
           )}
         >
           {children}

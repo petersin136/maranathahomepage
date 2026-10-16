@@ -1,11 +1,13 @@
 import { cache } from "react";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { kstDayEndExclusiveIso, kstDayStartIso } from "@/lib/admin/sales-data";
 
 export type DashBooking = {
   id: string;
   booking_date: string;
   booking_time: string;
   customer_name: string;
+  customer_phone: string | null;
   artist_id: string | null;
   artist_name: string | null;
   status: string;
@@ -22,21 +24,21 @@ export type DashMonthPoint = {
 
 export type DashboardData = {
   today: string;
-  weekStart: string;
-  weekEnd: string;
-  monthStart: string;
-  monthEnd: string;
   todayCount: number;
   pendingCount: number;
   todayBookings: DashBooking[];
-  weekBookings: DashBooking[];
-  monthBookings: DashBooking[];
-  pendingBookings: DashBooking[];
   monthTrend: DashMonthPoint[];
 };
 
+export type MonthPayMethod = "card" | "transfer" | "cash";
+
+export type MonthPaySnapshot = {
+  total: number;
+  methods: { method: MonthPayMethod; amount: number; share: number }[];
+};
+
 const BOOKING_FIELDS =
-  "id, booking_date, booking_time, customer_name, artist_id, artist_name, status, deposit_paid, service_names";
+  "id, booking_date, booking_time, customer_name, customer_phone, artist_id, artist_name, status, deposit_paid, service_names";
 
 /** Exclude cancelled / noshow from schedule lists & TODAY count (DB value is `noshow`). */
 const EXCLUDED_STATUSES = "(cancelled,noshow)";
@@ -103,43 +105,29 @@ export const getPendingCount = cache(async () => {
  * Dashboard bookings — DB-filtered queries in parallel.
  * Auth is assumed already enforced by middleware (page) or requireAdminUser (API).
  */
+export function monthRangeOf(today: string) {
+  const [y, m] = today.split("-").map(Number);
+  const start = `${y}-${String(m).padStart(2, "0")}-01`;
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const end = `${y}-${String(m).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
+  return { start, end };
+}
+
 export async function fetchDashboardData(): Promise<DashboardData> {
   const admin = getSupabaseAdmin();
   const today = todayKst();
-  const weekStart = weekStartMonday(today);
-  const weekEnd = addDays(weekStart, 6);
   const { y, m } = parseYmd(today);
-  const monthStart = formatYmd(y, m, 1);
-  const monthEnd = formatYmd(y, m, new Date(Date.UTC(y, m, 0)).getUTCDate());
-
   const trendFrom = shiftMonth(y, m, -5);
   const trendStart = formatYmd(trendFrom.y, trendFrom.m, 1);
-  const [todayRes, weekRes, monthRes, pendingBookings, monthTrendRes] = await Promise.all([
+  const { end: monthEnd } = monthRangeOf(today);
+  const [todayRes, pendingCount, trendRes] = await Promise.all([
     admin
       .from("bookings")
       .select(BOOKING_FIELDS)
       .eq("booking_date", today)
       .not("status", "in", EXCLUDED_STATUSES)
       .order("booking_time", { ascending: true }),
-    admin
-      .from("bookings")
-      .select(BOOKING_FIELDS)
-      .gte("booking_date", weekStart)
-      .lte("booking_date", weekEnd)
-      .neq("booking_date", today)
-      .not("status", "in", EXCLUDED_STATUSES)
-      .order("booking_date", { ascending: true })
-      .order("booking_time", { ascending: true }),
-    admin
-      .from("bookings")
-      .select(BOOKING_FIELDS)
-      .gte("booking_date", monthStart)
-      .lte("booking_date", monthEnd)
-      .or(`booking_date.lt.${weekStart},booking_date.gt.${weekEnd}`)
-      .not("status", "in", EXCLUDED_STATUSES)
-      .order("booking_date", { ascending: true })
-      .order("booking_time", { ascending: true }),
-    getPendingBookings(),
+    getPendingCount(),
     admin
       .from("bookings")
       .select("booking_date")
@@ -148,22 +136,48 @@ export async function fetchDashboardData(): Promise<DashboardData> {
       .not("status", "in", EXCLUDED_STATUSES)
   ]);
 
-  if (monthTrendRes.error) throw new Error(monthTrendRes.error.message);
+  if (todayRes.error) throw new Error(todayRes.error.message);
+  if (trendRes.error) throw new Error(trendRes.error.message);
   const todayBookings = (todayRes.data ?? []) as DashBooking[];
 
   return {
     today,
-    weekStart,
-    weekEnd,
-    monthStart,
-    monthEnd,
     todayCount: todayBookings.length,
-    pendingCount: pendingBookings.length,
+    pendingCount,
     todayBookings,
-    weekBookings: (weekRes.data ?? []) as DashBooking[],
-    monthBookings: (monthRes.data ?? []) as DashBooking[],
-    pendingBookings,
-    monthTrend: buildMonthTrend(today, monthTrendRes.data ?? [])
+    monthTrend: buildMonthTrend(today, trendRes.data ?? [])
+  };
+}
+
+const PAY_METHODS: MonthPayMethod[] = ["card", "transfer", "cash"];
+
+/** 이번 달 완료 결제의 합과 수단 비중. 원장 대시보드용. */
+export async function loadMonthPay(today: string): Promise<MonthPaySnapshot> {
+  const { start, end } = monthRangeOf(today);
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from("bookings")
+    .select("final_amount, payment_method")
+    .eq("status", "completed")
+    .gte("paid_at", kstDayStartIso(start))
+    .lt("paid_at", kstDayEndExclusiveIso(end))
+    .limit(5000);
+  if (error) throw new Error(error.message);
+  const amounts = Object.fromEntries(PAY_METHODS.map((method) => [method, 0])) as Record<MonthPayMethod, number>;
+  let total = 0;
+  for (const row of data ?? []) {
+    const amount = Number(row.final_amount ?? 0);
+    total += amount;
+    const method = row.payment_method as MonthPayMethod;
+    if (method in amounts) amounts[method] += amount;
+  }
+  return {
+    total,
+    methods: PAY_METHODS.map((method) => ({
+      method,
+      amount: amounts[method],
+      share: total > 0 ? (amounts[method] / total) * 100 : 0
+    }))
   };
 }
 

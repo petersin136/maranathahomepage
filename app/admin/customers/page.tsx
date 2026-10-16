@@ -321,8 +321,8 @@ export default function AdminCustomersPage() {
             <col className="w-[5.7%]" />
             <col className="w-[8.7%]" />
             <col className="w-[14.4%]" />
-            <col className="w-[16%]" />
-            <col className="w-[18.2%]" />
+            <col className="w-[9%]" />
+            <col className="w-[25.2%]" />
             <col className="w-[16.2%]" />
             <col className="w-[11.5%]" />
             <col className="w-[9.3%]" />

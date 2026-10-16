@@ -25,6 +25,8 @@ import { METHOD_LABEL, monthEnd, monthStart, salesBoardView, todayKst } from "@/
 
 type Staff = { id: string; name_kr: string | null; role: string | null };
 
+const PAGE_SIZE = 12;
+
 const METHOD_TONE: Record<"card" | "transfer" | "cash", string> = {
   card: "var(--accent)",
   transfer: "var(--muted)",
@@ -117,6 +119,7 @@ export default function AdminSalesPage({
   const [staff, setStaff] = useState<Staff[] | null>(null);
   const [artistFilter, setArtistFilter] = useState<string[]>(() => (lockedArtistId ? [lockedArtistId] : []));
   const [staffOpen, setStaffOpen] = useState(false);
+  const [page, setPage] = useState(1);
   const closeStaff = useCallback(() => setStaffOpen(false), []);
   const staffRef = useOutsideClose(staffOpen, closeStaff);
 
@@ -187,6 +190,13 @@ export default function AdminSalesPage({
   }, [data, artistFilter, lockedArtistId]);
 
   const s = view;
+  const pageCount = Math.max(1, Math.ceil((s?.payments.length ?? 0) / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pageRows = s ? s.payments.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE) : [];
+
+  useEffect(() => {
+    setPage(1);
+  }, [year, month, artistFilter]);
   const methodPercents = s ? displayMethodPercents(s.methods) : [];
   const a = s?.attrition;
   const prevCount = s ? s.completedCount - s.completedChange : 0;
@@ -215,7 +225,7 @@ export default function AdminSalesPage({
   const avgUp = canCompare && s.avgTicket - s.prevAvgTicket > 0;
 
   return (
-    <div className="pb-16 font-sans-kr text-[#1C1C1C]">
+    <div className="flex h-full min-h-0 flex-col font-sans-kr text-[#1C1C1C]">
       <FinanceSticky>
       <FinanceHeader embedded />
 
@@ -281,6 +291,7 @@ export default function AdminSalesPage({
       />
       </FinanceSticky>
 
+      <div className="min-h-0 flex-1 overflow-auto">
       {error ? <p className="mt-4 text-[13px] text-[#E24B4B]">{error}</p> : null}
 
       {setupEmpty ? (
@@ -445,9 +456,9 @@ export default function AdminSalesPage({
                   <th className={clsx(TH, "pr-0 text-right")}>상태</th>
                 </tr>
               </thead>
-              {s.payments.length > 0 ? (
+              {pageRows.length > 0 ? (
                 <tbody>
-                  {s.payments.map((row) => {
+                  {pageRows.map((row) => {
                     const tail = phoneTail(row.customerPhone);
                     const cancelled = row.status === "cancelled";
                     const artist = [row.artistName, row.artistRole].filter(Boolean).join(" ");
@@ -493,6 +504,91 @@ export default function AdminSalesPage({
           </section>
         </>
       ) : null}
+      </div>
+
+      {!setupEmpty && s ? (
+        <div className="mt-auto flex shrink-0 items-center justify-end gap-2 pt-5 text-[14px] text-[#8A847C]">
+          <PageBtn disabled={safePage <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))} label="이전">
+            <PagerChevron dir="left" />
+          </PageBtn>
+          {pageButtons(safePage, pageCount).map((item, index) =>
+            item === "…" ? (
+              <span key={`e-${index}`} className="px-1">
+                …
+              </span>
+            ) : (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setPage(item)}
+                className={clsx(
+                  "h-[28px] min-w-[28px] rounded-[6px] px-1",
+                  item === safePage ? "font-medium text-[#1C1C1C]" : "hover:text-[#1C1C1C]"
+                )}
+              >
+                {item}
+              </button>
+            )
+          )}
+          <PageBtn
+            disabled={safePage >= pageCount}
+            onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
+            label="다음"
+          >
+            <PagerChevron dir="right" strong />
+          </PageBtn>
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+function pageButtons(current: number, total: number): Array<number | "…"> {
+  if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
+  if (current > 5 && current < total) {
+    const around: Array<number | "…"> = [1, "…", current - 1, current, current + 1, "…", total];
+    return around.filter((item, index, list) => item !== "…" || list[index - 1] !== "…");
+  }
+  return [1, 2, 3, 4, 5, "…", total];
+}
+
+function PagerChevron({ dir, strong }: { dir: "left" | "right"; strong?: boolean }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 16 16"
+      className={clsx("h-[20px] w-[20px]", strong ? "text-[#111111]" : "text-[#C8C3BB]")}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strong ? 2.6 : 2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {dir === "left" ? <path d="M10.5 3.2 5.2 8l5.3 4.8" /> : <path d="M5.5 3.2 10.8 8 5.5 12.8" />}
+    </svg>
+  );
+}
+
+function PageBtn({
+  disabled,
+  onClick,
+  label,
+  children
+}: {
+  disabled: boolean;
+  onClick: () => void;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className="flex h-[28px] w-[28px] items-center justify-center disabled:opacity-60"
+    >
+      {children}
+    </button>
   );
 }
