@@ -96,6 +96,7 @@ export const getPendingCount = cache(async () => {
     .select("*", { count: "exact", head: true })
     .eq("status", "pending");
   if (error) throw new Error(error.message);
+  console.log("[PERF]", JSON.stringify({ label: "bookings.pendingCount", ms: Math.round(performance.now() - started) }));
   return count ?? 0;
 });
 
