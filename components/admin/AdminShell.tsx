@@ -145,6 +145,7 @@ export default function AdminShell({
   const salesBoard = pathname === "/admin/sales";
 
   const pinned =
+    pathname === "/admin" ||
     pathname.startsWith("/admin/calendar") ||
     pathname === "/admin/bookings" ||
     pathname === "/admin/customers" ||

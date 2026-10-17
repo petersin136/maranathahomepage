@@ -19,8 +19,8 @@ export default function AdminDashboardPage() {
   const today = todayKst();
 
   return (
-    <div className="font-sans-kr text-[#1C1C1C]">
-      <div className="shrink-0 pl-[6px]">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden font-sans-kr text-[#1C1C1C]">
+      <div className="shrink-0 bg-white pl-[6px] pb-2">
         <div className="flex items-start justify-between gap-6">
           <AdminPageTitle>대시보드</AdminPageTitle>
           <div className="mt-[24px]">
@@ -32,9 +32,11 @@ export default function AdminDashboardPage() {
         </p>
       </div>
 
-      <Suspense fallback={<StatsSkeleton />}>
-        <DashboardLoaded />
-      </Suspense>
+      <div className="min-h-0 flex-1 overflow-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        <Suspense fallback={<StatsSkeleton />}>
+          <DashboardLoaded />
+        </Suspense>
+      </div>
     </div>
   );
 }
@@ -47,7 +49,7 @@ async function DashboardLoaded() {
     session?.role === "owner" ? loadMonthPay(data.today) : Promise.resolve(null)
   ]);
   return (
-    <div className="mt-8">
+    <div className="mt-6 pb-4 pl-[6px]">
       <DashboardBoard
         todayBookings={data.todayBookings}
         pendingCount={data.pendingCount}
@@ -61,7 +63,7 @@ async function DashboardLoaded() {
 
 function StatsSkeleton() {
   return (
-    <div aria-hidden className="mt-8">
+    <div aria-hidden className="mt-6 pl-[6px]">
       <div className="grid shrink-0 grid-cols-4 gap-2">
         {["예약관리", "캘린더", "고객관리", "매출/정산"].map((label, index) => (
           <div
