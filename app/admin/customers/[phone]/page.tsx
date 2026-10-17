@@ -213,7 +213,7 @@ export default function AdminCustomerDetailPage() {
   const summary = useMemo(() => {
     const first = completed[0] ?? null;
     const last = completed[completed.length - 1] ?? null;
-    const registered = bookings.map((b) => b.created_at).filter(Boolean).sort()[0] ?? null;
+    const registered = bookings.map((b) => b.booking_date).filter(Boolean).sort()[0] ?? null;
     const revenue = completed.reduce((sum, b) => sum + (b.final_amount ?? b.total_amount ?? 0), 0);
     const cycle = avgVisitCycleDays(completed.map((b) => ({ bookingDate: b.booking_date })));
 
@@ -336,7 +336,7 @@ export default function AdminCustomerDetailPage() {
               label="자주 받은 시술"
               value={summary.topServices.map(([s, count]) => `${s} ${count}회`).join(", ") || "—"}
             />
-            <Field label="첫 예약 등록" value={formatDate(kstDate(summary.registered))} />
+            <Field label="첫 예약 등록" value={formatDate(summary.registered)} />
             <Field label="취소 · 노쇼" value={`${summary.cancelled}회 · ${summary.noshow}회`} />
           </dl>
         </section>

@@ -82,14 +82,16 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden font-sans-kr text-[#1C1C1C]">
-      <div className="flex shrink-0 items-start justify-between gap-6 pl-[6px]">
-        <AdminPageTitle>사업자 정보</AdminPageTitle>
-        <div className="mt-[24px]">
-          <AdminBellButton />
+      <div className="shrink-0 bg-white pb-6">
+        <div className="flex items-start justify-between gap-6 pl-[6px]">
+          <AdminPageTitle>사업자 정보</AdminPageTitle>
+          <div className="mt-[24px]">
+            <AdminBellButton />
+          </div>
         </div>
-      </div>
-      <div className="mt-12 shrink-0">
-        <SettingsNav />
+        <div className="mt-12">
+          <SettingsNav />
+        </div>
       </div>
       <div className="min-h-0 flex-1 overflow-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {error ? <p className="mt-6 text-[15px] font-medium text-[#E24B4B]">{error}</p> : null}

@@ -30,7 +30,7 @@ import {
   type SettlementArtistRow,
   type SettlementDashboard
 } from "@/lib/admin/settlements-data";
-import { productAmountFromNames } from "@/lib/admin/retail-products";
+import { PRODUCT_DESIGNER_RATE, productAmountFromNames } from "@/lib/admin/retail-products";
 import { todayKst } from "@/lib/admin/sales-data";
 
 const STATUS_FILTERS = [
@@ -544,18 +544,22 @@ export default function AdminSettlementsPage({
           <section className="mt-4 overflow-hidden rounded-[8px] bg-[color:var(--sidebar-bg)] px-5">
             <table className="w-full table-fixed text-left text-[16px] font-medium leading-[20px]">
               <colgroup>
-                <col className="w-[16%]" />
-                <col className="w-[12%]" />
-                <col className="w-[12%]" />
                 <col className="w-[14%]" />
-                <col className="w-[14%]" />
-                <col className="w-[14%]" />
+                <col className="w-[10%]" />
+                <col className="w-[10%]" />
+                <col className="w-[10%]" />
+                <col className="w-[9%]" />
+                <col className="w-[11%]" />
+                <col className="w-[11%]" />
+                <col className="w-[11%]" />
                 <col />
               </colgroup>
               <thead>
                 <tr className={TABLE_HEAD_ROW}>
                   <th className={clsx(TH, "pl-1")}>디자이너</th>
                   <th className={clsx(TH, "text-right")}>담당 매출</th>
+                  <th className={clsx(TH, "text-right")}>제품 판매</th>
+                  <th className={clsx(TH, "text-right")}>제품 커미션({PRODUCT_DESIGNER_RATE}%)</th>
                   <th className={clsx(TH, "text-right")}>커미션 요율</th>
                   <th className={clsx(TH, "text-right")}>발생 인센티브</th>
                   <th className={clsx(TH, "text-right")}>원천징수(3.3%)</th>
@@ -696,6 +700,10 @@ function ArtistRow({
           </span>
         </td>
         <td className={clsx(TD, "text-right tabular-nums")}>{won(row.revenue)}</td>
+        <td className={clsx(TD, "text-right tabular-nums")}>{won(row.productRevenue ?? 0)}</td>
+        <td className={clsx(TD, "text-right tabular-nums")}>
+          {row.productIncentive != null ? won(row.productIncentive) : "—"}
+        </td>
         <td className={clsx(TD, "text-right tabular-nums")}>
           {row.hasCommission ? `${row.commissionRate}%` : "0%"}
         </td>
@@ -725,7 +733,7 @@ function ArtistRow({
       </tr>
       {open ? (
         <tr className="bg-[#F9F8F4]">
-          <td colSpan={7} className="px-6 pb-5 pt-3">
+          <td colSpan={9} className="px-6 pb-5 pt-3">
             <p className="text-[13px] text-[#8A847C]">
               건수 {row.count}건
               {` · 시술 ${won(row.serviceRevenue ?? row.revenue)}`}

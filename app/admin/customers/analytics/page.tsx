@@ -127,7 +127,7 @@ function CustomerProfile() {
   const completed = useMemo(() => history.filter((b) => b.status === "completed"), [history]);
 
   const firstRegistered = useMemo(() => {
-    const dates = history.map((b) => b.created_at).filter(Boolean).sort();
+    const dates = history.map((b) => b.booking_date).filter(Boolean).sort();
     return dates[0] ?? null;
   }, [history]);
 

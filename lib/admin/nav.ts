@@ -86,7 +86,7 @@ export const ADMIN_MENUS: AdminMenu[] = [
   },
   {
     id: "owner",
-    label: "Owner",
+    label: "원장",
     href: "/admin/owner",
     icon: "/admin-icons/lnb/file-chart-line.png",
     items: []

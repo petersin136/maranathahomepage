@@ -259,49 +259,50 @@ export default function AdminServicesPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden font-sans-kr text-[#1C1C1C]">
-      <div className="flex shrink-0 items-start justify-between gap-6 pl-[6px]">
-        <AdminPageTitle className="flex items-baseline gap-2">
-          시술
-          <span className="text-[15px] font-normal text-[#8A847C]">총 {services.length}개</span>
-        </AdminPageTitle>
-        <div className="mt-[24px]">
-          <AdminBellButton />
+      <div className="shrink-0 bg-white pb-6">
+        <div className="flex items-start justify-between gap-6 pl-[6px]">
+          <AdminPageTitle className="flex items-baseline gap-2">
+            시술
+            <span className="text-[15px] font-normal text-[#8A847C]">총 {services.length}개</span>
+          </AdminPageTitle>
+          <div className="mt-[24px]">
+            <AdminBellButton />
+          </div>
         </div>
-      </div>
-      <div className="mt-12 shrink-0">
-        <SettingsNav />
+        <div className="mt-12">
+          <SettingsNav />
+        </div>
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                className={clsx(
+                  "inline-flex h-[36px] items-center rounded-[8px] border-[1.5px] px-3 text-[14px] font-bold leading-none [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]",
+                  tab === t.id
+                    ? "border-[#2F3A2F] bg-[#2F3A2F] text-white"
+                    : "border-[#9A948C] bg-white text-[#1C1C1C]"
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={openCreate}
+            className="inline-flex h-[36px] items-center rounded-[8px] bg-[#2F3A2F] px-4 text-[14px] font-bold text-white"
+          >
+            시술 추가
+          </button>
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto pb-16 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-      <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTab(t.id)}
-              className={clsx(
-                "inline-flex h-[36px] items-center rounded-[8px] border-[1.5px] px-3 text-[14px] font-bold leading-none [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]",
-                tab === t.id
-                  ? "border-[#2F3A2F] bg-[#2F3A2F] text-white"
-                  : "border-[#9A948C] bg-white text-[#1C1C1C]"
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={openCreate}
-          className="inline-flex h-[36px] items-center rounded-[8px] bg-[#2F3A2F] px-4 text-[14px] font-bold text-white"
-        >
-          시술 추가
-        </button>
-      </div>
-
       {error ? (
-        <p className="mt-4 text-[14px] font-medium text-[#C45C4A]">{error}</p>
+        <p className="mt-2 text-[14px] font-medium text-[#C45C4A]">{error}</p>
       ) : null}
 
       {formOpen ? (

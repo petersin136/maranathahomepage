@@ -45,7 +45,7 @@ const LNB_ITEMS: {
   },
   {
     href: "/admin/owner",
-    label: "Owner",
+    label: "원장",
     icon: "/admin-icons/lnb/file-chart-line.png",
     match: ["/admin/owner"],
     ownerOnly: true

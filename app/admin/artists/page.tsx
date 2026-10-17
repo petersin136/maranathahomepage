@@ -192,23 +192,25 @@ export default function AdminArtistsPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden font-sans-kr text-[#1C1C1C]">
-      <div className="flex shrink-0 items-start justify-between gap-6 pl-[6px]">
-        <AdminPageTitle className="flex items-baseline gap-2">
-          디자이너
-          <span className="text-[15px] font-normal text-[#8A847C]">총 {artists.length}명</span>
-        </AdminPageTitle>
-        <div className="mt-[24px]">
-          <AdminBellButton />
+      <div className="shrink-0 bg-white pb-6">
+        <div className="flex items-start justify-between gap-6 pl-[6px]">
+          <AdminPageTitle className="flex items-baseline gap-2">
+            디자이너
+            <span className="text-[15px] font-normal text-[#8A847C]">총 {artists.length}명</span>
+          </AdminPageTitle>
+          <div className="mt-[24px]">
+            <AdminBellButton />
+          </div>
         </div>
-      </div>
-      <div className="mt-12 shrink-0">
-        <SettingsNav />
+        <div className="mt-12">
+          <SettingsNav />
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-        {error ? <p className="mt-6 text-[15px] font-medium text-[#E24B4B]">{error}</p> : null}
+        {error ? <p className="mt-2 text-[15px] font-medium text-[#E24B4B]">{error}</p> : null}
 
-        <div className="mt-8 flex items-center justify-between gap-4">
+        <div className="mt-2 flex items-center justify-between gap-4">
           <p className="text-[15px] font-medium text-[#8A847C]">
             홈페이지에 노출되는 디자이너 프로필입니다. 증명사진처럼 얼굴이 선명한 사진을 등록해 주세요.
           </p>
