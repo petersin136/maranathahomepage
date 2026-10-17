@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { Route } from "next";
 import { useMemo } from "react";
 import { clsx } from "clsx";
 import { DashboardMonthChart } from "@/components/admin/DashboardMonthChart";
@@ -425,7 +426,7 @@ function SectionTitle({
 }: {
   title: string;
   hint: string;
-  href?: string;
+  href?: Route;
   note?: string;
 }) {
   const titleClass = "text-[15px] font-bold leading-normal text-[color:var(--label)]";
@@ -453,7 +454,7 @@ function GlanceCard({
   hint,
   tone = "quiet"
 }: {
-  href: string;
+  href: Route;
   label: string;
   value: string;
   hint: string;

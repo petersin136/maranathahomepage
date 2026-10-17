@@ -172,7 +172,7 @@ export default function AdminShell({
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={item.href as never}
                 prefetch={false}
                 className={clsx(
                   "group flex h-[59px] items-center font-sans-kr text-[17px] leading-none",
