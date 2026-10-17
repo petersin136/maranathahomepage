@@ -101,7 +101,10 @@ export function FinanceHeader({
 }) {
   const pathname = usePathname();
   const session = useAdminSession();
-  const tabs = session?.role === "designer" ? FINANCE_TABS.filter((tab) => tab.href !== "/admin/expenses") : FINANCE_TABS;
+  const tabs = FINANCE_TABS.filter((tab) => {
+    if (session?.role === "designer" && tab.href === "/admin/expenses") return false;
+    return true;
+  });
   return (
     <div className={embedded ? undefined : "sticky top-0 z-20 bg-white pt-10 pl-[6px]"}>
       <div className="flex items-start justify-between gap-6">
@@ -215,7 +218,7 @@ export function ChipDropdown({
         />
       </button>
       {open ? (
-        <div className="absolute left-0 top-[40px] z-30 w-max min-w-full rounded-[12px] border border-[#EFEBE6] bg-white py-2 shadow-[0_8px_24px_rgba(28,28,28,0.08)]">
+        <div className="absolute left-0 top-[calc(100%+12px)] z-50 w-max min-w-full rounded-[12px] border border-[#EFEBE6] bg-white py-2 shadow-[0_8px_24px_rgba(28,28,28,0.08)]">
           {children(close)}
         </div>
       ) : null}

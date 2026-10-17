@@ -48,6 +48,13 @@ export async function PATCH(
           ? Math.round(Number(value))
           : null;
   }
+  if ("category" in patch) {
+    const category = String(patch.category ?? "").trim();
+    if (!category || category.length > 40) {
+      return NextResponse.json({ ok: false, error: "카테고리를 확인해 주세요." }, { status: 400 });
+    }
+    patch.category = category;
+  }
 
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
@@ -58,7 +65,10 @@ export async function PATCH(
     .single();
 
   if (error) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    const message = /services_category_check|violates check constraint/i.test(error.message)
+      ? "이 카테고리는 아직 DB에서 허용되지 않습니다. 015 마이그레이션을 적용해 주세요."
+      : error.message;
+    return NextResponse.json({ ok: false, error: message }, { status: 400 });
   }
 
   const artistPrices = body.artist_prices as ArtistPriceInput[] | undefined;
@@ -105,6 +115,7 @@ export async function DELETE(
 
   const { id } = await context.params;
   const admin = getSupabaseAdmin();
+  await admin.from("service_prices").delete().eq("service_id", id);
   const { error } = await admin.from("services").delete().eq("id", id);
 
   if (error) {

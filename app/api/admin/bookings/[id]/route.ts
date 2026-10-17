@@ -146,6 +146,10 @@ export async function PATCH(
     } else {
       patch.cancel_reason = null;
     }
+    // 확정 = 예약금 확인 후 스케줄 확정. 입금 여부를 따로 안 넘기면 입금 완료로 맞춤.
+    if (body.status === "confirmed" && body.deposit_paid === undefined) {
+      patch.deposit_paid = true;
+    }
   }
 
   const hasPaymentFields =

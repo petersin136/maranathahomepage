@@ -401,8 +401,9 @@ export function CalendarDesktopView({
             <AdminDatePicker
               value={date}
               onChange={onDate}
+              mode={tab === "month" ? "month" : "day"}
               display={tab === "month" ? formatMonthChip(date) : isWeek ? formatWeekRange(date) : formatChipDate(date)}
-              ariaLabel="날짜"
+              ariaLabel={tab === "month" ? "월 선택" : "날짜"}
               className={clsx("cal-chip cal-date-chip", tab === "month" && "is-month", tab === "week" && "is-week")}
               textClassName="cal-date-text"
               leading={

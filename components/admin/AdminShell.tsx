@@ -20,6 +20,7 @@ const LNB_ITEMS: {
   exact?: boolean;
   match: string[];
   badge?: "bookings";
+  ownerOnly?: boolean;
 }[] = [
   { href: "/admin", label: "대시보드", icon: "/admin-icons/lnb/house.png", exact: true, match: ["/admin"] },
   {
@@ -41,6 +42,13 @@ const LNB_ITEMS: {
     label: "매출/정산",
     icon: "/admin-icons/lnb/usd.png",
     match: ["/admin/sales", "/admin/expenses", "/admin/settlements", "/admin/tax", "/admin/export"]
+  },
+  {
+    href: "/admin/owner",
+    label: "Owner",
+    icon: "/admin-icons/lnb/file-chart-line.png",
+    match: ["/admin/owner"],
+    ownerOnly: true
   },
   {
     href: "/admin/settings",
@@ -131,7 +139,8 @@ export default function AdminShell({
     pathname.startsWith("/admin/settlements") ||
     pathname.startsWith("/admin/expenses") ||
     pathname.startsWith("/admin/tax") ||
-    pathname.startsWith("/admin/export");
+    pathname.startsWith("/admin/export") ||
+    pathname.startsWith("/admin/owner");
 
   const salesBoard = pathname === "/admin/sales";
 
@@ -143,7 +152,11 @@ export default function AdminShell({
     pathname === "/admin/artists" ||
     pathname === "/admin/services";
 
-  const items = session?.role === "designer" ? LNB_ITEMS.filter((item) => item.href !== "/admin/settings") : LNB_ITEMS;
+  const items = LNB_ITEMS.filter((item) => {
+    if (session?.role === "designer" && (item.href === "/admin/settings" || item.ownerOnly)) return false;
+    if (item.ownerOnly && session?.role !== "owner") return false;
+    return true;
+  });
 
   return (
     <div className={clsx("bg-white text-hu-black", finance || pinned ? "h-dvh overflow-hidden" : "min-h-screen")}>
@@ -242,6 +255,7 @@ export default function AdminShell({
       </aside>
 
       <div
+        data-admin-scroll={finance ? "true" : undefined}
         className={
           pathname.startsWith("/admin/calendar") || pinned || salesBoard
             ? "h-full min-w-0 overflow-hidden pl-[242px]"

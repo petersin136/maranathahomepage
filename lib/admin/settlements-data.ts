@@ -1,4 +1,5 @@
 import type { PaymentMethod } from "@/lib/bookings/types";
+import { designerPaySplit } from "@/lib/admin/retail-products";
 import {
   isYmd,
   kstDayEndExclusiveIso,
@@ -28,9 +29,13 @@ export type SettlementArtistRow = {
   employmentLabel: string;
   isFreelance: boolean;
   revenue: number;
+  serviceRevenue: number;
+  productRevenue: number;
   count: number;
   commissionRate: number;
   hasCommission: boolean;
+  serviceIncentive: number | null;
+  productIncentive: number | null;
   incentive: number | null;
   incomeTax: number | null;
   localIncomeTax: number | null;
@@ -279,16 +284,34 @@ export function isSettlementSnapshot(value: unknown): value is SettlementSnapsho
   return Array.isArray(row.artists) && row.summary != null && typeof row.summary === "object";
 }
 
+export function hydrateSettlementArtist(row: SettlementArtistRow): SettlementArtistRow {
+  const serviceRevenue = row.serviceRevenue ?? Math.max(0, row.revenue - (row.productRevenue ?? 0));
+  const productRevenue = row.productRevenue ?? Math.max(0, row.revenue - serviceRevenue);
+  const serviceIncentive =
+    row.serviceIncentive ?? (row.hasCommission ? row.incentive : null);
+  const productIncentive = row.productIncentive ?? (row.hasCommission ? 0 : null);
+  return {
+    ...row,
+    serviceRevenue,
+    productRevenue,
+    serviceIncentive,
+    productIncentive
+  };
+}
+
 export function attachSettlementStatus(
   artists: SettlementArtistRow[],
   closed: boolean,
   payouts: Map<string, string>
 ): SettlementArtistRow[] {
-  return artists.map((row) => ({
-    ...row,
-    status: !closed ? "집계 중" : payouts.has(row.artistId) ? "지급 완료" : "정산대기",
-    paidAt: closed ? payouts.get(row.artistId) ?? null : null
-  }));
+  return artists.map((row) => {
+    const hydrated = hydrateSettlementArtist(row);
+    return {
+      ...hydrated,
+      status: !closed ? "집계 중" : payouts.has(row.artistId) ? "지급 완료" : "정산대기",
+      paidAt: closed ? payouts.get(row.artistId) ?? null : null
+    };
+  });
 }
 
 export function scopeSettlementsForDesigner(
@@ -377,7 +400,23 @@ export function aggregateSettlements(args: {
       const commissionRate = Number.isFinite(rateRaw) ? rateRaw : 0;
       const hasCommission = commissionRate > 0;
       const isFreelance = artist.employment_type === "freelance";
-      const incentive = hasCommission ? floorWon((revenue * commissionRate) / 100) : null;
+      let serviceRevenue = 0;
+      let productRevenue = 0;
+      let serviceIncentive = 0;
+      let productIncentive = 0;
+      for (const booking of bookings) {
+        const split = designerPaySplit({
+          totalAmount: booking.amount,
+          serviceNames: booking.serviceNames,
+          commissionRate,
+          hasCommission
+        });
+        serviceRevenue += split.serviceAmount;
+        productRevenue += split.productRetail;
+        serviceIncentive += split.serviceIncentive;
+        productIncentive += split.productIncentive;
+      }
+      const incentive = hasCommission ? serviceIncentive + productIncentive : null;
       const tax =
         incentive == null
           ? { incomeTax: null, localIncomeTax: null, withholding: null }
@@ -404,9 +443,13 @@ export function aggregateSettlements(args: {
         employmentLabel: employmentLabel(artist.employment_type),
         isFreelance,
         revenue,
+        serviceRevenue,
+        productRevenue,
         count,
         commissionRate,
         hasCommission,
+        serviceIncentive: hasCommission ? serviceIncentive : null,
+        productIncentive: hasCommission ? productIncentive : null,
         incentive,
         incomeTax: tax.incomeTax,
         localIncomeTax: tax.localIncomeTax,

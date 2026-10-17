@@ -118,7 +118,8 @@ export function AdminDatePicker({
   leading,
   trailing,
   textClassName,
-  ariaLabel = "날짜 선택"
+  ariaLabel = "날짜 선택",
+  mode = "day"
 }: {
   value: string;
   onChange: (ymd: string) => void;
@@ -130,6 +131,8 @@ export function AdminDatePicker({
   trailing?: ReactNode;
   textClassName?: string;
   ariaLabel?: string;
+  /** day: 일 선택 / month: 월 선택(해당 월 1일로 onChange) */
+  mode?: "day" | "month";
 }) {
   const [innerOpen, setInnerOpen] = useState(false);
   const controlled = openProp !== undefined;
@@ -139,23 +142,32 @@ export function AdminDatePicker({
     onOpenChange?.(next);
   };
 
+  const monthMode = mode === "month";
+  const popWidth = monthMode ? 248 : 280;
   const buttonRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
-  const pos = useMenuPlace(open, buttonRef, popRef, () => setOpen(false), 280);
+  const pos = useMenuPlace(open, buttonRef, popRef, () => setOpen(false), popWidth);
   const selected = parseYmd(value);
   const [cursor, setCursor] = useState({ y: selected.getFullYear(), m: selected.getMonth() });
+  const [viewYear, setViewYear] = useState(selected.getFullYear());
 
   useEffect(() => {
     if (!open) return;
     const current = parseYmd(value);
     setCursor({ y: current.getFullYear(), m: current.getMonth() });
+    setViewYear(current.getFullYear());
   }, [open, value]);
 
   const cells = monthCells(cursor.y, cursor.m);
   const today = toYmd(new Date());
+  const todayDate = new Date();
   const shift = (delta: number) => {
     const next = new Date(cursor.y, cursor.m + delta, 1);
     setCursor({ y: next.getFullYear(), m: next.getMonth() });
+  };
+  const pickMonth = (year: number, month: number) => {
+    onChange(toYmd(new Date(year, month - 1, 1)));
+    setOpen(false);
   };
 
   return (
@@ -194,73 +206,143 @@ export function AdminDatePicker({
               role="dialog"
               aria-label={ariaLabel}
               className={POPOVER}
-              style={{ top: pos.top, left: pos.left, width: 280 }}
+              style={{ top: pos.top, left: pos.left, width: popWidth }}
             >
-              <div className="flex items-center justify-between px-4">
-                <span className="text-[14px] font-bold text-[#1C1C1C]">
-                  {cursor.y}년 {cursor.m + 1}월
-                </span>
-                <span className="flex">
-                  <button
-                    type="button"
-                    aria-label="이전 달"
-                    onClick={() => shift(-1)}
-                    className="flex h-[28px] w-[28px] items-center justify-center text-[#1C1C1C]"
-                  >
-                    <span aria-hidden className="h-[14px] w-[14px] rotate-90 bg-current" style={maskIcon("/admin-icons/lnb/chevron-down.png")} />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="다음 달"
-                    onClick={() => shift(1)}
-                    className="ml-1 flex h-[28px] w-[28px] items-center justify-center text-[#1C1C1C]"
-                  >
-                    <span aria-hidden className="h-[14px] w-[14px] -rotate-90 bg-current" style={maskIcon("/admin-icons/lnb/chevron-down.png")} />
-                  </button>
-                </span>
-              </div>
-              <div className="mt-3 grid grid-cols-7 px-3">
-                {WEEKDAYS.map((name) => (
-                  <span key={name} className="flex h-[28px] items-center justify-center text-[12px] font-medium text-[#8A847C]">
-                    {name}
-                  </span>
-                ))}
-                {cells.map((cell) => {
-                  const on = cell.ymd === value;
-                  return (
+              {monthMode ? (
+                <>
+                  <div className="flex items-center justify-between px-4">
                     <button
-                      key={cell.ymd}
                       type="button"
-                      onClick={() => {
-                        onChange(cell.ymd);
-                        setOpen(false);
-                      }}
-                      className={clsx(
-                        "mx-auto flex h-[32px] w-[32px] items-center justify-center rounded-full text-[13px] font-medium",
-                        on
-                          ? "bg-[#2F3A2F] font-bold text-white"
-                          : cell.outside
-                            ? "text-[#C9C3BB]"
-                            : cell.ymd === today
-                              ? "font-bold text-[#2F3A2F]"
-                              : "text-[#1C1C1C] hover:bg-[#F6F4F0]"
-                      )}
+                      aria-label="이전 연도"
+                      onClick={() => setViewYear((year) => year - 1)}
+                      className="flex h-[28px] w-[28px] items-center justify-center text-[#1C1C1C]"
                     >
-                      {cell.day}
+                      <span
+                        aria-hidden
+                        className="h-[14px] w-[14px] rotate-90 bg-current"
+                        style={maskIcon("/admin-icons/lnb/chevron-down.png")}
+                      />
                     </button>
-                  );
-                })}
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  onChange(today);
-                  setOpen(false);
-                }}
-                className="mt-2 flex h-[40px] w-full items-center justify-center border-t border-[#F3EFEA] text-[13px] font-bold text-[#2F3A2F]"
-              >
-                오늘
-              </button>
+                    <span className="text-[14px] font-bold text-[#1C1C1C]">{viewYear}년</span>
+                    <button
+                      type="button"
+                      aria-label="다음 연도"
+                      onClick={() => setViewYear((year) => year + 1)}
+                      className="flex h-[28px] w-[28px] items-center justify-center text-[#1C1C1C]"
+                    >
+                      <span
+                        aria-hidden
+                        className="h-[14px] w-[14px] -rotate-90 bg-current"
+                        style={maskIcon("/admin-icons/lnb/chevron-down.png")}
+                      />
+                    </button>
+                  </div>
+                  <div className="mt-3 grid grid-cols-4 gap-1 px-4 pb-1">
+                    {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => {
+                      const on = viewYear === selected.getFullYear() && month === selected.getMonth() + 1;
+                      return (
+                        <button
+                          key={month}
+                          type="button"
+                          onClick={() => pickMonth(viewYear, month)}
+                          className={clsx(
+                            "h-[34px] rounded-[6px] text-[14px] font-medium",
+                            on ? "bg-[#2F3A2F] font-bold text-white" : "text-[#1C1C1C] hover:bg-[#F6F4F0]"
+                          )}
+                        >
+                          {month}월
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => pickMonth(todayDate.getFullYear(), todayDate.getMonth() + 1)}
+                    className="mt-2 flex h-[40px] w-full items-center justify-center border-t border-[#F3EFEA] text-[13px] font-bold text-[#2F3A2F]"
+                  >
+                    이번 달
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between px-4">
+                    <span className="text-[14px] font-bold text-[#1C1C1C]">
+                      {cursor.y}년 {cursor.m + 1}월
+                    </span>
+                    <span className="flex">
+                      <button
+                        type="button"
+                        aria-label="이전 달"
+                        onClick={() => shift(-1)}
+                        className="flex h-[28px] w-[28px] items-center justify-center text-[#1C1C1C]"
+                      >
+                        <span
+                          aria-hidden
+                          className="h-[14px] w-[14px] rotate-90 bg-current"
+                          style={maskIcon("/admin-icons/lnb/chevron-down.png")}
+                        />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="다음 달"
+                        onClick={() => shift(1)}
+                        className="ml-1 flex h-[28px] w-[28px] items-center justify-center text-[#1C1C1C]"
+                      >
+                        <span
+                          aria-hidden
+                          className="h-[14px] w-[14px] -rotate-90 bg-current"
+                          style={maskIcon("/admin-icons/lnb/chevron-down.png")}
+                        />
+                      </button>
+                    </span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-7 px-3">
+                    {WEEKDAYS.map((name) => (
+                      <span
+                        key={name}
+                        className="flex h-[28px] items-center justify-center text-[12px] font-medium text-[#8A847C]"
+                      >
+                        {name}
+                      </span>
+                    ))}
+                    {cells.map((cell) => {
+                      const on = cell.ymd === value;
+                      return (
+                        <button
+                          key={cell.ymd}
+                          type="button"
+                          onClick={() => {
+                            onChange(cell.ymd);
+                            setOpen(false);
+                          }}
+                          className={clsx(
+                            "mx-auto flex h-[32px] w-[32px] items-center justify-center rounded-full text-[13px] font-medium",
+                            on
+                              ? "bg-[#2F3A2F] font-bold text-white"
+                              : cell.outside
+                                ? "text-[#C9C3BB]"
+                                : cell.ymd === today
+                                  ? "font-bold text-[#2F3A2F]"
+                                  : "text-[#1C1C1C] hover:bg-[#F6F4F0]"
+                          )}
+                        >
+                          {cell.day}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange(today);
+                      setOpen(false);
+                    }}
+                    className="mt-2 flex h-[40px] w-full items-center justify-center border-t border-[#F3EFEA] text-[13px] font-bold text-[#2F3A2F]"
+                  >
+                    오늘
+                  </button>
+                </>
+              )}
             </div>,
             document.body
           )

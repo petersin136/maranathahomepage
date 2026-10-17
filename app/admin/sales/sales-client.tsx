@@ -190,6 +190,12 @@ export default function AdminSalesPage({
   }, [data, artistFilter, lockedArtistId]);
 
   const s = view;
+  const mixPercents = s
+    ? displayMethodPercents([
+        { share: s.serviceShare, amount: s.serviceAmount },
+        { share: s.productShare, amount: s.productAmount }
+      ])
+    : [0, 0];
   const pageCount = Math.max(1, Math.ceil((s?.payments.length ?? 0) / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
   const pageRows = s ? s.payments.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE) : [];
@@ -291,7 +297,7 @@ export default function AdminSalesPage({
       />
       </FinanceSticky>
 
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div className="min-h-0 flex-1 overflow-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
       {error ? <p className="mt-4 text-[13px] text-[#E24B4B]">{error}</p> : null}
 
       {setupEmpty ? (
@@ -408,11 +414,18 @@ export default function AdminSalesPage({
               {[
                 {
                   label: "시술",
-                  share: s.totalRevenue > 0 ? 100 : 0,
-                  amount: s.totalRevenue,
+                  share: mixPercents[0],
+                  bar: s.serviceShare,
+                  amount: s.serviceAmount,
                   tone: "var(--accent)"
                 },
-                { label: "제품", share: 0, amount: 0, tone: "var(--muted)" }
+                {
+                  label: "제품",
+                  share: mixPercents[1],
+                  bar: s.productShare,
+                  amount: s.productAmount,
+                  tone: "var(--muted)"
+                }
               ].map((row) => (
                 <div key={row.label} className="mt-4">
                   <div className="flex items-baseline justify-between text-[16px] font-medium">
@@ -425,7 +438,7 @@ export default function AdminSalesPage({
                   <div className="mt-2 h-[14px] overflow-hidden rounded-[2px] bg-[#E4DFD6]">
                     <div
                       className="h-full rounded-[2px]"
-                      style={{ width: `${row.share}%`, background: row.tone }}
+                      style={{ width: `${row.bar}%`, background: row.tone }}
                     />
                   </div>
                 </div>

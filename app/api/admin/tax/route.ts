@@ -48,20 +48,35 @@ export async function PATCH(request: Request) {
 
   const business_name =
     body.business_name == null ? null : String(body.business_name).trim() || null;
-  const business_number =
+  const business_number_raw =
     body.business_number == null ? null : String(body.business_number).trim() || null;
+  const business_number = business_number_raw
+    ? business_number_raw.replace(/[^0-9]/g, "") || null
+    : null;
+  if (business_number && business_number.length !== 10) {
+    return NextResponse.json(
+      { ok: false, error: "사업자번호는 숫자 10자리로 입력해 주세요." },
+      { status: 400 }
+    );
+  }
   const tax_type =
     body.tax_type === "general" || body.tax_type === "simplified" ? body.tax_type : null;
-  const vat_rate =
-    body.vat_rate == null || body.vat_rate === ("" as never)
-      ? tax_type === "general"
-        ? 10
-        : tax_type === "simplified"
-          ? 30
-          : null
-      : Number(body.vat_rate);
 
-  if (vat_rate != null && (!Number.isFinite(vat_rate) || vat_rate < 0)) {
+  // DB vat_rate는 numeric(4,3) — 10/30(%)이 아니라 0.1/0.3 비율로 저장
+  function normalizeVatRate(raw: unknown, tax: TaxType | null): number | null {
+    if (raw == null || raw === "") {
+      if (tax === "general") return 0.1;
+      if (tax === "simplified") return 0.3;
+      return null;
+    }
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 0) return NaN;
+    if (n > 1) return n / 100;
+    return n;
+  }
+  const vat_rate = normalizeVatRate(body.vat_rate, tax_type);
+
+  if (vat_rate != null && (!Number.isFinite(vat_rate) || vat_rate < 0 || vat_rate >= 10)) {
     return NextResponse.json({ ok: false, error: "부가가치율이 올바르지 않습니다." }, { status: 400 });
   }
 

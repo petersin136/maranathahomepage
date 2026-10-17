@@ -1,4 +1,9 @@
 import type { PaymentMethod } from "@/lib/bookings/types";
+import {
+  designerPaySplit,
+  isRetailServiceName,
+  productAmountFromNames
+} from "@/lib/admin/retail-products";
 
 export const SALES_PRESETS = [
   "today",
@@ -385,16 +390,25 @@ function buildArtists(
   const rateById = new Map(artists.map((a) => [a.id, resolveCommissionRate(a.commission_rate)]));
   const grouped = new Map<
     string,
-    { artistId: string | null; artistName: string; revenue: number; count: number }
+    { artistId: string | null; artistName: string; revenue: number; count: number; incentive: number }
   >();
 
   for (const row of revenueRows) {
     const artistId = row.artist_id || null;
     const key = artistId || row.artist_name || "unknown";
     const artistName = row.artist_name || artistId || "미지정";
-    const cur = grouped.get(key) ?? { artistId, artistName, revenue: 0, count: 0 };
-    cur.revenue += Number(row.final_amount);
+    const cur = grouped.get(key) ?? { artistId, artistName, revenue: 0, count: 0, incentive: 0 };
+    const amount = Number(row.final_amount);
+    const rate = artistId ? rateById.get(artistId) ?? null : null;
+    const split = designerPaySplit({
+      totalAmount: amount,
+      serviceNames: row.service_names,
+      commissionRate: rate ?? 0,
+      hasCommission: rate != null
+    });
+    cur.revenue += amount;
     cur.count += 1;
+    cur.incentive += split.incentive;
     if (!cur.artistName && artistName) cur.artistName = artistName;
     grouped.set(key, cur);
   }
@@ -410,7 +424,7 @@ function buildArtists(
         avgTicket: row.count > 0 ? Math.round(row.revenue / row.count) : 0,
         share: totalRevenue > 0 ? (row.revenue / totalRevenue) * 100 : 0,
         commissionRate: rate,
-        incentive: rate != null ? Math.round((row.revenue * rate) / 100) : null
+        incentive: rate != null ? row.incentive : null
       };
     })
     .sort((a, b) => b.revenue - a.revenue);
@@ -458,7 +472,7 @@ function buildServices(revenueRows: BookingSaleRow[]): SalesServiceRow[] {
     const names = Array.isArray(row.service_names) ? row.service_names : [];
     for (const raw of names) {
       const name = String(raw || "").trim();
-      if (!name) continue;
+      if (!name || isRetailServiceName(name)) continue;
       counts.set(name, (counts.get(name) ?? 0) + 1);
     }
   }
@@ -548,6 +562,11 @@ export function salesBoardView(args: {
   const prevCount = previous.length;
   const depositAmount = payments.reduce((sum, row) => sum + row.depositAmount, 0);
   const onSiteAmount = Math.max(0, totalRevenue - depositAmount);
+  const productAmount = payments.reduce(
+    (sum, row) => sum + productAmountFromNames(row.serviceNames, row.amount),
+    0
+  );
+  const serviceAmount = Math.max(0, totalRevenue - productAmount);
 
   return {
     totalRevenue,
@@ -560,6 +579,10 @@ export function salesBoardView(args: {
     onSiteAmount,
     depositShare: totalRevenue > 0 ? (depositAmount / totalRevenue) * 100 : 0,
     onSiteShare: totalRevenue > 0 ? (onSiteAmount / totalRevenue) * 100 : 0,
+    serviceAmount,
+    productAmount,
+    serviceShare: totalRevenue > 0 ? (serviceAmount / totalRevenue) * 100 : 0,
+    productShare: totalRevenue > 0 ? (productAmount / totalRevenue) * 100 : 0,
     methods: buildMethodsFromAmounts(
       payments.map((row) => ({ method: row.paymentMethod, amount: row.amount }))
     ),

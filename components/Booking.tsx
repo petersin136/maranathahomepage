@@ -10,7 +10,10 @@ import { TIME_SLOT_GROUPS } from "@/lib/booking/slots";
 /* ---------- data ---------- */
 
 const SERVICE_TABS = ["Cut", "Perm", "Color", "Clinic"] as const;
-type ServiceTab = (typeof SERVICE_TABS)[number];
+function serviceTabLabel(category: string) {
+  if (category === "Etc") return "기타";
+  return category;
+}
 
 const TIME_SLOTS = TIME_SLOT_GROUPS;
 
@@ -135,29 +138,34 @@ export default function Booking({
   const [viewMonth, setViewMonth] = useState(today.month);
   const [selectedDate, setSelectedDate] = useState<Ymd | null>(null);
   const [selectedArtist, setSelectedArtist] = useState<string | null>(null);
-  const [serviceTab, setServiceTab] = useState<ServiceTab>("Perm");
+  const [serviceTab, setServiceTab] = useState<string>("Perm");
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [availableTimes, setAvailableTimes] = useState<Set<string>>(new Set());
   const [availableTimesLoading, setAvailableTimesLoading] = useState(false);
 
   const servicesByTab = useMemo(() => {
-    const map: Record<ServiceTab, ServiceItem[]> = {
+    const map: Record<string, ServiceItem[]> = {
       Cut: [],
       Perm: [],
       Color: [],
       Clinic: []
     };
     for (const s of services) {
-      if (s.category in map) {
-        map[s.category as ServiceTab].push({
-          ...s,
-          price: priceForArtist(s, selectedArtist)
-        });
-      }
+      if (!map[s.category]) map[s.category] = [];
+      map[s.category].push({
+        ...s,
+        price: priceForArtist(s, selectedArtist)
+      });
     }
     return map;
   }, [services, selectedArtist]);
+  const serviceTabs = useMemo(() => {
+    const extra = Object.keys(servicesByTab).filter(
+      (key) => !(SERVICE_TABS as readonly string[]).includes(key) && servicesByTab[key].length
+    );
+    return [...SERVICE_TABS, ...extra];
+  }, [servicesByTab]);
 
   const [name, setName] = useState("");
   const [gender, setGender] = useState<"W" | "M" | null>(null);
@@ -418,6 +426,7 @@ export default function Booking({
                     {step.id === 3 && (
                       <StepService
                         tab={serviceTab}
+                        tabs={serviceTabs}
                         onTab={setServiceTab}
                         chips={pricedChips}
                         selected={selectedServices}
@@ -610,18 +619,20 @@ function StepArtist({
 
 function StepService({
   tab,
+  tabs,
   onTab,
   chips,
   selected,
   onToggle,
   servicesByTab
 }: {
-  tab: ServiceTab;
-  onTab: (t: ServiceTab) => void;
+  tab: string;
+  tabs: string[];
+  onTab: (t: string) => void;
   chips: { id: string; name: string; price: number; depositAmount?: number | null }[];
   selected: string[];
   onToggle: (id: string) => void;
-  servicesByTab: Record<ServiceTab, ServiceItem[]>;
+  servicesByTab: Record<string, ServiceItem[]>;
 }) {
   return (
     <div>
@@ -642,7 +653,7 @@ function StepService({
 
       <div className="border-b border-hu-leader pb-5">
         <div className="flex items-center gap-4 font-serif text-[16px]">
-          {SERVICE_TABS.map((t, idx) => (
+          {tabs.map((t, idx) => (
             <span key={t} className="flex items-center gap-4">
               {idx > 0 && <span className="text-hu-leader">|</span>}
               <button
@@ -653,7 +664,7 @@ function StepService({
                   tab === t ? "font-medium text-hu-black" : "text-hu-muted hover:text-hu-body"
                 )}
               >
-                {t}
+                {serviceTabLabel(t)}
               </button>
             </span>
           ))}

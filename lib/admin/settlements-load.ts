@@ -98,6 +98,47 @@ export async function loadSettlementsDashboard(
   });
 }
 
+export async function loadSettlementsRange(
+  from: string,
+  to: string,
+  onlyArtistId?: string
+): Promise<SettlementDashboard> {
+  const admin = getSupabaseAdmin();
+  const paidRange = settlementPaidAtRange(from, to);
+  const year = Number(from.slice(0, 4));
+  const month = Number(from.slice(5, 7));
+
+  let bookingsQuery = admin
+    .from("bookings")
+    .select(BOOKING_FIELDS)
+    .eq("status", "completed")
+    .not("final_amount", "is", null)
+    .gte("paid_at", paidRange.gte)
+    .lt("paid_at", paidRange.lt);
+  if (onlyArtistId) bookingsQuery = bookingsQuery.eq("artist_id", onlyArtistId);
+
+  let artistsQuery = admin.from("artists").select(ARTIST_FIELDS).order("sort_order", { ascending: true });
+  if (onlyArtistId) artistsQuery = artistsQuery.eq("id", onlyArtistId);
+
+  const [bookingsRes, artistsRes] = await Promise.all([
+    bookingsQuery.limit(5000),
+    artistsQuery
+  ]);
+
+  if (bookingsRes.error) throw new Error(bookingsRes.error.message);
+  if (artistsRes.error) throw new Error(artistsRes.error.message);
+
+  return aggregateSettlements({
+    year,
+    month,
+    from,
+    to,
+    artists: artistsRes.data ?? [],
+    bookings: (bookingsRes.data ?? []) as never,
+    includeIdleArtists: true
+  });
+}
+
 function dashboardFromSnapshot(
   snapshot: SettlementSnapshot,
   closedAt: string,

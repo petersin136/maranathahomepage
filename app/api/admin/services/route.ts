@@ -6,9 +6,27 @@ function rejectDesigner(role: string) {
   return NextResponse.json({ ok: false, error: "접근 권한이 없습니다." }, { status: 403 });
 }
 
-const CATEGORIES = ["Cut", "Perm", "Color", "Clinic"] as const;
+const PRESET_CATEGORIES = ["Cut", "Perm", "Color", "Clinic", "Etc"] as const;
 
 type ArtistPriceInput = { artist_id: string; price: number };
+
+function makeServiceId() {
+  return `svc-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+}
+
+function normalizeCategory(raw: unknown) {
+  const value = String(raw ?? "").trim();
+  if (!value || value.length > 40) return "";
+  const preset = PRESET_CATEGORIES.find((c) => c.toLowerCase() === value.toLowerCase());
+  return preset ?? value;
+}
+
+function categoryError(message: string) {
+  if (/services_category_check|violates check constraint/i.test(message)) {
+    return "이 카테고리는 아직 DB에서 허용되지 않습니다. 015 마이그레이션을 적용해 주세요.";
+  }
+  return message;
+}
 
 async function loadServicesWithPrices() {
   const admin = getSupabaseAdmin();
@@ -95,11 +113,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "잘못된 요청입니다." }, { status: 400 });
   }
 
-  const id = (body.id || "").trim().toLowerCase().replace(/\s+/g, "-");
-  const category = body.category as (typeof CATEGORIES)[number];
-  if (!id || !body.name?.trim() || !CATEGORIES.includes(category)) {
+  const name = body.name?.trim() || "";
+  const category = normalizeCategory(body.category);
+  const id = (body.id || "").trim() || makeServiceId();
+  if (!name || !category) {
     return NextResponse.json(
-      { ok: false, error: "id, category, name은 필수입니다." },
+      { ok: false, error: "시술명과 카테고리는 필수입니다." },
       { status: 400 }
     );
   }
@@ -113,7 +132,7 @@ export async function POST(request: Request) {
       .insert({
         id,
         category,
-        name: body.name.trim(),
+        name,
         price,
         duration_minutes: Math.max(1, Math.round(Number(body.duration_minutes) || 60)),
         deposit_amount:
@@ -130,7 +149,7 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+      return NextResponse.json({ ok: false, error: categoryError(error.message) }, { status: 400 });
     }
 
     // 아티스트별 단가 — 없으면 전체 디자이너에 기본가 시드

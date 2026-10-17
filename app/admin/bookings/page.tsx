@@ -36,10 +36,10 @@ const TABS: { key: TabKey; label: string; statuses: BookingStatus[]; empty: stri
 ];
 
 const PERIODS: { key: PeriodKey; label: string }[] = [
-  { key: "all", label: "전체 기간" },
   { key: "today", label: "오늘" },
   { key: "week", label: "이번 주" },
-  { key: "month", label: "이번 달" }
+  { key: "month", label: "이번 달" },
+  { key: "all", label: "전체 기간" }
 ];
 
 const STATUS_COLOR: Record<BookingStatus, string> = {
@@ -178,10 +178,10 @@ export default function AdminBookingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [artists, setArtists] = useState<Artist[]>([]);
-  const [tab, setTab] = useState<TabKey>("pending");
+  const [tab, setTab] = useState<TabKey>("confirmed");
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
-  const [period, setPeriod] = useState<PeriodKey>("all");
+  const [period, setPeriod] = useState<PeriodKey>("today");
   const [day, setDay] = useState(() => ymdOf(new Date()));
   const [artistFilter, setArtistFilter] = useState<string[]>([]);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "date", dir: "asc" });

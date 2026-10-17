@@ -13,6 +13,8 @@ export type DashBooking = {
   status: string;
   deposit_paid: boolean;
   service_names: string[] | null;
+  total_amount: number | null;
+  final_amount: number | null;
 };
 
 export type DashMonthPoint = {
@@ -38,7 +40,7 @@ export type MonthPaySnapshot = {
 };
 
 const BOOKING_FIELDS =
-  "id, booking_date, booking_time, customer_name, customer_phone, artist_id, artist_name, status, deposit_paid, service_names";
+  "id, booking_date, booking_time, customer_name, customer_phone, artist_id, artist_name, status, deposit_paid, service_names, total_amount, final_amount";
 
 /** Exclude cancelled / noshow from schedule lists & TODAY count (DB value is `noshow`). */
 const EXCLUDED_STATUSES = "(cancelled,noshow)";

@@ -5,6 +5,7 @@ export type AdminHref =
   | "/admin/sales"
   | "/admin/expenses"
   | "/admin/settlements"
+  | "/admin/owner"
   | "/admin/tax"
   | "/admin/export"
   | "/admin/customers"
@@ -25,7 +26,7 @@ export type AdminNavItem = {
 
 /** 1단 = 왼쪽 사이드바 큰 메뉴, 2단 = 상단 하위 탭(items) */
 export type AdminMenu = {
-  id: "dashboard" | "bookings" | "calendar" | "customers" | "finance" | "settings";
+  id: "dashboard" | "bookings" | "calendar" | "customers" | "finance" | "owner" | "settings";
   label: string;
   href: AdminHref;
   icon: string;
@@ -82,6 +83,13 @@ export const ADMIN_MENUS: AdminMenu[] = [
       { href: "/admin/expenses", label: "지출", icon: "/admin-icons/lnb/card.png" },
       { href: "/admin/settlements", label: "정산", icon: "/admin-icons/lnb/calendar-check.png" }
     ]
+  },
+  {
+    id: "owner",
+    label: "Owner",
+    href: "/admin/owner",
+    icon: "/admin-icons/lnb/file-chart-line.png",
+    items: []
   },
   {
     id: "settings",

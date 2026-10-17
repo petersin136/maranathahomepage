@@ -9,21 +9,76 @@ import type { DashBooking, DashMonthPoint, MonthPaySnapshot, PopularService } fr
 const HOURS = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
 
 const STATUS_ROWS = [
-  { key: "completed", label: "완료", color: "#2A744B" },
-  { key: "confirmed", label: "확정", color: "#3A5476" },
-  { key: "pending", label: "대기", color: "#8A847C" }
+  { key: "completed", label: "시술 완료", color: "#2A744B" },
+  { key: "confirmed", label: "예약 확정", color: "#3A5476" },
+  { key: "pending", label: "확정 대기", color: "#8A847C" }
 ] as const;
 
 const PAY_META = {
-  card: { label: "카드", color: "var(--accent)" },
-  transfer: { label: "계좌이체", color: "var(--muted)" },
-  cash: { label: "현금", color: "var(--label)" }
+  card: { label: "카드", color: "#2F3A2F" },
+  transfer: { label: "계좌이체", color: "#3A5476" },
+  cash: { label: "현금", color: "#B16242" }
 } as const;
 
 const ARTIST_TONE = ["#2F3A2F", "#3A5476", "#2A744B", "#B16242", "#9A948C"];
+/** 디자이너 하루 예약 목표(건). 상대 비교가 아니라 절대 기준으로 막대를 채운다. */
+const ARTIST_DAY_COUNT_TARGET = 10;
+/** 디자이너 하루 예상 매출 목표(원). */
+const ARTIST_DAY_AMOUNT_TARGET = 1_000_000;
 
 function won(value: number) {
   return `${value.toLocaleString("ko-KR")}원`;
+}
+
+function bookingAmount(row: DashBooking) {
+  if (row.status === "completed" && row.final_amount != null) return Number(row.final_amount) || 0;
+  return Number(row.total_amount ?? row.final_amount ?? 0) || 0;
+}
+
+function targetShare(value: number, target: number) {
+  if (target <= 0 || value <= 0) return 0;
+  return Math.min(100, (value / target) * 100);
+}
+
+function TargetBar({
+  share,
+  color,
+  ticks,
+  size = "tall",
+  dimmed = false
+}: {
+  share: number;
+  color: string;
+  ticks: number;
+  size?: "tall" | "thin";
+  dimmed?: boolean;
+}) {
+  return (
+    <div
+      className={clsx(
+        "relative overflow-hidden rounded-[3px] bg-[#E4DFD6] shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]",
+        size === "tall" ? "mt-3 h-[14px]" : "mt-2 h-[8px]"
+      )}
+    >
+      <div
+        className="absolute inset-y-0 left-0 rounded-[3px] shadow-[inset_0_1px_0_rgba(255,255,255,0.28)]"
+        style={{
+          width: `${share}%`,
+          background: `linear-gradient(90deg, ${color} 0%, ${color}cc 100%)`,
+          opacity: dimmed ? 0.78 : 1
+        }}
+      />
+      <div aria-hidden className="pointer-events-none absolute inset-0 flex">
+        {Array.from({ length: Math.max(0, ticks - 1) }, (_, index) => (
+          <span
+            key={index}
+            className="box-border h-full border-r border-white/75"
+            style={{ width: `${100 / ticks}%` }}
+          />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function kstNow() {
@@ -79,17 +134,20 @@ export function DashboardBoard({
   }, [todayBookings]);
 
   const hourCounts = HOURS.map((hour) => todayBookings.filter((row) => Number(row.booking_time.slice(0, 2)) === hour).length);
-  const hourPeak = Math.max(1, ...hourCounts);
+  const hourPeak = Math.max(4, ...hourCounts);
 
+  const showArtistAmount = monthPay != null;
   const artists = useMemo(() => {
-    const counts = new Map<string, number>();
+    const map = new Map<string, { name: string; count: number; amount: number }>();
     for (const row of todayBookings) {
       const name = row.artist_name || "미지정";
-      counts.set(name, (counts.get(name) ?? 0) + 1);
+      const cur = map.get(name) ?? { name, count: 0, amount: 0 };
+      cur.count += 1;
+      cur.amount += bookingAmount(row);
+      map.set(name, cur);
     }
-    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ko"));
+    return [...map.values()].sort((a, b) => b.count - a.count || b.amount - a.amount || a.name.localeCompare(b.name, "ko"));
   }, [todayBookings]);
-  const artistPeak = Math.max(1, ...artists.map(([, count]) => count));
 
   const statusCounts = STATUS_ROWS.map((row) => todayBookings.filter((booking) => booking.status === row.key).length);
   const statusTotal = statusCounts.reduce((sum, count) => sum + count, 0);
@@ -128,70 +186,119 @@ export function DashboardBoard({
       <div className="mt-4 grid grid-cols-2 items-stretch gap-2">
         <section className="flex flex-col rounded-[8px] bg-[color:var(--sidebar-bg)] px-5 py-5">
           <SectionTitle href="/admin/calendar" title="오늘 시간대" hint="예약 건수" />
-          <div className="mt-5 flex h-[220px] items-end gap-2">
-            {HOURS.map((hour, index) => {
-              const count = hourCounts[index];
-              const height = count === 0 ? 0 : Math.max(8, (count / hourPeak) * 100);
-              const current = hour === now.hour;
-              return (
-                <div key={hour} className="flex h-full min-w-0 flex-1 flex-col justify-end">
-                  <p className="mb-2 text-center text-[12px] font-medium tabular-nums text-[color:var(--muted)]">
-                    {count > 0 ? count : ""}
-                  </p>
-                  <div className="flex min-h-0 flex-1 items-end">
-                    <div
-                      className="w-full rounded-[2px]"
-                      style={{
-                        height: `${height}%`,
-                        background: current ? "#2F3A2F" : count > 0 ? "#D9D3CB" : "transparent"
-                      }}
-                    />
+          <div className="mt-4 flex min-h-[220px] flex-1 flex-col">
+            <div className="relative flex min-h-0 flex-1 items-end gap-1.5">
+              <div aria-hidden className="pointer-events-none absolute inset-0 flex flex-col justify-between pb-0">
+                {[0, 1, 2, 3].map((step) => (
+                  <span key={step} className="block w-full border-t border-[#E4DFD6]" />
+                ))}
+              </div>
+              {HOURS.map((hour, index) => {
+                const count = hourCounts[index];
+                const height = count === 0 ? 0 : Math.max(12, (count / hourPeak) * 100);
+                const current = hour === now.hour;
+                const hot = count === hourPeak && count > 0;
+                return (
+                  <div key={hour} className="relative z-[1] flex h-full min-w-0 flex-1 flex-col justify-end">
+                    <p
+                      className={clsx(
+                        "mb-1.5 text-center text-[12px] font-bold tabular-nums leading-none",
+                        current || hot ? "text-[#1C1C1C]" : "text-[color:var(--muted)]"
+                      )}
+                    >
+                      {count > 0 ? count : ""}
+                    </p>
+                    <div className="flex min-h-0 flex-1 items-end">
+                      {count > 0 ? (
+                        <div
+                          className="w-full rounded-t-[6px] shadow-[0_1px_0_rgba(28,28,28,0.06),inset_0_1px_0_rgba(255,255,255,0.4)]"
+                          style={{
+                            height: `${height}%`,
+                            background: current
+                              ? "linear-gradient(180deg, #5A6B5A 0%, #2F3A2F 55%, #1F2820 100%)"
+                              : hot
+                                ? "linear-gradient(180deg, #5C675C 0%, #3A463A 100%)"
+                                : "linear-gradient(180deg, #A39B90 0%, #6F6962 100%)"
+                          }}
+                        />
+                      ) : (
+                        <div className="h-[4px] w-full rounded-full bg-[#DED8CF]" />
+                      )}
+                    </div>
                   </div>
+                );
+              })}
+            </div>
+            <div className="mt-2 flex gap-1.5 border-t border-[#D9D3CB] pt-2">
+              {HOURS.map((hour) => {
+                const current = hour === now.hour;
+                return (
                   <p
+                    key={hour}
                     className={clsx(
-                      "mt-2 text-center text-[12px] tabular-nums",
+                      "min-w-0 flex-1 text-center text-[12px] tabular-nums leading-none",
                       current ? "font-bold text-[#1C1C1C]" : "text-[color:var(--muted)]"
                     )}
                   >
                     {hour}
                   </p>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </section>
 
         <section className="flex flex-col rounded-[8px] bg-[color:var(--sidebar-bg)] px-5 py-5">
-          <SectionTitle href="/admin/calendar" title="담당자별 오늘" hint={`${artists.length.toLocaleString("ko-KR")}명`} />
+          <SectionTitle
+            href="/admin/calendar"
+            title="담당자별 오늘"
+            hint={
+              showArtistAmount
+                ? `${artists.length.toLocaleString("ko-KR")}명 · 목표 ${ARTIST_DAY_COUNT_TARGET}건 / ${won(ARTIST_DAY_AMOUNT_TARGET)}`
+                : `${artists.length.toLocaleString("ko-KR")}명 · 목표 ${ARTIST_DAY_COUNT_TARGET}건`
+            }
+          />
           {artists.length === 0 ? (
             <p className="flex flex-1 items-center justify-center py-16 text-center text-[14px] font-medium leading-normal text-[#8A847C]">
               오늘 예약이 없습니다.
             </p>
           ) : (
             <ul className="mt-1">
-              {artists.map(([name, count], index) => (
-                <li key={name} className="pt-5">
-                  <div className="flex items-center justify-between gap-4 text-[16px] font-medium leading-normal">
-                    <span className="flex min-w-0 items-center">
-                      <span
-                        className="mr-2 inline-block h-[14px] w-[3px] shrink-0 rounded-full"
-                        style={{ background: ARTIST_TONE[index % ARTIST_TONE.length] }}
-                      />
-                      <span className="truncate">{name}</span>
-                    </span>
-                    <span className="shrink-0 tabular-nums text-[color:var(--muted)]">{count.toLocaleString("ko-KR")}건</span>
-                  </div>
-                  <div className="mt-3 h-[14px] overflow-hidden rounded-[2px] bg-[#E4DFD6]">
-                    <div
-                      className="h-full rounded-[2px]"
-                      style={{
-                        width: `${(count / artistPeak) * 100}%`,
-                        background: ARTIST_TONE[index % ARTIST_TONE.length]
-                      }}
+              {artists.map((artist, index) => {
+                const tone = ARTIST_TONE[index % ARTIST_TONE.length];
+                return (
+                  <li key={artist.name} className="pt-5">
+                    <div className="flex items-center justify-between gap-4 text-[16px] font-medium leading-normal">
+                      <span className="flex min-w-0 items-center">
+                        <span
+                          className="mr-2 inline-block h-[11px] w-[11px] shrink-0 rounded-[4px] shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]"
+                          style={{ background: tone }}
+                        />
+                        <span className="truncate">{artist.name}</span>
+                      </span>
+                      <span className="shrink-0 tabular-nums text-[color:var(--muted)]">
+                        {artist.count.toLocaleString("ko-KR")}건
+                        {showArtistAmount ? ` · ${won(artist.amount)}` : ""}
+                      </span>
+                    </div>
+                    <TargetBar
+                      share={targetShare(artist.count, ARTIST_DAY_COUNT_TARGET)}
+                      color={tone}
+                      ticks={ARTIST_DAY_COUNT_TARGET}
+                      size="tall"
                     />
-                  </div>
-                </li>
-              ))}
+                    {showArtistAmount ? (
+                      <TargetBar
+                        share={targetShare(artist.amount, ARTIST_DAY_AMOUNT_TARGET)}
+                        color={tone}
+                        ticks={5}
+                        size="thin"
+                        dimmed
+                      />
+                    ) : null}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
@@ -237,8 +344,13 @@ export function DashboardBoard({
 
       <div className={clsx("mt-4 grid gap-2", monthPay ? "grid-cols-2" : "grid-cols-1")}>
         <section className="rounded-[8px] bg-[color:var(--sidebar-bg)] px-5 py-5">
-          <SectionTitle href="/admin/bookings" title="오늘 예약 상태" hint={`${statusTotal.toLocaleString("ko-KR")}건`} />
-          <div className="mt-5 flex h-[14px] overflow-hidden rounded-[2px] bg-[#E4DFD6]">
+          <SectionTitle
+            href="/admin/bookings"
+            title="오늘 예약 상태"
+            hint={`오늘 전체 ${statusTotal.toLocaleString("ko-KR")}건`}
+            note="시술이 끝났는지, 예약만 확정됐는지, 아직 대기 중인지 비중입니다."
+          />
+          <div className="mt-5 flex h-[14px] overflow-hidden rounded-[3px] bg-[#E4DFD6]">
             {STATUS_ROWS.map((row, index) =>
               statusShares[index] > 0 ? (
                 <span key={row.key} className="h-full" style={{ width: `${statusShares[index]}%`, background: row.color }} />
@@ -249,11 +361,16 @@ export function DashboardBoard({
             {STATUS_ROWS.map((row, index) => (
               <li key={row.key} className="flex items-center justify-between py-[10px] text-[16px] font-medium">
                 <span className="flex min-w-0 items-center">
-                  <span className="mr-2 inline-block h-[14px] w-[3px] shrink-0 rounded-full" style={{ background: row.color }} />
+                  <span
+                    className="mr-2 inline-block h-[11px] w-[11px] shrink-0 rounded-[3px]"
+                    style={{ background: row.color }}
+                  />
                   <span className="font-bold tabular-nums">{statusPercents[index]}%</span>
                   <span className="ml-2">{row.label}</span>
                 </span>
-                <span className="shrink-0 tabular-nums text-[color:var(--muted)]">{statusCounts[index].toLocaleString("ko-KR")}건</span>
+                <span className="shrink-0 tabular-nums text-[color:var(--muted)]">
+                  {statusCounts[index].toLocaleString("ko-KR")}건
+                </span>
               </li>
             ))}
           </ul>
@@ -261,8 +378,13 @@ export function DashboardBoard({
 
         {monthPay ? (
           <section className="rounded-[8px] bg-[color:var(--sidebar-bg)] px-5 py-5">
-            <SectionTitle href="/admin/sales" title="이번 달 결제 수단" hint={won(monthPay.total)} />
-            <div className="mt-5 flex h-[14px] overflow-hidden rounded-[2px] bg-[#E4DFD6]">
+            <SectionTitle
+              href="/admin/sales"
+              title="이번 달 결제 수단"
+              hint={`결제 총액 ${won(monthPay.total)}`}
+              note="이번 달 고객이 카드·계좌이체·현금으로 낸 금액 비중입니다."
+            />
+            <div className="mt-5 flex h-[14px] overflow-hidden rounded-[3px] bg-[#E4DFD6]">
               {monthPay.methods.map((method) =>
                 method.share > 0 ? (
                   <span
@@ -278,7 +400,7 @@ export function DashboardBoard({
                 <li key={method.method} className="flex items-center justify-between py-[10px] text-[16px] font-medium">
                   <span className="flex min-w-0 items-center">
                     <span
-                      className="mr-2 inline-block h-[14px] w-[3px] shrink-0 rounded-full"
+                      className="mr-2 inline-block h-[11px] w-[11px] shrink-0 rounded-[3px]"
                       style={{ background: PAY_META[method.method].color }}
                     />
                     <span className="font-bold tabular-nums">{payPercents[index]}%</span>
@@ -295,18 +417,31 @@ export function DashboardBoard({
   );
 }
 
-function SectionTitle({ title, hint, href }: { title: string; hint: string; href?: string }) {
+function SectionTitle({
+  title,
+  hint,
+  href,
+  note
+}: {
+  title: string;
+  hint: string;
+  href?: string;
+  note?: string;
+}) {
   const titleClass = "text-[15px] font-bold leading-normal text-[color:var(--label)]";
   return (
-    <div className="flex items-baseline justify-between gap-3">
-      {href ? (
-        <Link href={href} className={clsx(titleClass, "hover:text-[#1C1C1C]")}>
-          {title}
-        </Link>
-      ) : (
-        <h2 className={titleClass}>{title}</h2>
-      )}
-      <p className="shrink-0 text-[13px] leading-normal text-[color:var(--muted)]">{hint}</p>
+    <div>
+      <div className="flex items-baseline justify-between gap-3">
+        {href ? (
+          <Link href={href} className={clsx(titleClass, "hover:text-[#1C1C1C]")}>
+            {title}
+          </Link>
+        ) : (
+          <h2 className={titleClass}>{title}</h2>
+        )}
+        <p className="shrink-0 text-[13px] leading-normal text-[color:var(--muted)]">{hint}</p>
+      </div>
+      {note ? <p className="mt-2 text-[13px] leading-normal text-[color:var(--muted)]">{note}</p> : null}
     </div>
   );
 }

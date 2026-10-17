@@ -30,6 +30,7 @@ import {
   type SettlementArtistRow,
   type SettlementDashboard
 } from "@/lib/admin/settlements-data";
+import { productAmountFromNames } from "@/lib/admin/retail-products";
 import { todayKst } from "@/lib/admin/sales-data";
 
 const STATUS_FILTERS = [
@@ -179,6 +180,37 @@ export default function AdminSettlementsPage({
   }, [data]);
 
   const s = data?.summary;
+  const mix = useMemo(() => {
+    const rows = (data?.artists ?? []).flatMap((artist) => artist.bookings);
+    const total = rows.reduce((sum, row) => sum + row.amount, 0);
+    const productAmount = rows.reduce(
+      (sum, row) => sum + productAmountFromNames(row.serviceNames, row.amount),
+      0
+    );
+    const serviceAmount = Math.max(0, total - productAmount);
+    return {
+      total,
+      serviceAmount,
+      productAmount,
+      serviceShare: total > 0 ? (serviceAmount / total) * 100 : 0,
+      productShare: total > 0 ? (productAmount / total) * 100 : 0
+    };
+  }, [data]);
+  const mixPercents = useMemo(() => {
+    if (mix.total <= 0) return [0, 0];
+    const floors = [Math.floor(mix.serviceShare), Math.floor(mix.productShare)];
+    let rest = 100 - floors[0] - floors[1];
+    const order = [
+      { index: 0, frac: mix.serviceShare - floors[0], amount: mix.serviceAmount },
+      { index: 1, frac: mix.productShare - floors[1], amount: mix.productAmount }
+    ].sort((a, b) => b.frac - a.frac || b.amount - a.amount);
+    for (const item of order) {
+      if (rest <= 0) break;
+      floors[item.index] += 1;
+      rest -= 1;
+    }
+    return floors;
+  }, [mix]);
   const prevPayout = data?.prevMonthPayout ?? 0;
   const canCompare = prevPayout > 0;
   const payoutDeltaRate = canCompare && s ? ((s.totalNetPay - prevPayout) / prevPayout) * 100 : 0;
@@ -430,11 +462,18 @@ export default function AdminSettlementsPage({
                   {[
                     {
                       label: "시술",
-                      share: s.totalRevenue > 0 ? 100 : 0,
-                      amount: s.totalRevenue,
+                      share: mixPercents[0],
+                      bar: mix.serviceShare,
+                      amount: mix.serviceAmount,
                       tone: "var(--accent)"
                     },
-                    { label: "제품", share: 0, amount: 0, tone: "var(--muted)" }
+                    {
+                      label: "제품",
+                      share: mixPercents[1],
+                      bar: mix.productShare,
+                      amount: mix.productAmount,
+                      tone: "var(--muted)"
+                    }
                   ].map((row) => (
                     <div key={row.label} className="mt-4">
                       <div className="flex items-baseline justify-between text-[16px] font-medium">
@@ -447,7 +486,7 @@ export default function AdminSettlementsPage({
                       <div className="mt-2 h-[14px] overflow-hidden rounded-[2px] bg-[#E4DFD6]">
                         <div
                           className="h-full rounded-[2px]"
-                          style={{ width: `${row.share}%`, background: row.tone }}
+                          style={{ width: `${row.bar}%`, background: row.tone }}
                         />
                       </div>
                     </div>
@@ -689,6 +728,10 @@ function ArtistRow({
           <td colSpan={7} className="px-6 pb-5 pt-3">
             <p className="text-[13px] text-[#8A847C]">
               건수 {row.count}건
+              {` · 시술 ${won(row.serviceRevenue ?? row.revenue)}`}
+              {` · 제품 ${won(row.productRevenue ?? 0)}`}
+              {row.serviceIncentive != null ? ` · 시술 인센 ${won(row.serviceIncentive)}` : ""}
+              {row.productIncentive != null ? ` · 제품 인센 ${won(row.productIncentive)}` : ""}
               {row.incomeTax != null ? ` · 소득세 ${won(row.incomeTax)}` : " · 소득세 —"}
               {row.localIncomeTax != null ? ` · 지방소득세 ${won(row.localIncomeTax)}` : " · 지방소득세 —"}
               {` · 예금주 ${row.bankHolder || "—"}`}
