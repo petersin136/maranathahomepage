@@ -1,10 +1,8 @@
 import { fetchMonthExpenses } from "@/lib/admin/expenses-load";
 import { buildOwnerPnl, type OwnerPeriodKind, type OwnerPnlDashboard } from "@/lib/admin/owner-pnl";
+import { briefingRange, type BriefingKind } from "@/lib/admin/briefing-period";
 import { addDays, isYmd, todayKst, weekStartMonday } from "@/lib/admin/sales-data";
-import {
-  resolveSettlementMonth,
-  shiftYearMonth
-} from "@/lib/admin/settlements-data";
+import { resolveSettlementMonth } from "@/lib/admin/settlements-data";
 import {
   loadSettlementsRange,
   loadSettlementsView,
@@ -40,22 +38,23 @@ export function resolveOwnerPeriod(args: {
   monthRaw?: string | null;
   dateRaw?: string | null;
 }): OwnerPeriodQuery {
-  const period: OwnerPeriodKind =
-    args.periodRaw === "week" || args.periodRaw === "day" ? args.periodRaw : "month";
+  const allowed: BriefingKind[] = ["day", "week", "month", "quarter", "half", "year"];
+  const period: OwnerPeriodKind = allowed.includes(args.periodRaw as BriefingKind)
+    ? (args.periodRaw as OwnerPeriodKind)
+    : "month";
 
-  if (period === "month") {
+  if (period === "quarter" || period === "half" || period === "year" || period === "month") {
     const month = resolveSettlementMonth(args.yearRaw ?? null, args.monthRaw ?? null);
     if ("error" in month) throw new OwnerPnlQueryError(month.error, 400);
-    const prev = shiftYearMonth(month.year, month.month, -1);
-    const prevDays = new Date(Date.UTC(prev.year, prev.month, 0)).getUTCDate();
+    const range = briefingRange(period, month.year, month.month);
     return {
       period,
       year: month.year,
       month: month.month,
-      from: month.from,
-      to: month.to,
-      prevFrom: `${prev.year}-${String(prev.month).padStart(2, "0")}-01`,
-      prevTo: `${prev.year}-${String(prev.month).padStart(2, "0")}-${String(prevDays).padStart(2, "0")}`
+      from: range.from,
+      to: range.to,
+      prevFrom: range.prevFrom,
+      prevTo: range.prevTo
     };
   }
 

@@ -86,12 +86,10 @@ function Chevron({ dir }: { dir: "left" | "right" }) {
 export function FinanceHeader({
   subtitle,
   right,
-  tabAction,
   embedded = false
 }: {
   subtitle?: string;
   right?: React.ReactNode;
-  tabAction?: React.ReactNode;
   embedded?: boolean;
 }) {
   const pathname = usePathname();
@@ -133,7 +131,6 @@ export function FinanceHeader({
             </Link>
           );
         })}
-        {tabAction ? <div className="mb-[10px] ml-auto flex shrink-0 items-center">{tabAction}</div> : null}
       </nav>
     </div>
   );
@@ -356,7 +353,7 @@ export function DownloadExportButton({
   report?: "sales" | "expenses" | "settlements" | "pnl";
   categories?: string[];
   status?: string;
-  period?: "month" | "week" | "day";
+  period?: import("@/lib/admin/briefing-period").BriefingKind;
   date?: string;
   label?: string;
 }) {

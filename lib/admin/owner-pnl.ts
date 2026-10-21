@@ -4,6 +4,7 @@ import {
   EXPENSE_NATURES,
   type ExpenseCategory
 } from "@/lib/admin/expense-categories";
+import { periodsPerYear as periodsInYear } from "@/lib/admin/briefing-period";
 import type { ExpenseRow } from "@/lib/admin/expenses-data";
 import {
   designerPaySplit,
@@ -109,7 +110,7 @@ export type OwnerPnlSummary = {
   productDesignerRate: number;
 };
 
-export type OwnerPeriodKind = "month" | "week" | "day";
+export type OwnerPeriodKind = import("@/lib/admin/briefing-period").BriefingKind;
 
 export type OwnerPnlDashboard = {
   period: OwnerPeriodKind;
@@ -172,12 +173,6 @@ export function buildProductRows(artists: SettlementArtistRow[]): OwnerProductRo
       };
     })
     .sort((a, b) => b.retail - a.retail);
-}
-
-function inclusiveDays(from: string, to: string) {
-  const [fy, fm, fd] = from.split("-").map(Number);
-  const [ty, tm, td] = to.split("-").map(Number);
-  return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / 86_400_000) + 1;
 }
 
 function manWon(amount: number) {
@@ -306,8 +301,7 @@ export function buildOwnerPnl(args: {
   const vatInput = extractVatIncluded(proofExpense + productCost);
   const vatPayable = vatOutput - vatInput;
 
-  const days = inclusiveDays(args.from, args.to);
-  const periodsPerYear = days >= 28 ? 12 : Math.max(1, Math.round(365 / days));
+  const periodsPerYear = periodsInYear(args.period ?? "month");
   const annualizedProfit = operatingProfit * periodsPerYear;
   const taxableBase = Math.max(0, annualizedProfit - BASIC_DEDUCTION);
   const { incomeTax, bracketRate } = calcIncomeTax(taxableBase);

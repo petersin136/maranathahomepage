@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { clsx } from "clsx";
+import { BriefingPeriodPicker } from "@/components/admin/BriefingPeriodPicker";
 import {
   ArtistFilterChip,
   CheckBox,
   DownloadExportButton,
   FinanceHeader,
   FinanceSticky,
-  MonthPicker,
   RefreshButton,
   TABLE_HEAD_ROW,
   TABLE_ROW,
@@ -19,19 +19,28 @@ import {
   useOutsideClose,
   won
 } from "@/components/admin/finance-ui";
+import { briefingRange, compareWord, type BriefingKind } from "@/lib/admin/briefing-period";
 import { useAdminSession } from "@/components/admin/admin-session";
 import type { SalesDashboard } from "@/lib/admin/sales-data";
-import { METHOD_LABEL, monthEnd, monthStart, salesBoardView, todayKst } from "@/lib/admin/sales-data";
+import { METHOD_LABEL, salesBoardView, todayKst } from "@/lib/admin/sales-data";
 
 type Staff = { id: string; name_kr: string | null; role: string | null };
 
-const PAGE_SIZE = 12;
+const SALES_MODES: { id: BriefingKind; label: string }[] = [
+  { id: "week", label: "주간" },
+  { id: "month", label: "월간" },
+  { id: "quarter", label: "분기" },
+  { id: "half", label: "반기" },
+  { id: "year", label: "연간" }
+];
 
 const METHOD_TONE: Record<"card" | "transfer" | "cash", string> = {
   card: "var(--accent)",
   transfer: "var(--muted)",
   cash: "var(--label)"
 };
+
+const PAGE_SIZE = 12;
 
 function formatPaidAt(iso: string) {
   const parts = Object.fromEntries(
@@ -95,10 +104,7 @@ function displayMethodPercents(methods: { share: number; amount: number }[]): nu
   return percents;
 }
 
-function monthRange(year: number, month: number) {
-  const from = monthStart(`${year}-${String(month).padStart(2, "0")}-01`);
-  return { from, to: monthEnd(from) };
-}
+type SalesPick = { period: BriefingKind; year: number; month: number; date: string };
 
 export default function AdminSalesPage({
   initial,
@@ -114,6 +120,7 @@ export default function AdminSalesPage({
   const [refreshing, setRefreshing] = useState(false);
   const [year, setYear] = useState(() => Number((initial?.period.from ?? todayKst()).slice(0, 4)));
   const [month, setMonth] = useState(() => Number((initial?.period.from ?? todayKst()).slice(5, 7)));
+  const [kind, setKind] = useState<BriefingKind>("month");
   const session = useAdminSession();
   const lockedArtistId = session?.role === "designer" ? session.artistId : null;
   const [staff, setStaff] = useState<Staff[] | null>(null);
@@ -138,10 +145,10 @@ export default function AdminSalesPage({
     setStaffOpen(false);
   }, [lockedArtistId]);
 
-  const load = useCallback(async (nextYear: number, nextMonth: number) => {
+  const load = useCallback(async (next: SalesPick) => {
     setRefreshing(true);
     setError(null);
-    const range = monthRange(nextYear, nextMonth);
+    const range = briefingRange(next.period, next.year, next.month, next.date);
     const params = new URLSearchParams({ preset: "custom", from: range.from, to: range.to });
     try {
       const res = await fetch(`/api/admin/sales?${params.toString()}`);
@@ -150,8 +157,9 @@ export default function AdminSalesPage({
       setData(json as SalesDashboard);
       setFrom(json.period.from);
       setTo(json.period.to);
-      setYear(Number(json.period.from.slice(0, 4)));
-      setMonth(Number(json.period.from.slice(5, 7)));
+      setKind(next.period);
+      setYear(next.year);
+      setMonth(next.month);
     } catch (e) {
       setError(e instanceof Error ? e.message : "로드 실패");
     } finally {
@@ -202,26 +210,27 @@ export default function AdminSalesPage({
 
   useEffect(() => {
     setPage(1);
-  }, [year, month, artistFilter]);
+  }, [year, month, kind, artistFilter]);
   const methodPercents = s ? displayMethodPercents(s.methods) : [];
   const a = s?.attrition;
   const prevCount = s ? s.completedCount - s.completedChange : 0;
   const currentEmpty = !s || s.completedCount === 0;
   const canCompare = !currentEmpty && s.revenueChangeRate != null && prevCount > 0;
+  const versus = compareWord(kind);
   const revenueHint = canCompare
-    ? `전월 대비 ${signedPct(s.revenueChangeRate ?? 0)}`
-    : "전월 결제 내역 없음";
+    ? `${versus} 대비 ${signedPct(s.revenueChangeRate ?? 0)}`
+    : `${versus} 결제 내역 없음`;
   const excluded = (a?.cancelledCount ?? 0) + (a?.noshowCount ?? 0);
   const countHint = currentEmpty
     ? "결제 내역 없음"
     : canCompare
-      ? `전월 대비 ${signedCount(s.completedChange)} · 취소/노쇼 ${excluded}건 제외`
+      ? `${versus} 대비 ${signedCount(s.completedChange)} · 취소/노쇼 ${excluded}건 제외`
       : `취소/노쇼 ${excluded}건 제외`;
   const avgHint = currentEmpty
     ? "산출 데이터가 없음"
     : canCompare
-      ? `전월 대비 ${signedWon(s.avgTicket - s.prevAvgTicket)}`
-      : "전월 결제 내역 없음";
+      ? `${versus} 대비 ${signedWon(s.avgTicket - s.prevAvgTicket)}`
+      : `${versus} 결제 내역 없음`;
   const depositHint =
     s && s.totalRevenue > 0
       ? `전체 매출의 ${s.depositShare.toFixed(1)}% · 현장 결제 ${s.onSiteShare.toFixed(1)}%`
@@ -233,32 +242,20 @@ export default function AdminSalesPage({
   return (
     <div className="flex h-full min-h-0 flex-col font-sans-kr text-[#1C1C1C]">
       <FinanceSticky>
-      <FinanceHeader
-        embedded
-        tabAction={
-          <DownloadExportButton
-            label="매출 리포트 PDF"
-            report="sales"
-            from={from}
-            to={to}
-            year={year}
-            month={month}
-            artistIds={lockedArtistId ? [lockedArtistId] : artistFilter}
-            onError={setError}
-          />
-        }
-      />
+      <FinanceHeader embedded />
 
       <Toolbar
         className="mt-[34px]"
         left={
           <>
-            <MonthPicker
+            <BriefingPeriodPicker
+              period={kind}
               year={year}
               month={month}
-              width={202}
-              label={`${year}. ${String(month).padStart(2, "0")}`}
-              onChange={(nextYear, nextMonth) => void load(nextYear, nextMonth)}
+              from={from || `${year}-${String(month).padStart(2, "0")}-01`}
+              to={to || from}
+              modes={SALES_MODES}
+              onPick={(next) => void load(next)}
             />
             <div ref={staffRef}>
               <ArtistFilterChip
@@ -294,8 +291,30 @@ export default function AdminSalesPage({
                 }
               />
             </div>
-            <RefreshButton spinning={refreshing} onClick={() => void load(year, month)} />
+            <RefreshButton
+              spinning={refreshing}
+              onClick={() =>
+                void load({
+                  period: kind,
+                  year,
+                  month,
+                  date: from || `${year}-${String(month).padStart(2, "0")}-01`
+                })
+              }
+            />
           </>
+        }
+        right={
+          <DownloadExportButton
+            label="매출 리포트 PDF"
+            report="sales"
+            from={from}
+            to={to}
+            year={year}
+            month={month}
+            artistIds={lockedArtistId ? [lockedArtistId] : artistFilter}
+            onError={setError}
+          />
         }
       />
       </FinanceSticky>

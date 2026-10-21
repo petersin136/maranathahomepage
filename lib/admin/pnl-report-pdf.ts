@@ -7,7 +7,8 @@ import {
   drawCover,
   drawHeader,
   drawKpis,
-  drawSharePair,
+  drawShare,
+  shareHeight,
   finalizeFooters,
   hline,
   kpiWon,
@@ -19,6 +20,7 @@ import {
   type Doc,
   type HeaderSpec
 } from "@/lib/admin/pdf/report-kit";
+import { periodNoun } from "@/lib/admin/briefing-period";
 
 export type PnlSummary = {
   revenue: number;
@@ -41,7 +43,7 @@ export type PnlSummary = {
   incomeTaxReserve: number;
 };
 
-export type PnlReportPeriod = "month" | "week" | "day";
+export type PnlReportPeriod = import("@/lib/admin/briefing-period").BriefingKind;
 
 export type PnlReportMeta = {
   salonName: string;
@@ -53,18 +55,11 @@ export type PnlReportMeta = {
 
 const DOT = {
   fixed: "#6B5A4A",
-  material: "#8A847C",
   product: "#6B7A9B",
   operating: "#9A948C",
   incentive: "#B16242",
   tax: "#9A4A3A"
 };
-
-function periodNoun(period: PnlReportPeriod) {
-  if (period === "week") return "이번 주";
-  if (period === "day") return "이날";
-  return "이번 달";
-}
 
 type FlowRow = {
   label: string;
@@ -76,11 +71,15 @@ type FlowRow = {
   emphasis?: boolean;
 };
 
-const FLOW_TITLE = "한눈에 보는 월간 손익 흐름";
 const FLOW_DESC =
-  "위에서 아래로 읽으면 됩니다. 초록은 들어온 돈, 갈색·주황은 나간 돈, 맨 아래가 세후 실수령입니다.";
+  "위에서 아래로 읽으면 됩니다. 초록은 들어온 매출, 갈색·주황은 나간 돈, 맨 아래가 최종 세후 순수익입니다.";
 const FLOW_NOTE =
-  "세후 실수령은 추정치입니다. 부가세·예상 종합소득세는 공제·감면에 따라 달라질 수 있고, 디자이너 원천세는 인센에서 이미 뺐으니 세후 금액에서 다시 빼지 않습니다.";
+  "최종 세후 순수익은 추정치입니다. 부가가치세·종합소득세는 공제·감면에 따라 달라질 수 있습니다.";
+
+function manUnit(amount: number) {
+  const scaled = Math.round(amount / 1_000) / 10;
+  return `${scaled.toLocaleString("ko-KR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}만`;
+}
 
 function drawFlow(doc: Doc, y: number, s: PnlSummary, meta: PnlReportMeta) {
   const noun = periodNoun(meta.period);
@@ -88,28 +87,21 @@ function drawFlow(doc: Doc, y: number, s: PnlSummary, meta: PnlReportMeta) {
   const remainSign: "+" | "-" = s.ownerRemain >= 0 ? "+" : "-";
   const flow: FlowRow[] = [
     {
-      label: `들어온 돈 (${noun} 매출)`,
+      label: meta.period === "month" ? "월 총매출" : `${noun} 총매출`,
       caption: `원장 직접 시술 ${won(s.ownerServiceRevenue)} · 디자이너 시술 ${won(s.designerServiceRevenue)} · 제품 ${won(s.productRevenue)}`,
       amount: s.revenue,
       sign: "+",
       dot: COLOR.green
     },
     {
-      label: "월세·관리비 등 고정비",
+      label: "고정비(임차료·관리비 등)",
       caption: "매장을 유지하는 데 매달 나가는 돈",
       amount: s.fixedAmount,
       sign: "-",
       dot: DOT.fixed
     },
     {
-      label: "재료·약제비",
-      caption: "염색약, 클리닉 약제처럼 시술에 쓰는 재료",
-      amount: s.materialAmount,
-      sign: "-",
-      dot: DOT.material
-    },
-    {
-      label: "제품 매입가",
+      label: "판매 제품 매입 원가",
       caption: "팔린 샴푸·오일을 떼어 온 값",
       amount: s.productCost,
       sign: "-",
@@ -117,20 +109,20 @@ function drawFlow(doc: Doc, y: number, s: PnlSummary, meta: PnlReportMeta) {
     },
     {
       label: "운영비",
-      caption: "소모품, 광고, 프로그램 이용료 등",
-      amount: s.operatingAmount,
+      caption: "소모품, 광고, 재료·약제, 프로그램 이용료 등",
+      amount: s.operatingAmount + s.materialAmount,
       sign: "-",
       dot: DOT.operating
     },
     {
-      label: "디자이너에게 준 인센티브",
-      caption: `시술 인센 ${won(s.designerServiceIncentive)} · 제품 인센 ${won(s.designerProductIncentive)}`,
+      label: "디자이너 정산 인센티브",
+      caption: "정산 탭의 디자이너별 인센티브를 더한 금액",
       amount: s.designerIncentive,
       sign: "-",
       dot: DOT.incentive
     },
     {
-      label: "세금 떼기 전",
+      label: "세전 영업이익",
       caption: "매출에서 비용·인센을 뺀 금액",
       amount: s.operatingProfit,
       sign: profitSign,
@@ -138,24 +130,26 @@ function drawFlow(doc: Doc, y: number, s: PnlSummary, meta: PnlReportMeta) {
       strongTop: true
     },
     {
-      label: "부가세",
-      caption: `${noun} 매출·매입 기준으로 낼 부가세 추정`,
+      label: "부가가치세(예상)",
+      caption: `${noun} 매출·매입 기준 추정 · 매출세액 − 매입세액`,
       amount: s.vatPayable,
       sign: "-",
       dot: DOT.tax
     },
     {
-      label: "예상 종합소득세",
+      label: "종합소득세(예상 적립액)",
       caption:
-        meta.period === "month"
-          ? "이 달이 1년 내내 같다고 보고 12로 나눈 적립액"
-          : "이 기간이 1년 내내 같다고 보고 나눠 둔 적립액",
+        meta.period === "year"
+          ? "이 해의 남은 돈으로 계산한 적립액"
+          : meta.period === "month"
+            ? "이 달이 1년 내내 같다고 보고 12로 나눈 적립액"
+            : "이 기간이 1년 내내 같다고 보고 나눠 둔 적립액",
       amount: s.incomeTaxReserve,
       sign: "-",
       dot: DOT.tax
     },
     {
-      label: "세후 실제 남는 돈",
+      label: "= 최종 세후 순수익(실수령)",
       caption: `원장님이 ${noun} 사업에서 가져갈 수 있는 금액`,
       amount: s.ownerRemain,
       sign: remainSign,
@@ -175,7 +169,7 @@ function drawFlow(doc: Doc, y: number, s: PnlSummary, meta: PnlReportMeta) {
     Math.min(34, Math.floor((LIMIT - y - TITLE_H - PAD * 2 - NOTE_GAP - noteH) / flow.length))
   );
 
-  t(doc, FLOW_TITLE, M, y, { size: 11, bold: true });
+  t(doc, meta.period === "month" ? "한 눈에 보는 월간 손익 흐름" : "한 눈에 보는 손익 흐름", M, y, { size: 11, bold: true });
   t(doc, FLOW_DESC, M, y + 16, { size: 7, color: COLOR.sub });
   y += TITLE_H;
 
@@ -212,22 +206,24 @@ export function buildPnlReportPdf(raw: PnlSummary, meta: PnlReportMeta): Promise
   const moneyOut = s.expenseTotal + s.productCost + s.designerIncentive;
   const keepRows = [
     { label: "원장 직접 시술", caption: "원장 시술 매출은 100% 매장 귀속", amount: s.ownerServiceRevenue },
-    { label: "디자이너 위탁 마진", caption: "시술 매출 \u2212 디자이너 시술 인센", amount: s.shopKeepDesignerService },
+    {
+      label: "디자이너 위탁 마진",
+      caption: `디자이너 시술 총매출 ${manUnit(s.designerServiceRevenue)} - 시술 인센 ${manUnit(s.designerServiceIncentive)}`,
+      amount: s.shopKeepDesignerService
+    },
     {
       label: "제품 판매 순마진",
-      caption: "제품 판매가에서 매입가와 디자이너 수당 15%를 뺀 매장 몫",
+      caption: `제품 판매가 ${manUnit(s.productRevenue)} - 매입가 ${manUnit(s.productCost)} - 제품 인센 ${manUnit(s.designerProductIncentive)}`,
       amount: s.productRevenue - s.productCost - s.designerProductIncentive
     }
   ];
   const keepTotal = keepRows.reduce((a, r) => a + r.amount, 0);
-  const costRows = [
-    { label: "디자이너에게 준 인센티브", amount: s.designerIncentive },
-    { label: "월세·관리비 등 고정비", amount: s.fixedAmount },
-    { label: "제품 매입가", amount: s.productCost },
-    { label: "운영비", amount: s.operatingAmount },
-    { label: "재료·약제비", amount: s.materialAmount }
-  ].sort((a, b) => b.amount - a.amount);
-  const costTotal = costRows.reduce((a, r) => a + r.amount, 0);
+  const keepSpec = {
+    title: "매장 수익 창출 구조",
+    base: keepTotal,
+    rows: keepRows,
+    total: { label: "매장 몫 합계", amount: keepTotal }
+  };
 
   const { doc, done, addPage } = createReportDoc(`${salon} ${reportName} ${meta.periodLabel}`);
   drawCover(doc, {
@@ -260,12 +256,9 @@ export function buildPnlReportPdf(raw: PnlSummary, meta: PnlReportMeta): Promise
     { label: "총 지출 및 인센", value: kpiWon(moneyOut), caption: "월세 · 재료 · 인센" },
     { label: "예상 제세공과금", value: kpiWon(s.taxSetAside), caption: "부가세 + 예상 종소세" }
   ]);
-  y = drawSharePair(
-    doc,
-    y,
-    { title: "매장 수익 창출 구조", base: keepTotal, rows: keepRows, total: { label: "매장 몫 합계", amount: keepTotal } },
-    { title: "비용 지출 구조", base: costTotal, rows: costRows, total: { label: "합계", amount: costTotal } }
-  );
+  const keepH = shareHeight(keepSpec);
+  drawShare(doc, M, y, CW, keepH, keepSpec);
+  y += keepH + 16;
   drawFlow(doc, y, s, meta);
   finalizeFooters(doc, `${salon} · ${reportName} · ${meta.periodLabel}`);
   doc.end();

@@ -300,7 +300,29 @@ export default function AdminExpensesPage({
 
   const shareGroupPercents = s ? s.shareGroups.map((g) => (s.totalAmount > 0 ? Math.round((g.amount / s.totalAmount) * 100) : 0)) : [];
   const shareBarPercents = s ? remainderPercents(s.shareGroups.map((g) => g.amount)) : [];
-  const proofPercents = s ? remainderPercents(s.proofs.map((p) => p.amount)) : [];
+  const qualifiedAmount = s
+    ? s.proofs
+        .filter((p) => p.key === "tax_invoice" || p.key === "corporate_card")
+        .reduce((sum, p) => sum + p.amount, 0)
+    : 0;
+  const simpleAmount = s ? (s.proofs.find((p) => p.key === "other")?.amount ?? 0) : 0;
+  const proofPercents = s ? remainderPercents([qualifiedAmount, simpleAmount]) : [0, 0];
+  const proofRows = [
+    {
+      label: "적격증빙(세금계산서·카드)",
+      amount: qualifiedAmount,
+      share: proofPercents[0] ?? 0,
+      bar: s && s.totalAmount > 0 ? (qualifiedAmount / s.totalAmount) * 100 : 0,
+      tone: "var(--accent)"
+    },
+    {
+      label: "간이영수증/증빙 미비",
+      amount: simpleAmount,
+      share: proofPercents[1] ?? 0,
+      bar: s && s.totalAmount > 0 ? (simpleAmount / s.totalAmount) * 100 : 0,
+      tone: "var(--muted)"
+    }
+  ];
 
   const currentEmpty = !s || s.totalAmount === 0;
   const canCompare = !currentEmpty && s.changeRate != null && s.prevTotalAmount > 0;
@@ -330,20 +352,7 @@ export default function AdminExpensesPage({
   return (
     <div className="pb-16 font-sans-kr text-[#1C1C1C]">
       <FinanceSticky>
-      <FinanceHeader
-        embedded
-        subtitle={`${year}년 ${month}월 지출`}
-        tabAction={
-          <DownloadExportButton
-            label="지출 리포트 PDF"
-            report="expenses"
-            year={year}
-            month={month}
-            categories={categoryFilter}
-            onError={setError}
-          />
-        }
-      />
+      <FinanceHeader embedded />
 
       <Toolbar
         className="mt-[34px]"
@@ -408,6 +417,14 @@ export default function AdminExpensesPage({
             >
               지출 등록
             </button>
+            <DownloadExportButton
+              label="지출 리포트 PDF"
+              report="expenses"
+              year={year}
+              month={month}
+              categories={categoryFilter}
+              onError={setError}
+            />
           </>
         }
       />
@@ -513,35 +530,24 @@ export default function AdminExpensesPage({
             </section>
 
             <section className="overflow-visible rounded-[8px] bg-[color:var(--sidebar-bg)] px-5 py-5">
-              <h2 className="text-[15px] font-bold leading-normal text-[color:var(--label)]">증빙 수단별 비중</h2>
-              <div className="mt-4 flex h-[14px] overflow-hidden rounded-[2px] bg-[#E4DFD6]">
-                {s.totalAmount > 0
-                  ? s.proofs.map((p) =>
-                      p.share > 0 ? (
-                        <span
-                          key={p.key}
-                          className="h-full"
-                          style={{ width: `${p.share}%`, background: p.tone }}
-                        />
-                      ) : null
-                    )
-                  : null}
-              </div>
-              <ul className="mt-4">
-                {s.proofs.map((p, index) => (
-                  <li key={p.key} className="flex items-center justify-between py-[10px] text-[16px] font-medium">
-                    <span className="flex min-w-0 items-center">
-                      <span
-                        className="mr-2 inline-block h-[14px] w-[3px] shrink-0 rounded-full"
-                        style={{ background: p.tone }}
-                      />
-                      <span className="font-bold tabular-nums">{proofPercents[index]}%</span>
-                      <span className="ml-2">{p.label}</span>
+              <h2 className="text-[15px] font-bold leading-normal text-[color:var(--label)]">지출 증빙 현황</h2>
+              {proofRows.map((row) => (
+                <div key={row.label} className="mt-4">
+                  <div className="flex items-baseline justify-between text-[16px] font-medium">
+                    <span>
+                      <span className="font-bold tabular-nums">{row.share}%</span>
+                      <span className="ml-2">{row.label}</span>
                     </span>
-                    <span className="shrink-0 tabular-nums text-[color:var(--muted)]">{won(p.amount)}</span>
-                  </li>
-                ))}
-              </ul>
+                    <span className="tabular-nums text-[color:var(--muted)]">{won(row.amount)}</span>
+                  </div>
+                  <div className="mt-2 h-[14px] overflow-hidden rounded-[2px] bg-[#E4DFD6]">
+                    <div className="h-full rounded-[2px]" style={{ width: `${row.bar}%`, background: row.tone }} />
+                  </div>
+                </div>
+              ))}
+              <p className="mt-4 text-[13px] leading-normal text-[color:var(--muted)]">
+                ※ 세금계산서·현금영수증·사업자카드로 지출 시 매입세액 공제 대상에 포함됩니다.
+              </p>
             </section>
           </div>
 

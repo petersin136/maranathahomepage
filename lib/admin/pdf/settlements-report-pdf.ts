@@ -57,10 +57,7 @@ export function buildSettlementsReportPdf(input: {
   const canCompare = input.prevMonthPayout > 0;
   const payoutDeltaRate = canCompare ? ((s.totalNetPay - input.prevMonthPayout) / input.prevMonthPayout) * 100 : 0;
   const payoutHint = canCompare ? `전월 대비 ${signedPct(payoutDeltaRate)}` : "비교 없음";
-  const rateHint =
-    s.avgCommissionRate == null
-      ? "산출 데이터가 없음"
-      : `평균 수당률 ${s.avgCommissionRate.toFixed(1)}%(공제 전 세전 수당)`;
+  const rateHint = `(시술 매출 × 디자이너별 커미션 요율) + (제품 매출 × 15%)`;
   const shareSource = input.artists.filter((row) => (row.netPay ?? 0) > 0);
   const sharePercents = remainderPercents(shareSource.map((row) => row.netPay ?? 0));
   const incentive = s.totalIncentive;

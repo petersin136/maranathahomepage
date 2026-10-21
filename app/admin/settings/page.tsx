@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { clsx } from "clsx";
 import SettingsNav from "@/components/admin/SettingsNav";
@@ -20,6 +21,7 @@ const TAX_LABEL: Record<TaxType, string> = {
 };
 
 export default function AdminSettingsPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +70,7 @@ export default function AdminSettingsPage() {
       if (!res.ok || !json.ok) throw new Error(json.error || "저장 실패");
       setMessage("저장되었습니다.");
       await load();
+      router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "저장 실패");
     } finally {

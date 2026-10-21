@@ -831,7 +831,7 @@ export default function AdminBookingsPage() {
                   <tr
                     key={row.id}
                     onClick={() => router.push(`/admin/bookings/${row.id}`)}
-                    className="cursor-pointer border-b border-[#F3EFEA] bg-white hover:bg-[#F6F4F0]"
+                    className="cursor-pointer bg-white hover:bg-[#F6F4F0] [&>td]:border-b [&>td]:border-[#F3EFEA]"
                   >
                     <td className="h-[73px] w-[var(--booking-col-check)] min-w-[66px] py-0 pl-[calc(var(--booking-cell-padx)+var(--booking-table-inset))] pr-[var(--booking-cell-padx)] text-left align-middle" onClick={(e) => e.stopPropagation()}>
                       <CheckBox

@@ -83,11 +83,13 @@ function lnbActive(pathname: string, item: (typeof LNB_ITEMS)[number]) {
 
 export default function AdminShell({
   children,
-  session
+  session,
+  salonName
 }: {
   children: React.ReactNode;
   email?: string | null;
   session?: AdminShellSession | null;
+  salonName?: string | null;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -146,11 +148,21 @@ export default function AdminShell({
       )}
     >
       <aside className="fixed inset-y-0 left-0 z-30 flex w-[242px] flex-col bg-[#F9F8F4]">
-        <Link href="/" prefetch={false} className="block px-[27px] pt-[36px]">
-          <img src="/admin-icons/hair-up-logo.png" alt="hair up" className="h-[42px] w-auto" />
-        </Link>
+        <div className="px-[27px] pt-[36px]">
+          <Link href="/" prefetch={false} className="block">
+            <img src="/admin-icons/hair-up-logo.png" alt="hair up" className="h-[42px] w-auto" />
+          </Link>
+          {salonName ? (
+            <p
+              title={salonName}
+              className="mt-[10px] truncate font-sans-kr text-[13px] font-medium leading-none text-[#7A746E] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]"
+            >
+              {salonName}
+            </p>
+          ) : null}
+        </div>
 
-        <nav className="mt-[37px] flex flex-col px-[11px]">
+        <nav className={clsx("flex flex-col px-[11px]", salonName ? "mt-[24px]" : "mt-[37px]")}>
           {items.map((item) => {
             const active = lnbActive(pathname, item);
             const badge = item.badge === "bookings" ? pendingCount : null;

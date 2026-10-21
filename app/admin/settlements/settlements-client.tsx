@@ -24,13 +24,14 @@ import {
   won
 } from "@/components/admin/finance-ui";
 import { useAdminSession } from "@/components/admin/admin-session";
+import { PRODUCT_DESIGNER_RATE } from "@/lib/admin/retail-products";
 import {
   bankAccountDisplay,
   remainderPercents,
   type SettlementArtistRow,
   type SettlementDashboard
 } from "@/lib/admin/settlements-data";
-import { PRODUCT_DESIGNER_RATE, productAmountFromNames } from "@/lib/admin/retail-products";
+import { productAmountFromNames } from "@/lib/admin/retail-products";
 import { todayKst } from "@/lib/admin/sales-data";
 
 const STATUS_FILTERS = [
@@ -216,10 +217,7 @@ export default function AdminSettlementsPage({
   const payoutDeltaRate = canCompare && s ? ((s.totalNetPay - prevPayout) / prevPayout) * 100 : 0;
   const payoutUp = canCompare && payoutDeltaRate > 0;
   const payoutHint = canCompare ? `전월 대비 ${signedPct(payoutDeltaRate)}` : "비교 없음";
-  const rateHint =
-    s == null || s.avgCommissionRate == null
-      ? "산출 데이터가 없음"
-      : `평균 수당률 ${s.avgCommissionRate.toFixed(1)}%(공제 전 세전 수당)`;
+  const rateHint = `(시술 매출 × 디자이너별 커미션 요율) + (제품 매출 × ${PRODUCT_DESIGNER_RATE}%)`;
 
   const runClose = async () => {
     if (busy) return;
@@ -340,22 +338,7 @@ export default function AdminSettlementsPage({
   return (
     <div className="pb-16 font-sans-kr text-[#1C1C1C]">
       <FinanceSticky>
-      <FinanceHeader
-        embedded
-        subtitle={`${year}년 ${month}월 디자이너 정산`}
-        tabAction={
-          isDesigner ? undefined : (
-            <DownloadExportButton
-              label="정산 리포트 PDF"
-              report="settlements"
-              year={year}
-              month={month}
-              status={statusFilter}
-              onError={setError}
-            />
-          )
-        }
-      />
+      <FinanceHeader embedded />
 
       <Toolbar
         left={
@@ -419,6 +402,14 @@ export default function AdminSettlementsPage({
               >
                 정산 마감
               </button>
+              <DownloadExportButton
+                label="정산 리포트 PDF"
+                report="settlements"
+                year={year}
+                month={month}
+                status={statusFilter}
+                onError={setError}
+              />
             </>
           )
         }
@@ -558,22 +549,18 @@ export default function AdminSettlementsPage({
           <section className="mt-4 overflow-hidden rounded-[8px] bg-[color:var(--sidebar-bg)] px-5">
             <table className="w-full table-fixed text-left text-[16px] font-medium leading-[20px]">
               <colgroup>
+                <col className="w-[18%]" />
+                <col className="w-[13%]" />
+                <col className="w-[12%]" />
                 <col className="w-[14%]" />
-                <col className="w-[10%]" />
-                <col className="w-[10%]" />
-                <col className="w-[10%]" />
-                <col className="w-[9%]" />
-                <col className="w-[11%]" />
-                <col className="w-[11%]" />
-                <col className="w-[11%]" />
+                <col className="w-[15%]" />
+                <col className="w-[13%]" />
                 <col />
               </colgroup>
               <thead>
                 <tr className={TABLE_HEAD_ROW}>
                   <th className={clsx(TH, "pl-1")}>디자이너</th>
-                  <th className={clsx(TH, "text-right")}>담당 매출</th>
-                  <th className={clsx(TH, "text-right")}>제품 판매</th>
-                  <th className={clsx(TH, "text-right")}>제품 커미션({PRODUCT_DESIGNER_RATE}%)</th>
+                  <th className={clsx(TH, "text-right")}>담당매출</th>
                   <th className={clsx(TH, "text-right")}>커미션 요율</th>
                   <th className={clsx(TH, "text-right")}>발생 인센티브</th>
                   <th className={clsx(TH, "text-right")}>원천징수(3.3%)</th>
@@ -714,10 +701,6 @@ function ArtistRow({
           </span>
         </td>
         <td className={clsx(TD, "text-right tabular-nums")}>{won(row.revenue)}</td>
-        <td className={clsx(TD, "text-right tabular-nums")}>{won(row.productRevenue ?? 0)}</td>
-        <td className={clsx(TD, "text-right tabular-nums")}>
-          {row.productIncentive != null ? won(row.productIncentive) : "—"}
-        </td>
         <td className={clsx(TD, "text-right tabular-nums")}>
           {row.hasCommission ? `${row.commissionRate}%` : "0%"}
         </td>
@@ -747,8 +730,13 @@ function ArtistRow({
       </tr>
       {open ? (
         <tr className="bg-[#F9F8F4]">
-          <td colSpan={9} className="px-6 pb-5 pt-3">
-            <p className="text-[13px] text-[#8A847C]">
+          <td colSpan={7} className="px-6 pb-5 pt-3">
+            {row.hasCommission ? (
+              <p className="text-[13px] text-[#8A847C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+                {`계산법 (시술 매출 × ${row.commissionRate}%) + (제품 매출 × ${PRODUCT_DESIGNER_RATE}%)`}
+              </p>
+            ) : null}
+            <p className={clsx("text-[13px] text-[#8A847C]", row.hasCommission && "mt-[6px]")}>
               건수 {row.count}건
               {` · 시술 ${won(row.serviceRevenue ?? row.revenue)}`}
               {` · 제품 ${won(row.productRevenue ?? 0)}`}

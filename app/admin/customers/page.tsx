@@ -357,7 +357,7 @@ export default function AdminCustomersPage() {
                   <tr
                     key={row.phone}
                     className={clsx(
-                      "border-b border-[#F3EFEA]",
+                      "[&>td]:border-b [&>td]:border-[#F3EFEA]",
                       on ? "bg-[#F4EFE9]" : "bg-white"
                     )}
                   >

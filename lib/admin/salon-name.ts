@@ -10,6 +10,21 @@ export async function getSalonName() {
   return String(data?.business_name ?? "").trim() || "HAIR UP";
 }
 
+export async function getSidebarSalonName() {
+  try {
+    const { data, error } = await getSupabaseAdmin()
+      .from("shop_settings")
+      .select("business_name")
+      .limit(1)
+      .maybeSingle();
+    if (error) return null;
+    const name = String(data?.business_name ?? "").trim();
+    return name || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function isSettlementMonthClosed(year: number, month: number) {
   const key = `${year}-${String(month).padStart(2, "0")}`;
   const { data, error } = await getSupabaseAdmin()
