@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import AdminLayoutClient from "./admin-layout-client";
 import { getAdminShellSession } from "@/lib/admin/auth";
-import { getPendingBookings, getPendingCount } from "@/lib/admin/dashboard-data";
+import { getPendingCount } from "@/lib/admin/dashboard-data";
 import type { AdminShellSession } from "@/lib/admin/shell-session";
 
 const AUTH_PATHS = [
@@ -20,19 +20,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   let pendingCount: number | null = null;
   let session: AdminShellSession | null = null;
   if (!isAuthPage && pathname.startsWith("/admin")) {
-    try {
-      pendingCount =
-        pathname === "/admin"
-          ? (await getPendingBookings()).length
-          : await getPendingCount();
-    } catch (e) {
-      console.error("[admin layout] pending count", e);
-    }
-    try {
-      session = await getAdminShellSession();
-    } catch (e) {
-      console.error("[admin layout] session", e);
-    }
+    const [pendingResult, sessionResult] = await Promise.all([
+      getPendingCount().catch((e) => {
+        console.error("[admin layout] pending count", e);
+        return null;
+      }),
+      getAdminShellSession().catch((e) => {
+        console.error("[admin layout] session", e);
+        return null;
+      })
+    ]);
+    pendingCount = pendingResult;
+    session = sessionResult;
   }
 
   return (

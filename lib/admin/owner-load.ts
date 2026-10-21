@@ -112,7 +112,6 @@ export async function loadOwnerPnlView(args?: {
   dateRaw?: string | null;
 }): Promise<OwnerPnlDashboard> {
   const query = resolveOwnerPeriod(args ?? {});
-  const current = await loadRangePnl(query);
   const prevQuery: OwnerPeriodQuery = {
     ...query,
     year: Number(query.prevFrom.slice(0, 4)),
@@ -122,16 +121,16 @@ export async function loadOwnerPnlView(args?: {
     prevFrom: query.prevFrom,
     prevTo: query.prevTo
   };
-  try {
-    const previous = await loadRangePnl(prevQuery);
-    return {
-      ...current,
-      summary: { ...current.summary, prevOwnerRemain: previous.summary.ownerRemain }
-    };
-  } catch (e) {
-    if (e instanceof SettlementsQueryError || e instanceof OwnerPnlQueryError) {
-      return current;
-    }
-    throw e;
-  }
+  const [current, previous] = await Promise.all([
+    loadRangePnl(query),
+    loadRangePnl(prevQuery).catch((e) => {
+      if (e instanceof SettlementsQueryError || e instanceof OwnerPnlQueryError) return null;
+      throw e;
+    })
+  ]);
+  if (!previous) return current;
+  return {
+    ...current,
+    summary: { ...current.summary, prevOwnerRemain: previous.summary.ownerRemain }
+  };
 }

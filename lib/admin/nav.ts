@@ -6,6 +6,8 @@ export type AdminHref =
   | "/admin/expenses"
   | "/admin/settlements"
   | "/admin/owner"
+  | "/admin/pnl"
+  | "/admin/inventory"
   | "/admin/tax"
   | "/admin/export"
   | "/admin/customers"
@@ -26,7 +28,7 @@ export type AdminNavItem = {
 
 /** 1단 = 왼쪽 사이드바 큰 메뉴, 2단 = 상단 하위 탭(items) */
 export type AdminMenu = {
-  id: "dashboard" | "bookings" | "calendar" | "customers" | "finance" | "owner" | "settings";
+  id: "dashboard" | "bookings" | "calendar" | "customers" | "finance" | "inventory" | "settings";
   label: string;
   href: AdminHref;
   icon: string;
@@ -81,14 +83,15 @@ export const ADMIN_MENUS: AdminMenu[] = [
     items: [
       { href: "/admin/sales", label: "매출", icon: "/admin-icons/lnb/usd.png" },
       { href: "/admin/expenses", label: "지출", icon: "/admin-icons/lnb/card.png" },
-      { href: "/admin/settlements", label: "정산", icon: "/admin-icons/lnb/calendar-check.png" }
+      { href: "/admin/settlements", label: "정산", icon: "/admin-icons/lnb/calendar-check.png" },
+      { href: "/admin/pnl", label: "매장 손익", icon: "/admin-icons/lnb/file-chart-line.png" }
     ]
   },
   {
-    id: "owner",
-    label: "원장",
-    href: "/admin/owner",
-    icon: "/admin-icons/lnb/file-chart-line.png",
+    id: "inventory",
+    label: "재고 관리",
+    href: "/admin/inventory",
+    icon: "/admin-icons/lnb/list-filter.png",
     items: []
   },
   {

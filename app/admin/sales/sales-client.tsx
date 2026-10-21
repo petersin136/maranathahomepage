@@ -162,7 +162,7 @@ export default function AdminSalesPage({
   useEffect(() => {
     if (lockedArtistId) return;
     let cancelled = false;
-    fetch("/api/admin/artists")
+    fetch("/api/admin/artists?compact=1")
       .then((res) => res.json())
       .then((artistsJson) => {
         if (cancelled) return;
@@ -233,7 +233,21 @@ export default function AdminSalesPage({
   return (
     <div className="flex h-full min-h-0 flex-col font-sans-kr text-[#1C1C1C]">
       <FinanceSticky>
-      <FinanceHeader embedded />
+      <FinanceHeader
+        embedded
+        tabAction={
+          <DownloadExportButton
+            label="매출 리포트 PDF"
+            report="sales"
+            from={from}
+            to={to}
+            year={year}
+            month={month}
+            artistIds={lockedArtistId ? [lockedArtistId] : artistFilter}
+            onError={setError}
+          />
+        }
+      />
 
       <Toolbar
         className="mt-[34px]"
@@ -282,17 +296,6 @@ export default function AdminSalesPage({
             </div>
             <RefreshButton spinning={refreshing} onClick={() => void load(year, month)} />
           </>
-        }
-        right={
-          <DownloadExportButton
-            labeled
-            from={from}
-            to={to}
-            year={year}
-            month={month}
-            artistIds={lockedArtistId ? [lockedArtistId] : artistFilter}
-            onError={setError}
-          />
         }
       />
       </FinanceSticky>

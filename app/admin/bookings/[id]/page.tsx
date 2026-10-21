@@ -435,6 +435,7 @@ export default function AdminBookingDetailPage() {
         <BookingPaymentModal
           booking={actions.paymentTarget}
           busy={actions.busyId === actions.paymentTarget.id}
+          warning={actions.paymentWarning}
           onClose={actions.closePayment}
           onSave={(payload) => {
             void actions.savePayment(payload);

@@ -15,7 +15,8 @@ import {
 } from "@/lib/admin/settlements-data";
 import { artistIdsFromSearchParams, isYmd } from "@/lib/admin/sales-data";
 import { missingExpenseExtraColumns } from "@/lib/admin/expenses-load";
-import type { ShopSettings } from "@/lib/admin/tax-data";
+import { shopDisplayName, type ShopSettings } from "@/lib/admin/tax-data";
+import { reportDisposition } from "@/lib/admin/salon-name";
 import type { PaymentMethod } from "@/lib/bookings/types";
 
 export const preferredRegion = "icn1";
@@ -193,12 +194,17 @@ export async function GET(request: Request) {
       format === "pdf"
         ? "application/pdf"
         : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    const fileKey = `${range.year}-${String(range.month).padStart(2, "0")}`;
+    const disposition =
+      format === "pdf"
+        ? reportDisposition(shopDisplayName(closeInput.settings), "월 마감 자료", fileKey, `close-${fileKey}.pdf`)
+        : `attachment; filename="hairup-close.${format}"; filename*=UTF-8''${encoded}`;
 
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         "Content-Type": contentType,
-        "Content-Disposition": `attachment; filename="hairup-close.${format}"; filename*=UTF-8''${encoded}`,
+        "Content-Disposition": disposition,
         "Cache-Control": "no-store"
       }
     });

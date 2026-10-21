@@ -156,6 +156,23 @@ function inPeriod(ymd: string, period: PeriodKey, day: string) {
   return ymd >= ymdOf(monday) && ymd <= ymdOf(sunday);
 }
 
+function periodRange(period: PeriodKey, day: string): { from?: string; to?: string; all?: boolean } {
+  if (period === "all") return { all: true };
+  const now = new Date();
+  const today = ymdOf(now);
+  if (period === "day") return { from: day, to: day };
+  if (period === "today") return { from: today, to: today };
+  if (period === "month") {
+    const start = `${today.slice(0, 7)}-01`;
+    const [y, m] = today.split("-").map(Number);
+    const last = new Date(y, m, 0).getDate();
+    return { from: start, to: `${today.slice(0, 7)}-${String(last).padStart(2, "0")}` };
+  }
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
+  const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
+  return { from: ymdOf(monday), to: ymdOf(sunday) };
+}
+
 function formatRemaining(ms: number) {
   const total = Math.floor(ms / 1000);
   const p = (n: number) => String(n).padStart(2, "0");
@@ -203,7 +220,16 @@ export default function AdminBookingsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/bookings");
+      const params = new URLSearchParams();
+      if (query.trim()) params.set("all", "1");
+      else {
+        const range = periodRange(period, day);
+        if (range.all) params.set("all", "1");
+        if (range.from) params.set("from", range.from);
+        if (range.to) params.set("to", range.to);
+      }
+      const qs = params.toString();
+      const res = await fetch(`/api/admin/bookings${qs ? `?${qs}` : ""}`);
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || "로드 실패");
       setBookings(data.bookings ?? []);
@@ -213,7 +239,7 @@ export default function AdminBookingsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [day, period, query]);
 
   const actions = useBookingActions({
     onSuccess: async (result) => {
@@ -224,11 +250,15 @@ export default function AdminBookingsPage() {
   });
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    const q = query.trim();
+    const handle = window.setTimeout(() => {
+      void load();
+    }, q ? 200 : 0);
+    return () => window.clearTimeout(handle);
+  }, [load, query]);
 
   useEffect(() => {
-    fetch("/api/admin/artists")
+    fetch("/api/admin/artists?compact=1")
       .then((r) => r.json())
       .then((d) => {
         if (!d.ok || !Array.isArray(d.artists)) return;
@@ -295,6 +325,8 @@ export default function AdminBookingsPage() {
     return hangul?.[0] || "—";
   };
 
+  const searching = query.trim().length > 0;
+
   const base = useMemo(() => {
     const q = query.trim().toLowerCase();
     const qDigits = q.replace(/\D/g, "");
@@ -312,7 +344,8 @@ export default function AdminBookingsPage() {
           (qDigits.length > 0 && phone.includes(qDigits));
         if (!hit) return false;
       }
-      if (!inPeriod(row.booking_date, period, day)) return false;
+      // 이름·연락처를 치면 오늘/이번 주 필터를 풀고 지난 예약까지 찾는다
+      if (!q && !inPeriod(row.booking_date, period, day)) return false;
       if (artistFilter.length && !artistFilter.includes(row.artist_id)) return false;
       return true;
     });
@@ -327,15 +360,15 @@ export default function AdminBookingsPage() {
   const activeTab = TABS.find((t) => t.key === tab)!;
 
   const rows = useMemo(() => {
-    const list = base.filter((row) => activeTab.statuses.includes(row.status));
-    const dir = sort.dir === "asc" ? 1 : -1;
+    const list = searching ? base : base.filter((row) => activeTab.statuses.includes(row.status));
+    const dir = searching ? -1 : sort.dir === "asc" ? 1 : -1;
     return [...list].sort((a, b) => {
-      if (sort.key === "name") return a.customer_name.localeCompare(b.customer_name, "ko") * dir;
+      if (!searching && sort.key === "name") return a.customer_name.localeCompare(b.customer_name, "ko") * dir;
       const ak = `${a.booking_date} ${a.booking_time}`;
       const bk = `${b.booking_date} ${b.booking_time}`;
       return ak < bk ? -dir : ak > bk ? dir : 0;
     });
-  }, [base, activeTab, sort]);
+  }, [base, activeTab, sort, searching]);
 
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
@@ -435,7 +468,6 @@ export default function AdminBookingsPage() {
     setPeriod("all");
     setArtistFilter([]);
     setOpenFilter(null);
-    void load();
   };
 
   const deadlineCell = (row: BookingRow) => {
@@ -477,12 +509,16 @@ export default function AdminBookingsPage() {
               {base.length === 0 ? (
                 <p className="px-3 py-[14px] text-[14px] font-medium leading-[20px] text-[#8A847C]">검색 결과가 없습니다.</p>
               ) : (
-                base.slice(0, 12).map((row) => (
+                [...base]
+                  .sort((a, b) => `${b.booking_date} ${b.booking_time}`.localeCompare(`${a.booking_date} ${a.booking_time}`))
+                  .slice(0, 20)
+                  .map((row) => (
                   <button
                     key={row.id}
                     type="button"
                     onClick={() => {
                       setTab(row.status === "cancelled" || row.status === "noshow" ? "cancelled_noshow" : row.status);
+                      setPeriod("all");
                       setSearchOpen(false);
                     }}
                     className="flex w-full flex-col items-start gap-1 border-t border-[#F3EFEA] px-3 py-[10px] text-left first:border-t-0 hover:bg-[#F9F8F4]"
@@ -641,6 +677,11 @@ export default function AdminBookingsPage() {
         >
           <Icon src="/admin-icons/lnb/refresh.png" className="h-[16px] w-[16px]" />
         </button>
+        {searching ? (
+          <p className={clsx(TRIM_KR, "ml-3 text-[13px] font-medium text-[#8A847C]")}>
+            검색 중 · 지난 예약 포함
+          </p>
+        ) : null}
 
         <div className="ml-auto flex items-center">
           {selected.length > 0 ? (
@@ -842,8 +883,10 @@ export default function AdminBookingsPage() {
         ) : null}
         {empty ? (
           <div className="pt-[156px] text-center">
-            <p className={clsx(TRIM_KR, "text-[16px] font-semibold text-[#1C1C1C]")}>{activeTab.empty}</p>
-            {period === "day" ? (
+            <p className={clsx(TRIM_KR, "text-[16px] font-semibold text-[#1C1C1C]")}>
+              {searching ? "검색 결과가 없습니다." : activeTab.empty}
+            </p>
+            {!searching && period === "day" ? (
               <p className={clsx(TRIM_KR, "mt-[15px] text-[14px] text-[#8A847C]")}>
                 {tab === "completed"
                   ? "선택하신 날짜에 완료된 시술 내역이 없습니다."
@@ -946,6 +989,7 @@ export default function AdminBookingsPage() {
         <BookingPaymentModal
           booking={actions.paymentTarget}
           busy={actions.busyId === actions.paymentTarget.id}
+          warning={actions.paymentWarning}
           onClose={actions.closePayment}
           onSave={(payload) => {
             void actions.savePayment(payload);

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export type AdminUserRow = {
@@ -5,7 +6,7 @@ export type AdminUserRow = {
   artistId: string | null;
 };
 
-export async function getAdminUser(userId: string): Promise<AdminUserRow | null> {
+export const getAdminUser = cache(async (userId: string): Promise<AdminUserRow | null> => {
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
     .from("admin_users")
@@ -21,4 +22,4 @@ export async function getAdminUser(userId: string): Promise<AdminUserRow | null>
     role: data.role,
     artistId: data.artist_id ?? null
   };
-}
+});

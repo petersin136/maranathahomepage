@@ -92,7 +92,7 @@ export default function AdminServicesPage() {
   const load = () =>
     Promise.all([
       fetch("/api/admin/services").then((r) => r.json()),
-      fetch("/api/admin/artists").then((r) => r.json())
+      fetch("/api/admin/artists?compact=1").then((r) => r.json())
     ]).then(([svc, art]) => {
       if (svc.ok) setServices(svc.services || []);
       if (art.ok) setArtists(art.artists || []);

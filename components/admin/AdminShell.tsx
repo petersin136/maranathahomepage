@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from "react";
 import { clsx } from "clsx";
 import { type AdminHref } from "@/lib/admin/nav";
 import { usePendingCount } from "@/components/admin/pending-count";
-import { createClient } from "@/lib/supabase/browser";
 import type { AdminShellSession } from "@/lib/admin/shell-session";
 
 /**
@@ -41,13 +40,13 @@ const LNB_ITEMS: {
     href: "/admin/sales",
     label: "매출/정산",
     icon: "/admin-icons/lnb/usd.png",
-    match: ["/admin/sales", "/admin/expenses", "/admin/settlements", "/admin/tax", "/admin/export"]
+    match: ["/admin/sales", "/admin/expenses", "/admin/settlements", "/admin/pnl", "/admin/owner", "/admin/tax", "/admin/export"]
   },
   {
-    href: "/admin/owner",
-    label: "원장",
-    icon: "/admin-icons/lnb/file-chart-line.png",
-    match: ["/admin/owner"],
+    href: "/admin/inventory",
+    label: "재고 관리",
+    icon: "/admin-icons/lnb/list-filter.png",
+    match: ["/admin/inventory"],
     ownerOnly: true
   },
   {
@@ -84,7 +83,6 @@ function lnbActive(pathname: string, item: (typeof LNB_ITEMS)[number]) {
 
 export default function AdminShell({
   children,
-  email,
   session
 }: {
   children: React.ReactNode;
@@ -94,30 +92,9 @@ export default function AdminShell({
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [profileName, setProfileName] = useState("관리자");
+  const profileName = session?.profileName || "관리자";
   const pendingCount = usePendingCount();
   const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const prev = document.documentElement.style.scrollbarGutter;
-    document.documentElement.style.scrollbarGutter = "stable";
-    return () => {
-      document.documentElement.style.scrollbarGutter = prev;
-    };
-  }, []);
-
-  useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => {
-      const user = data.user;
-      const metaName =
-        (user?.user_metadata?.name as string | undefined) ||
-        (user?.user_metadata?.full_name as string | undefined);
-      if (metaName) setProfileName(metaName);
-      else if (email) setProfileName(email.split("@")[0]);
-      else if (user?.email) setProfileName(user.email.split("@")[0]);
-    });
-  }, [email]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -140,7 +117,9 @@ export default function AdminShell({
     pathname.startsWith("/admin/expenses") ||
     pathname.startsWith("/admin/tax") ||
     pathname.startsWith("/admin/export") ||
-    pathname.startsWith("/admin/owner");
+    pathname.startsWith("/admin/pnl") ||
+    pathname.startsWith("/admin/owner") ||
+    pathname.startsWith("/admin/inventory");
 
   const salesBoard = pathname === "/admin/sales";
 
@@ -160,7 +139,12 @@ export default function AdminShell({
   });
 
   return (
-    <div className={clsx("bg-white text-hu-black", finance || pinned ? "h-dvh overflow-hidden" : "min-h-screen")}>
+    <div
+      className={clsx(
+        "bg-white text-hu-black [scrollbar-width:none] [-ms-overflow-style:none] [&_*]:[scrollbar-width:none] [&_*]:[-ms-overflow-style:none] [&_*::-webkit-scrollbar]:hidden",
+        finance || pinned ? "h-dvh overflow-hidden" : "min-h-screen"
+      )}
+    >
       <aside className="fixed inset-y-0 left-0 z-30 flex w-[242px] flex-col bg-[#F9F8F4]">
         <Link href="/" prefetch={false} className="block px-[27px] pt-[36px]">
           <img src="/admin-icons/hair-up-logo.png" alt="hair up" className="h-[42px] w-auto" />

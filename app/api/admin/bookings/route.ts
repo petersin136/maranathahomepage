@@ -3,10 +3,13 @@ import { requireAdminUser, getSupabaseAdmin } from "@/lib/admin/auth";
 import { isStartTimeAvailable, resolveDurationMinutes } from "@/lib/booking/overlap";
 import { loadOccupiedIntervals, resolveServiceDurations } from "@/lib/booking/occupied";
 import { normalizePhone } from "@/lib/admin/customers-data";
+import { todayKst } from "@/lib/admin/sales-data";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^\d{1,2}:\d{2}$/;
 const PHONE_RE = /^[0-9+\-\s()]{8,20}$/;
+const LIST_FIELDS =
+  "id, booking_date, booking_time, customer_name, customer_phone, artist_id, artist_name, status, service_names, deposit_paid, payment_method, final_amount, deposit_amount, cancel_reason, created_at, total_amount";
 
 type AdminCreateBody = {
   bookingDate?: string;
@@ -152,13 +155,12 @@ export async function GET(request: Request) {
   const auth = await requireAdminUser();
   if (!auth.ok) return auth.response;
 
-
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status"); // pending|confirmed|completed|cancelled_noshow|all
   const admin = getSupabaseAdmin();
 
   if (searchParams.get("count") === "1") {
-    let countQuery = admin.from("bookings").select("*", { count: "exact", head: true });
+    let countQuery = admin.from("bookings").select("id", { count: "exact", head: true });
     if (status === "pending") countQuery = countQuery.eq("status", "pending");
     else if (status === "confirmed") countQuery = countQuery.eq("status", "confirmed");
     else if (status === "completed") countQuery = countQuery.eq("status", "completed");
@@ -170,12 +172,27 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true, count: count ?? 0 });
   }
 
-  let query = admin.from("bookings").select("*").order("booking_date", { ascending: false }).order("booking_time", { ascending: true });
+  const from = searchParams.get("from");
+  const to = searchParams.get("to");
+  const q = (searchParams.get("q") || "").trim();
+  const unbounded = searchParams.get("all") === "1" || q.length > 0;
+  const ranged = Boolean(from && DATE_RE.test(from) && to && DATE_RE.test(to));
+
+  let query = admin
+    .from("bookings")
+    .select(LIST_FIELDS as "*")
+    .order("booking_date", { ascending: false })
+    .order("booking_time", { ascending: true });
 
   if (status === "pending") query = query.eq("status", "pending");
   else if (status === "confirmed") query = query.eq("status", "confirmed");
   else if (status === "completed") query = query.eq("status", "completed");
   else if (status === "cancelled_noshow") query = query.in("status", ["cancelled", "noshow"]);
+
+  if (!unbounded) {
+    if (ranged) query = query.gte("booking_date", from!).lte("booking_date", to!);
+    else query = query.eq("booking_date", todayKst());
+  }
 
   const { data, error } = await query;
   if (error) {

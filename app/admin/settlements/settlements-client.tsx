@@ -340,7 +340,22 @@ export default function AdminSettlementsPage({
   return (
     <div className="pb-16 font-sans-kr text-[#1C1C1C]">
       <FinanceSticky>
-      <FinanceHeader embedded subtitle={`${year}년 ${month}월 디자이너 정산`} />
+      <FinanceHeader
+        embedded
+        subtitle={`${year}년 ${month}월 디자이너 정산`}
+        tabAction={
+          isDesigner ? undefined : (
+            <DownloadExportButton
+              label="정산 리포트 PDF"
+              report="settlements"
+              year={year}
+              month={month}
+              status={statusFilter}
+              onError={setError}
+            />
+          )
+        }
+      />
 
       <Toolbar
         left={
@@ -393,7 +408,6 @@ export default function AdminSettlementsPage({
             </button>
           ) : (
             <>
-              <DownloadExportButton labeled year={year} month={month} onError={setError} />
               <button
                 type="button"
                 disabled={closeDisabled || busy}

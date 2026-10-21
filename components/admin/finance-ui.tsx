@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { clsx } from "clsx";
-import { AdminBellButton } from "@/components/admin/AdminBellButton";
+import { AdminBellButton, AdminHeaderSearch } from "@/components/admin/AdminBellButton";
 import { AdminPageTitle } from "@/components/admin/AdminPageTitle";
 import { useAdminSession } from "@/components/admin/admin-session";
 
@@ -22,7 +22,8 @@ export const INPUT =
 const FINANCE_TABS = [
   { href: "/admin/sales", label: "매출" },
   { href: "/admin/expenses", label: "지출" },
-  { href: "/admin/settlements", label: "정산" }
+  { href: "/admin/settlements", label: "정산" },
+  { href: "/admin/pnl", label: "매장 손익", ownerOnly: true }
 ] as const;
 
 export function won(value: number | null | undefined) {
@@ -93,16 +94,19 @@ function Chevron({ dir }: { dir: "left" | "right" }) {
 export function FinanceHeader({
   subtitle,
   right,
+  tabAction,
   embedded = false
 }: {
   subtitle?: string;
   right?: React.ReactNode;
+  tabAction?: React.ReactNode;
   embedded?: boolean;
 }) {
   const pathname = usePathname();
   const session = useAdminSession();
   const tabs = FINANCE_TABS.filter((tab) => {
     if (session?.role === "designer" && tab.href === "/admin/expenses") return false;
+    if ("ownerOnly" in tab && tab.ownerOnly && session?.role !== "owner") return false;
     return true;
   });
   return (
@@ -114,13 +118,13 @@ export function FinanceHeader({
       {subtitle ? (
         <p className="mt-[14px] text-[16px] font-medium leading-normal text-[#8A847C]">{subtitle}</p>
       ) : null}
-      <nav className={clsx("flex border-b border-[#E6E1DA]", subtitle ? "mt-[10px]" : "mt-12")}>
+      <nav className={clsx("flex items-end border-b border-[#E6E1DA]", subtitle ? "mt-[10px]" : "mt-12")}>
         {tabs.map((t) => {
           const on = pathname === t.href || pathname.startsWith(`${t.href}/`);
           return (
             <Link
               key={t.href}
-              href={t.href}
+              href={t.href as never}
               className={clsx(
                 "-mb-px flex items-end border-b-2 px-[18px] pb-[12px] text-[15px] leading-normal",
                 on ? "border-[#1C1C1C] text-[#1C1C1C]" : "border-transparent text-[#B7B2AA]"
@@ -137,6 +141,7 @@ export function FinanceHeader({
             </Link>
           );
         })}
+        {tabAction ? <div className="mb-[10px] ml-auto flex shrink-0 items-center">{tabAction}</div> : null}
       </nav>
     </div>
   );
@@ -342,7 +347,12 @@ export function DownloadExportButton({
   to,
   artistIds,
   onError,
-  labeled = false
+  report,
+  categories,
+  status,
+  period,
+  date,
+  label = "PDF"
 }: {
   year?: number;
   month?: number;
@@ -351,24 +361,57 @@ export function DownloadExportButton({
   artistIds?: string[];
   onError?: (message: string) => void;
   labeled?: boolean;
+  report?: "sales" | "expenses" | "settlements" | "pnl";
+  categories?: string[];
+  status?: string;
+  period?: "month" | "week" | "day";
+  date?: string;
+  label?: string;
 }) {
-  const [busy, setBusy] = useState<"xlsx" | "pdf" | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  const download = async (format: "xlsx" | "pdf") => {
+  const download = async () => {
     if (busy) return;
-    setBusy(format);
+    setBusy(true);
     try {
       const params = new URLSearchParams();
-      params.set("format", format);
-      if (from && to) {
-        params.set("from", from);
-        params.set("to", to);
+      let path = "/api/admin/export";
+      if (report === "pnl") {
+        path = "/api/admin/owner/pdf";
+        params.set("period", period ?? "month");
+        if (period === "week" || period === "day") params.set("date", date ?? "");
+        else {
+          params.set("year", String(year));
+          params.set("month", String(month));
+        }
+      } else if (report) {
+        path = `/api/admin/${report}/pdf`;
+        if (report === "sales" && from && to) {
+          params.set("from", from);
+          params.set("to", to);
+        } else {
+          params.set("year", String(year));
+          params.set("month", String(month));
+        }
+        if (report === "sales") {
+          for (const id of artistIds ?? []) params.append("artistId", id);
+        }
+        if (report === "expenses") {
+          for (const category of categories ?? []) params.append("category", category);
+        }
+        if (report === "settlements" && status) params.set("status", status);
       } else {
-        params.set("year", String(year));
-        params.set("month", String(month));
+        params.set("format", "pdf");
+        if (from && to) {
+          params.set("from", from);
+          params.set("to", to);
+        } else {
+          params.set("year", String(year));
+          params.set("month", String(month));
+        }
+        for (const id of artistIds ?? []) params.append("artistId", id);
       }
-      for (const id of artistIds ?? []) params.append("artistId", id);
-      const res = await fetch(`/api/admin/export?${params.toString()}`);
+      const res = await fetch(`${path}?${params.toString()}`);
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
         throw new Error(json.error || "다운로드에 실패했습니다.");
@@ -378,7 +421,7 @@ export function DownloadExportButton({
       const utfMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
       const mm = String((month ?? Number(from?.slice(5, 7))) || 0).padStart(2, "0");
       const yy = year ?? Number(from?.slice(0, 4));
-      const filename = utfMatch ? decodeURIComponent(utfMatch[1]) : `헤어업_${yy}년${mm}월_마감자료.${format}`;
+      const filename = utfMatch ? decodeURIComponent(utfMatch[1]) : `헤어업_${yy}년${mm}월.pdf`;
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -390,37 +433,20 @@ export function DownloadExportButton({
     } catch (e) {
       onError?.(e instanceof Error ? e.message : "다운로드에 실패했습니다.");
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   };
 
-  const line =
-    "inline-flex h-[34px] items-center gap-2 rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white px-3 text-[13px] font-semibold leading-normal text-[#1C1C1C] hover:bg-[#F6F4F0] disabled:opacity-40";
-
-  if (labeled) {
-    return (
-      <>
-        <button type="button" disabled={busy != null} onClick={() => void download("xlsx")} className={line}>
-          <DownloadGlyph />
-          <span>{busy === "xlsx" ? "준비 중" : "엑셀"}</span>
-        </button>
-        <button type="button" disabled={busy != null} onClick={() => void download("pdf")} className={line}>
-          <DownloadGlyph />
-          <span>{busy === "pdf" ? "준비 중" : "PDF"}</span>
-        </button>
-      </>
-    );
-  }
-
   return (
-    <>
-      <IconButton label="엑셀 다운로드" onClick={() => void download("xlsx")} disabled={busy != null}>
-        <DownloadGlyph />
-      </IconButton>
-      <IconButton label="PDF 다운로드" onClick={() => void download("pdf")} disabled={busy != null}>
-        <DownloadGlyph />
-      </IconButton>
-    </>
+    <button
+      type="button"
+      disabled={busy}
+      onClick={() => void download()}
+      className="inline-flex h-[34px] items-center gap-2 whitespace-nowrap rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white px-3 text-[13px] font-semibold leading-normal text-[#1C1C1C] hover:bg-[#F6F4F0] disabled:opacity-40"
+    >
+      <DownloadGlyph />
+      <span>{busy ? "준비 중" : label}</span>
+    </button>
   );
 }
 

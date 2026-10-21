@@ -372,10 +372,13 @@ export default function AdminCustomerDetailPage() {
 
           {bookingMemos.length > 0 ? (
             <div className="mt-6">
-              <p className="text-[15px] font-bold text-[#9A948C]">예약별 메모</p>
-              <ul className="mt-2">
+              <div className="flex items-baseline justify-between">
+                <p className="text-[15px] font-bold text-[#9A948C]">예약별 메모</p>
+                <p className="text-[13px] font-medium text-[#8A847C]">{bookingMemos.length}건</p>
+              </div>
+              <ul className="mt-2 max-h-[360px] overflow-y-auto rounded-[8px] border border-[#EFEBE6] px-3">
                 {bookingMemos.map((m) => (
-                  <li key={m.id} className="border-b border-[#F3EFEA] py-3">
+                  <li key={m.id} className="border-b border-[#F3EFEA] py-3 last:border-b-0">
                     <div className="flex items-center gap-2 text-[13px]">
                       <span className="rounded-[4px] bg-[#F3EFEA] px-[6px] py-[2px] font-semibold text-[#8A847C]">
                         {m.kind === "request" ? "고객 요청" : "예약 메모"}

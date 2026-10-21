@@ -3,18 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { clsx } from "clsx";
-import { AdminBellButton } from "@/components/admin/AdminBellButton";
-import { AdminPageTitle } from "@/components/admin/AdminPageTitle";
 import {
   CalendarIcon,
-  Empty,
+  DownloadExportButton,
+  FinanceHeader,
+  FinanceSticky,
   Icon,
   Note,
   RefreshButton,
-  TABLE_HEAD_ROW,
-  TABLE_ROW,
-  TD,
-  TH,
   Toolbar,
   shiftMonth,
   won
@@ -731,13 +727,6 @@ export default function AdminOwnerPage({
   const [data, setData] = useState<OwnerPnlDashboard | null>(initial);
   const [error, setError] = useState<string | null>(initialError);
   const [refreshing, setRefreshing] = useState(false);
-  const [taxOpen, setTaxOpen] = useState<string | null>(null);
-
-  const openTax = (id: string) => {
-    setTaxOpen(id);
-    scrollToId("tax");
-  };
-
   const load = useCallback(
     async (next: { period: OwnerPeriodKind; year: number; month: number; date: string }) => {
       setRefreshing(true);
@@ -776,26 +765,101 @@ export default function AdminOwnerPage({
   const viewPeriod = data?.period ?? period;
   const viewFrom = data?.from ?? from;
   const viewTo = data?.to ?? to;
-  const prev = s?.prevOwnerRemain ?? 0;
-  const canCompare = prev !== 0;
-  const remainDelta = canCompare && s ? ((s.ownerRemain - prev) / Math.abs(prev)) * 100 : 0;
-  const remainHint = canCompare ? `${compareNoun(viewPeriod)} ${signedPct(remainDelta)}` : `${compareNoun(viewPeriod)} 비교 없음`;
   const moneyOut = s ? s.expenseTotal + s.productCost + s.designerIncentive : 0;
   const noun = periodNoun(viewPeriod);
   const rangeLabel = subtitleRange(viewPeriod, data?.year ?? year, data?.month ?? month, viewFrom, viewTo);
+  const ownerDirect = s?.ownerServiceRevenue ?? 0;
+  const designerMargin = s?.shopKeepDesignerService ?? 0;
+  const productNet =
+    s != null ? s.productRevenue - s.productCost - s.designerProductIncentive : 0;
+  const shopKeepTotal = ownerDirect + designerMargin + productNet;
+  const shopKeepCheck = s != null ? s.revenue - s.designerIncentive - s.productCost : 0;
+  const revenueStructure = s
+    ? [
+        {
+          label: "원장 직접 시술",
+          amount: ownerDirect,
+          hint: "원장 시술 매출은 100% 매장 귀속",
+          tone: "var(--accent)"
+        },
+        {
+          label: "디자이너 위탁 마진",
+          amount: designerMargin,
+          hint: "시술 매출 − 디자이너 시술 인센",
+          tone: "var(--muted)"
+        },
+        {
+          label: "제품 판매 순마진",
+          amount: productNet,
+          hint: "제품 판매가에서 매입가와 디자이너 수당 15%를 뺀 매장 몫",
+          tone: "var(--label)"
+        }
+      ]
+    : [];
+  const costStructure = s
+    ? [
+        { label: "월세·관리비 등 고정비", amount: s.fixedAmount, tone: "var(--accent)" },
+        { label: "재료·약제비", amount: s.materialAmount, tone: "var(--muted)" },
+        { label: "제품 매입가", amount: s.productCost, tone: "var(--label)" },
+        { label: "운영비", amount: s.operatingAmount, tone: "var(--ink)" },
+        { label: "디자이너에게 준 인센티브", amount: s.designerIncentive, tone: "var(--muted)" }
+      ]
+        .slice()
+        .sort((a, b) => b.amount - a.amount)
+    : [];
+  const costStructureTotal = costStructure.reduce((sum, row) => sum + row.amount, 0);
+  const pctOf = (amount: number, total: number) => (total > 0 ? Math.round((amount / total) * 100) : 0);
+  const kpi = s
+    ? [
+        {
+          label: "당월 세후 순수익",
+          value: won(s.ownerRemain),
+          hint: "통장에 남는 금액",
+          up: false,
+          dark: true
+        },
+        {
+          label: "총 매출액",
+          value: won(s.revenue),
+          hint: "시술 + 제품 매출",
+          up: false,
+          dark: false
+        },
+        {
+          label: "총 지출 및 인센",
+          value: won(moneyOut),
+          hint: "월세 · 재료 · 인센",
+          up: false,
+          dark: false
+        },
+        {
+          label: "예상 제세공과금",
+          value: won(s.taxSetAside),
+          hint: "부가세 + 예상 종소세",
+          up: false,
+          dark: false
+        }
+      ]
+    : [];
 
   return (
     <div className="pb-16 font-sans-kr text-[#1C1C1C]">
-      <div className="sticky top-0 z-20 bg-white pb-6 pt-10 pl-[6px]">
-        <div className="flex items-start justify-between gap-6">
-          <AdminPageTitle>원장정산</AdminPageTitle>
-          <div className="mt-[24px]">
-            <AdminBellButton />
-          </div>
-        </div>
-        <p className="mt-[14px] text-[16px] font-medium leading-normal text-[#8A847C]">
-          {rangeLabel} · 원장님만 보는 세후 남는 돈
-        </p>
+      <FinanceSticky>
+        <FinanceHeader
+          embedded
+          subtitle={`${rangeLabel} · 원장님만 보는 세후 남는 돈`}
+          tabAction={
+            <DownloadExportButton
+              label="매장 손익 리포트 PDF"
+              report="pnl"
+              period={viewPeriod}
+              year={data?.year ?? year}
+              month={data?.month ?? month}
+              date={viewFrom}
+              onError={setError}
+            />
+          }
+        />
         <Toolbar
           left={
             <>
@@ -821,73 +885,105 @@ export default function AdminOwnerPage({
             </>
           }
         />
-      </div>
+      </FinanceSticky>
 
       {error ? <p className="mt-4 text-[13px] text-[#E24B4B]">{error}</p> : null}
       {refreshing && !data ? <p className="mt-6 text-[13px] text-[#8A847C]">불러오는 중…</p> : null}
 
       {data && s ? (
         <>
-          <section className="overflow-hidden rounded-[8px] bg-[color:var(--accent)] px-7 py-7 text-white">
-            <p className="text-[15px] font-bold leading-normal">{noun} 세후 실수령</p>
-            <p className="mt-3 text-[32px] font-bold leading-none tabular-nums">{won(s.ownerRemain)}</p>
-            <p className="mt-3 text-[14px] leading-[22px] text-[color:var(--sidebar-bg)]">
-              매장에 {won(s.revenue)}이 들어왔고, 월세·재료·인센으로 {won(moneyOut)}이 나갔습니다.
-              <br />
-              예상 세금 {won(s.taxSetAside)}을 떼면 실제로 남는 돈이 {won(s.ownerRemain)}입니다. {remainHint}.
-            </p>
-          </section>
-
-          <div className="mt-2 grid grid-cols-4 gap-2">
-            {[
-              {
-                id: "in",
-                label: "들어온 돈",
-                value: s.revenue,
-                hint: "시술 + 제품 매출",
-                color: C.in
-              },
-              {
-                id: "out",
-                label: "나간 돈",
-                value: moneyOut,
-                hint: "월세 · 재료 · 인센",
-                color: C.pay
-              },
-              {
-                id: "tax",
-                label: "예상 세금",
-                value: s.taxSetAside,
-                hint: "부가세 + 예상 종소세",
-                color: C.tax
-              },
-              {
-                id: "remain",
-                label: "세후 남는 돈",
-                value: s.ownerRemain,
-                hint: "통장에 남는 금액",
-                color: C.keep
-              }
-            ].map((card) => (
-              <button
-                key={card.id}
-                type="button"
-                onClick={() => scrollToId(card.id)}
-                className="rounded-[8px] bg-[color:var(--sidebar-bg)] px-5 py-5 text-left hover:bg-[#F4EFE9]"
+          <div className="grid grid-cols-4 gap-2">
+            {kpi.map((card) => (
+              <article
+                key={card.label}
+                className={clsx(
+                  "overflow-visible rounded-[8px] px-5 py-5",
+                  card.dark
+                    ? "bg-[color:var(--accent)] text-white"
+                    : "bg-[color:var(--sidebar-bg)] text-[color:var(--ink)]"
+                )}
               >
-                <p className="text-[15px] font-bold leading-normal text-[color:var(--label)]">{card.label}</p>
-                <p className="mt-3 text-[20px] font-bold leading-normal tabular-nums" style={{ color: card.color }}>
-                  {won(card.value)}
+                <p
+                  className={clsx(
+                    "text-[15px] font-bold leading-normal",
+                    card.dark ? "text-white" : "text-[color:var(--label)]"
+                  )}
+                >
+                  {card.label}
                 </p>
-                <p className="mt-2 text-[13px] text-[#8A847C]">{card.hint}</p>
-                <p className="mt-3 text-[13px] font-bold text-[color:var(--accent)]">상세보기</p>
-              </button>
+                <p className="mt-3 text-[20px] font-bold leading-normal tabular-nums">{card.value}</p>
+                <p
+                  className={clsx(
+                    "mt-1 text-[13px] leading-normal",
+                    card.dark ? "text-[color:var(--sidebar-bg)]" : "text-[color:var(--muted)]"
+                  )}
+                >
+                  {card.hint}
+                </p>
+              </article>
             ))}
+          </div>
+
+          {shopKeepTotal !== shopKeepCheck || costStructureTotal !== moneyOut ? (
+            <p className="mt-4 text-[13px] text-[#E24B4B]">
+              검산 불일치: 매장 몫 {shopKeepTotal} vs {shopKeepCheck} / 비용 {costStructureTotal} vs {moneyOut}
+            </p>
+          ) : null}
+
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <section className="overflow-visible rounded-[8px] bg-[color:var(--sidebar-bg)] px-5 py-5">
+              <h2 className="text-[15px] font-bold leading-normal text-[color:var(--label)]">매장 수익 창출 구조</h2>
+              <ul className="mt-4">
+                {revenueStructure.map((row) => (
+                  <li key={row.label} className="border-b border-[#EFEBE6] py-[10px] last:border-b-0">
+                    <div className="flex items-center justify-between text-[16px] font-medium">
+                      <span className="flex min-w-0 items-center">
+                        <span
+                          className="mr-2 inline-block h-[14px] w-[3px] shrink-0 rounded-full"
+                          style={{ background: row.tone }}
+                        />
+                        <span className="font-bold tabular-nums">{pctOf(row.amount, shopKeepTotal)}%</span>
+                        <span className="ml-2">{row.label}</span>
+                      </span>
+                      <span className="shrink-0 tabular-nums text-[color:var(--muted)]">{won(row.amount)}</span>
+                    </div>
+                    <p className="mt-1 pl-[11px] text-[13px] leading-[20px] text-[#8A847C]">{row.hint}</p>
+                  </li>
+                ))}
+                <li className="flex items-center justify-between border-t-[1.5px] border-[#C9C3BB] py-[10px] text-[16px] font-bold">
+                  <span>매장 몫 합계</span>
+                  <span className="tabular-nums">{won(shopKeepTotal)}</span>
+                </li>
+              </ul>
+            </section>
+
+            <section className="overflow-visible rounded-[8px] bg-[color:var(--sidebar-bg)] px-5 py-5">
+              <h2 className="text-[15px] font-bold leading-normal text-[color:var(--label)]">비용 지출 구조</h2>
+              <ul className="mt-4">
+                {costStructure.map((row) => (
+                  <li key={row.label} className="flex items-center justify-between py-[10px] text-[16px] font-medium">
+                    <span className="flex min-w-0 items-center">
+                      <span
+                        className="mr-2 inline-block h-[14px] w-[3px] shrink-0 rounded-full"
+                        style={{ background: row.tone }}
+                      />
+                      <span className="font-bold tabular-nums">{pctOf(row.amount, costStructureTotal)}%</span>
+                      <span className="ml-2">{row.label}</span>
+                    </span>
+                    <span className="shrink-0 tabular-nums text-[color:var(--muted)]">{won(row.amount)}</span>
+                  </li>
+                ))}
+                <li className="flex items-center justify-between border-t-[1.5px] border-[#C9C3BB] py-[10px] text-[16px] font-bold">
+                  <span>합계</span>
+                  <span className="tabular-nums">{won(costStructureTotal)}</span>
+                </li>
+              </ul>
+            </section>
           </div>
 
           <section className="mt-10">
             <div>
-              <h2 className="text-[18px] font-bold">한눈에 흐름</h2>
+              <h2 className="text-[18px] font-bold">한눈에 보는 월간 손익 흐름</h2>
               <p className="mt-2 text-[14px] leading-[22px] text-[#8A847C]">
                 위에서 아래로 읽으면 됩니다. 항목을 누르면 아래 상세로 이동합니다. 초록은 들어온 돈, 갈색·주황은 나간
                 돈, 맨 아래가 세후 실수령입니다.
@@ -901,7 +997,6 @@ export default function AdminOwnerPage({
                 hint={`원장 직접 시술 ${won(s.ownerServiceRevenue)} · 디자이너 시술 ${won(s.designerServiceRevenue)} · 제품 ${won(s.productRevenue)}`}
                 sign="plus"
                 strong
-                onClick={() => scrollToId("in")}
               />
               <LineRow
                 label="월세·관리비 등 고정비"
@@ -909,7 +1004,6 @@ export default function AdminOwnerPage({
                 color={C.rent}
                 hint="매장을 유지하는 데 매달 나가는 돈"
                 sign="minus"
-                onClick={() => scrollToId("out")}
               />
               <LineRow
                 label="재료·약제비"
@@ -917,7 +1011,6 @@ export default function AdminOwnerPage({
                 color={C.material}
                 hint="염색약, 클리닉 약제처럼 시술에 쓰는 재료"
                 sign="minus"
-                onClick={() => scrollToId("materials")}
               />
               <LineRow
                 label="제품 매입가"
@@ -925,7 +1018,6 @@ export default function AdminOwnerPage({
                 color={C.product}
                 hint="팔린 샴푸·오일을 떼어 온 값"
                 sign="minus"
-                onClick={() => scrollToId("products")}
               />
               <LineRow
                 label="운영비"
@@ -933,7 +1025,6 @@ export default function AdminOwnerPage({
                 color={C.operate}
                 hint="소모품, 광고, 프로그램 이용료 등"
                 sign="minus"
-                onClick={() => scrollToId("expenses")}
               />
               <LineRow
                 label="디자이너에게 준 인센티브"
@@ -941,7 +1032,6 @@ export default function AdminOwnerPage({
                 color={C.pay}
                 hint={`시술 인센 ${won(s.designerServiceIncentive)} · 제품 인센 ${won(s.designerProductIncentive)}`}
                 sign="minus"
-                onClick={() => scrollToId("artists")}
               />
               <LineRow
                 label="세금 떼기 전"
@@ -950,7 +1040,6 @@ export default function AdminOwnerPage({
                 hint="매출에서 비용·인센을 뺀 금액"
                 sign="plus"
                 strong
-                onClick={() => scrollToId("remain")}
               />
               <LineRow
                 label="부가세"
@@ -958,7 +1047,6 @@ export default function AdminOwnerPage({
                 color={C.tax}
                 hint={`${noun} 매출·매입 기준으로 낼 부가세 추정`}
                 sign="minus"
-                onClick={() => openTax("vat")}
               />
               <LineRow
                 label="예상 종합소득세"
@@ -970,7 +1058,6 @@ export default function AdminOwnerPage({
                     : "이 기간이 1년 내내 같다고 보고 나눠 둔 적립액"
                 }
                 sign="minus"
-                onClick={() => openTax("income")}
               />
               <LineRow
                 label="세후 실제 남는 돈"
@@ -979,255 +1066,8 @@ export default function AdminOwnerPage({
                 hint={`원장님이 ${noun} 사업에서 가져갈 수 있는 금액`}
                 sign="plus"
                 strong
-                onClick={() => scrollToId("remain")}
               />
             </div>
-          </section>
-
-          <section id="in" className="mt-10 scroll-mt-[250px]">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <h2 className="text-[18px] font-bold">들어온 돈</h2>
-                <p className="mt-2 text-[14px] leading-[22px] text-[#8A847C]">
-                  {noun} 손님에게 받은 총 {won(s.revenue)}입니다. 누가 깎았는지, 제품인지가 나뉩니다.
-                </p>
-              </div>
-              <p className="text-[20px] font-bold tabular-nums">{won(s.revenue)}</p>
-            </div>
-            <div className="mt-4 rounded-[8px] bg-[color:var(--sidebar-bg)] px-6 py-6">
-              <StackBar
-                parts={[
-                  { label: "원장이 직접 시술한 매출", amount: s.ownerServiceRevenue, color: C.owner },
-                  { label: "디자이너가 시술한 매출", amount: s.designerServiceRevenue, color: C.designer },
-                  { label: "제품 판매", amount: s.productRevenue, color: C.product }
-                ]}
-              />
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <article className="rounded-[8px] bg-[color:var(--sidebar-bg)] px-6 py-6">
-                <p className="text-[15px] font-bold text-[color:var(--label)]">내가 깎아서 번 돈</p>
-                <p className="mt-3 text-[22px] font-bold tabular-nums" style={{ color: C.owner }}>
-                  {won(s.ownerServiceRevenue)}
-                </p>
-                <p className="mt-2 text-[14px] leading-[22px] text-[#8A847C]">
-                  원장님이 직접 시술한 매출입니다. 디자이너 인센을 주지 않으니 이 금액은 매장에 남습니다.
-                </p>
-              </article>
-              <article className="rounded-[8px] bg-[color:var(--sidebar-bg)] px-6 py-6">
-                <p className="text-[15px] font-bold text-[color:var(--label)]">디자이너 시술에서 매장이 남긴 돈</p>
-                <p className="mt-3 text-[22px] font-bold tabular-nums" style={{ color: C.designer }}>
-                  {won(s.shopKeepDesignerService)}
-                </p>
-                <p className="mt-2 text-[14px] leading-[22px] text-[#8A847C]">
-                  디자이너 시술 매출 {won(s.designerServiceRevenue)}에서 인센 {won(s.designerServiceIncentive)}을 뺀
-                  금액입니다.
-                </p>
-              </article>
-            </div>
-          </section>
-
-          <section id="out" className="mt-10 scroll-mt-[250px]">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <h2 className="text-[18px] font-bold">나간 돈</h2>
-                <p className="mt-2 text-[14px] leading-[22px] text-[#8A847C]">
-                  월세, 재료, 제품 매입, 운영비, 디자이너 인센을 모두 더한 값입니다.
-                </p>
-              </div>
-              <p className="text-[20px] font-bold tabular-nums">{won(moneyOut)}</p>
-            </div>
-            <div className="mt-4 rounded-[8px] bg-[color:var(--sidebar-bg)] px-6 py-6">
-              <StackBar
-                parts={[
-                  { label: "월세·고정비", amount: s.fixedAmount, color: C.rent },
-                  { label: "재료·약제비", amount: s.materialAmount, color: C.material },
-                  { label: "제품 매입가", amount: s.productCost, color: C.product },
-                  { label: "운영비", amount: s.operatingAmount, color: C.operate },
-                  { label: "디자이너 인센티브", amount: s.designerIncentive, color: C.pay }
-                ]}
-              />
-            </div>
-          </section>
-
-          <section id="tax" className="mt-10 scroll-mt-[250px]">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <h2 className="text-[18px] font-bold">예상 세금</h2>
-                <p className="mt-2 text-[14px] leading-[22px] text-[#8A847C]">
-                  참고용 추정치입니다. 실제 신고는 세무 대리인과 확인하세요.
-                </p>
-              </div>
-              <p className="text-[20px] font-bold tabular-nums">{won(s.taxSetAside)}</p>
-            </div>
-            <div className="mt-4 rounded-[8px] bg-[color:var(--sidebar-bg)] px-6 py-6">
-              <StackBar
-                legend={false}
-                parts={[
-                  { label: "부가세", amount: Math.max(0, s.vatPayable), color: C.tax },
-                  { label: "예상 종합소득세", amount: s.incomeTaxReserve, color: "#C47A6A" }
-                ]}
-              />
-              <TaxExplain
-                s={s}
-                noun={noun}
-                viewPeriod={viewPeriod}
-                openId={taxOpen}
-                onToggle={(id) => setTaxOpen((cur) => (cur === id ? null : id))}
-              />
-            </div>
-          </section>
-
-          <section id="remain" className="mt-10 scroll-mt-[250px]">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <h2 className="text-[18px] font-bold">세후 남는 돈</h2>
-                <p className="mt-2 text-[14px] leading-[22px] text-[#8A847C]">
-                  세금 떼기 전 {won(s.operatingProfit)}에서 예상 세금 {won(s.taxSetAside)}을 빼면 {won(s.ownerRemain)}입니다.
-                </p>
-              </div>
-              <p className="text-[20px] font-bold tabular-nums" style={{ color: C.keep }}>
-                {won(s.ownerRemain)}
-              </p>
-            </div>
-            <div className="mt-4 rounded-[8px] bg-[color:var(--sidebar-bg)] px-6 py-6">
-              <StackBar
-                parts={[
-                  { label: "세후 실수령", amount: Math.max(0, s.ownerRemain), color: C.keep },
-                  { label: "세금", amount: Math.max(0, s.taxSetAside), color: C.tax }
-                ]}
-              />
-            </div>
-          </section>
-
-          <p id="products" className="mt-10 scroll-mt-[250px] pl-1 text-[15px] font-bold leading-normal text-[color:var(--label)]">
-            제품 판매 상세
-          </p>
-          <p className="mt-2 text-[14px] leading-[22px] text-[#8A847C]">
-            판매가에서 매입가를 빼면 마진입니다. 그중 {s.productDesignerRate}%는 판 디자이너 인센, 나머지가 매장 몫입니다.
-          </p>
-          <section className="mt-4 overflow-hidden rounded-[8px] bg-[color:var(--sidebar-bg)] px-5">
-            <table className="w-full table-fixed text-left text-[16px] font-medium leading-[20px]">
-              <thead>
-                <tr className={TABLE_HEAD_ROW}>
-                  <th className={clsx(TH, "pl-1")}>제품</th>
-                  <th className={clsx(TH, "text-right")}>몇 개</th>
-                  <th className={clsx(TH, "text-right")}>판매가</th>
-                  <th className={clsx(TH, "text-right")}>매입가</th>
-                  <th className={clsx(TH, "text-right")}>마진</th>
-                  <th className={clsx(TH, "text-right")}>디자이너 인센</th>
-                  <th className={clsx(TH, "pr-0 text-right")}>매장 몫</th>
-                </tr>
-              </thead>
-              {data.products.length > 0 ? (
-                <tbody>
-                  {data.products.map((row) => (
-                    <tr key={row.id} className={TABLE_ROW}>
-                      <td className={clsx(TD, "truncate pl-1")}>{row.name}</td>
-                      <td className={clsx(TD, "text-right tabular-nums")}>{row.qty}개</td>
-                      <td className={clsx(TD, "text-right tabular-nums")}>{won(row.retail)}</td>
-                      <td className={clsx(TD, "text-right tabular-nums")}>{won(row.cost)}</td>
-                      <td className={clsx(TD, "text-right tabular-nums")}>{won(row.margin)}</td>
-                      <td className={clsx(TD, "text-right tabular-nums")}>{won(row.designerIncentive)}</td>
-                      <td className={clsx(TD, "pr-0 text-right font-bold tabular-nums")}>{won(row.shopKeep)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              ) : null}
-            </table>
-            {data.products.length === 0 ? <Empty>{noun} 제품 판매가 없습니다.</Empty> : null}
-          </section>
-
-          <p id="artists" className="mt-10 scroll-mt-[250px] pl-1 text-[15px] font-bold leading-normal text-[color:var(--label)]">
-            디자이너에게 준 인센티브
-          </p>
-          <p className="mt-2 text-[14px] leading-[22px] text-[#8A847C]">
-            시술 인센은 각자 커미션 요율, 제품 인센은 판매가의 {s.productDesignerRate}%입니다. 원장 본인(커미션 0%)은
-            인센이 없습니다.
-          </p>
-          <section className="mt-4 overflow-hidden rounded-[8px] bg-[color:var(--sidebar-bg)] px-5">
-            <table className="w-full table-fixed text-left text-[16px] font-medium leading-[20px]">
-              <thead>
-                <tr className={TABLE_HEAD_ROW}>
-                  <th className={clsx(TH, "pl-1")}>디자이너</th>
-                  <th className={clsx(TH, "text-right")}>시술 매출</th>
-                  <th className={clsx(TH, "text-right")}>제품 매출</th>
-                  <th className={clsx(TH, "text-right")}>시술 인센</th>
-                  <th className={clsx(TH, "text-right")}>제품 인센</th>
-                  <th className={clsx(TH, "pr-0 text-right")}>준 돈 합계</th>
-                </tr>
-              </thead>
-              {data.artists.length > 0 ? (
-                <tbody>
-                  {data.artists.map((row) => (
-                    <tr key={row.artistId} className={TABLE_ROW}>
-                      <td className={clsx(TD, "truncate pl-1")}>
-                        {row.artistName}
-                        {row.hasCommission ? "" : " · 원장"}
-                      </td>
-                      <td className={clsx(TD, "text-right tabular-nums")}>{won(row.serviceRevenue)}</td>
-                      <td className={clsx(TD, "text-right tabular-nums")}>{won(row.productRevenue)}</td>
-                      <td className={clsx(TD, "text-right tabular-nums")}>{won(row.serviceIncentive)}</td>
-                      <td className={clsx(TD, "text-right tabular-nums")}>{won(row.productIncentive)}</td>
-                      <td className={clsx(TD, "pr-0 text-right font-bold tabular-nums")}>{won(row.incentive)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              ) : null}
-            </table>
-            {data.artists.length === 0 ? <Empty>{noun} 정산 대상이 없습니다.</Empty> : null}
-          </section>
-
-          <p id="materials" className="mt-10 scroll-mt-[250px] pl-1 text-[15px] font-bold leading-normal text-[color:var(--label)]">
-            재료·약제비
-          </p>
-          <section className="mt-4 overflow-hidden rounded-[8px] bg-[color:var(--sidebar-bg)] px-5">
-            <table className="w-full table-fixed text-left text-[16px] font-medium leading-[20px]">
-              <thead>
-                <tr className={TABLE_HEAD_ROW}>
-                  <th className={clsx(TH, "pl-1")}>날짜</th>
-                  <th className={TH}>어디서</th>
-                  <th className={TH}>무슨 돈</th>
-                  <th className={clsx(TH, "pr-0 text-right")}>금액</th>
-                </tr>
-              </thead>
-              {data.materials.length > 0 ? (
-                <tbody>
-                  {data.materials.map((row) => (
-                    <tr key={row.id} className={TABLE_ROW}>
-                      <td className={clsx(TD, "pl-1 tabular-nums text-[#8A847C]")}>{dotted(row.date)}</td>
-                      <td className={clsx(TD, "truncate")}>{row.vendor}</td>
-                      <td className={clsx(TD, "truncate")}>{row.memo}</td>
-                      <td className={clsx(TD, "pr-0 text-right font-bold tabular-nums")}>{won(row.amount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              ) : null}
-            </table>
-            {data.materials.length === 0 ? <Empty>{noun} 재료·약제 지출이 없습니다.</Empty> : null}
-          </section>
-
-          <p id="expenses" className="mt-10 scroll-mt-[250px] pl-1 text-[15px] font-bold leading-normal text-[color:var(--label)]">
-            지출 항목
-          </p>
-          <section className="mt-4 overflow-hidden rounded-[8px] bg-[color:var(--sidebar-bg)] px-5">
-            <table className="w-full table-fixed text-left text-[16px] font-medium leading-[20px]">
-              <thead>
-                <tr className={TABLE_HEAD_ROW}>
-                  <th className={clsx(TH, "pl-1")}>무슨 돈</th>
-                  <th className={clsx(TH, "text-right")}>몇 건</th>
-                  <th className={clsx(TH, "pr-0 text-right")}>금액</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.expenses.map((row) => (
-                  <tr key={row.category} className={TABLE_ROW}>
-                    <td className={clsx(TD, "pl-1")}>{row.label}</td>
-                    <td className={clsx(TD, "text-right tabular-nums")}>{row.count}건</td>
-                    <td className={clsx(TD, "pr-0 text-right tabular-nums")}>{won(row.amount)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </section>
 
           <Note>

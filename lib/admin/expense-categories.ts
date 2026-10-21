@@ -65,6 +65,26 @@ export function expenseNatureKey(category: string): ExpenseNatureKey {
   return "operating";
 }
 
+/** 지출 탭 「지출 성격별 비중」 전용 5묶음. 손익 natureAmount/EXPENSE_NATURES 와 별개. */
+export const EXPENSE_SHARE_GROUPS = [
+  { key: "occupancy", label: "매장 임차·관리비", categories: ["occupancy"] as const, tone: "var(--accent)" },
+  { key: "material", label: "재료·약제비", categories: ["material"] as const, tone: "var(--muted)" },
+  { key: "supplies", label: "소모품·운영비", categories: ["supplies"] as const, tone: "var(--label)" },
+  { key: "marketing", label: "마케팅·광고비", categories: ["marketing"] as const, tone: "var(--ink)" },
+  { key: "rental_other", label: "렌탈 및 기타", categories: ["rental", "other"] as const, tone: "var(--muted)" }
+] as const;
+
+export type ExpenseShareGroupKey = (typeof EXPENSE_SHARE_GROUPS)[number]["key"];
+
+export function expenseShareGroupKey(category: string): ExpenseShareGroupKey {
+  const normalized = normalizeExpenseCategory(category);
+  if (normalized === "occupancy") return "occupancy";
+  if (normalized === "material") return "material";
+  if (normalized === "supplies") return "supplies";
+  if (normalized === "marketing") return "marketing";
+  return "rental_other";
+}
+
 export const EXPENSE_PAYMENT_METHODS = [
   { value: "card", label: "카드" },
   { value: "cash", label: "현금" },

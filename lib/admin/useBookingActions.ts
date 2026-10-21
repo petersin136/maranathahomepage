@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { PaymentSavePayload } from "@/components/admin/BookingPaymentModal";
 import { useRefreshPendingCount } from "@/components/admin/pending-count";
 import type { BookingRow, BookingStatus } from "@/lib/bookings/types";
@@ -39,6 +39,8 @@ export function useBookingActions(options: Options = {}) {
     booking: BookingActionTarget;
   } | null>(null);
   const [paymentTarget, setPaymentTarget] = useState<BookingRow | null>(null);
+  const [paymentWarning, setPaymentWarning] = useState<string | null>(null);
+  const paymentBusyRef = useRef(false);
 
   const openCancel = useCallback((booking: BookingActionTarget) => {
     setConfirm({ action: "cancel", booking });
@@ -53,11 +55,16 @@ export function useBookingActions(options: Options = {}) {
   }, [busyId]);
 
   const openPayment = useCallback((booking: BookingRow) => {
+    setPaymentWarning(null);
     setPaymentTarget(booking);
   }, []);
 
   const closePayment = useCallback(() => {
-    setPaymentTarget((current) => (busyId ? current : null));
+    setPaymentTarget((current) => {
+      if (busyId) return current;
+      setPaymentWarning(null);
+      return null;
+    });
   }, [busyId]);
 
   const requestStatus = useCallback(
@@ -105,10 +112,21 @@ export function useBookingActions(options: Options = {}) {
 
   const savePayment = useCallback(
     async (payload: PaymentSavePayload) => {
-      if (!paymentTarget || busyId) return;
+      if (paymentBusyRef.current || busyId) {
+        setPaymentWarning("처리 중입니다. 잠시 후 다시 시도해 주세요.");
+        return;
+      }
+      if (!paymentTarget) {
+        const message = "결제 대상을 찾을 수 없습니다.";
+        setPaymentWarning(message);
+        setError(message);
+        return;
+      }
       const booking = paymentTarget;
+      paymentBusyRef.current = true;
       setBusyId(booking.id);
       setError(null);
+      setPaymentWarning(null);
       try {
         const res = await fetch(`/api/admin/bookings/${booking.id}`, {
           method: "PATCH",
@@ -117,20 +135,31 @@ export function useBookingActions(options: Options = {}) {
             status: "completed",
             final_amount: payload.final_amount,
             payment_method: payload.payment_method,
-            cash_receipt_issued: payload.cash_receipt_issued
+            cash_receipt_issued: payload.cash_receipt_issued,
+            products: payload.products
           })
         });
         const data = await parseJson(res);
         if (!res.ok || !data.ok) {
           throw new Error(data.error || "결제 정보 저장에 실패했습니다.");
         }
-        setPaymentTarget(null);
+        if (data.warning) {
+          const message = String(data.warning);
+          setPaymentWarning(message);
+          setError(message);
+        } else {
+          setPaymentWarning(null);
+          setPaymentTarget(null);
+        }
         refreshPendingCount();
         await onSuccess?.({ action: "payment", booking: data.booking as BookingRow });
       } catch (e) {
         console.error("[booking] payment", e);
-        setError(e instanceof Error ? e.message : "결제 정보 저장에 실패했습니다.");
+        const message = e instanceof Error ? e.message : "결제 정보 저장에 실패했습니다.";
+        setPaymentWarning(message);
+        setError(message);
       } finally {
+        paymentBusyRef.current = false;
         setBusyId(null);
       }
     },
@@ -177,6 +206,7 @@ export function useBookingActions(options: Options = {}) {
     runConfirm,
     updateStatus,
     paymentTarget,
+    paymentWarning,
     openPayment,
     closePayment,
     savePayment

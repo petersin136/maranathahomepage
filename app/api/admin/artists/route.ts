@@ -23,14 +23,18 @@ function stripDesignerArtist<T extends Record<string, unknown>>(row: T) {
   return next;
 }
 
-export async function GET() {
+const COMPACT_FIELDS =
+  "id, name_kr, name_en, role, is_published, sort_order, lunch_start, lunch_minutes, day_off";
+
+export async function GET(request: Request) {
   const auth = await requireAdminUser();
   if (!auth.ok) return auth.response;
 
+  const compact = new URL(request.url).searchParams.get("compact") === "1";
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
     .from("artists")
-    .select("*")
+    .select((compact ? COMPACT_FIELDS : "*") as "*")
     .order("sort_order", { ascending: true });
 
   if (error) {

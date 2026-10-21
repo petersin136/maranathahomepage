@@ -95,7 +95,7 @@ function CustomerProfile() {
     let alive = true;
     setBookings(null);
     setError(null);
-    fetch("/api/admin/bookings?status=all")
+    fetch("/api/admin/bookings?status=all&all=1")
       .then((res) => res.json())
       .then((json) => {
         if (!alive) return;

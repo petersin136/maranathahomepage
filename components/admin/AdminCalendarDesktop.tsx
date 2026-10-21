@@ -1327,7 +1327,7 @@ export default function AdminCalendarDesktop({
   }, []);
 
   useEffect(() => {
-    fetch("/api/admin/artists")
+    fetch("/api/admin/artists?compact=1")
       .then((r) => r.json())
       .then((d) => {
         if (!d.ok) return;
@@ -1339,13 +1339,25 @@ export default function AdminCalendarDesktop({
   }, [tick]);
 
   useEffect(() => {
-    fetch("/api/admin/bookings")
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.ok) setCatalog(d.bookings as SearchHit[]);
-      })
-      .catch(() => undefined);
-  }, [tick, reloadKey]);
+    const q = query.trim();
+    if (!q) {
+      setCatalog([]);
+      return;
+    }
+    let cancelled = false;
+    const handle = window.setTimeout(() => {
+      fetch(`/api/admin/bookings?q=${encodeURIComponent(q)}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (!cancelled && d.ok) setCatalog(d.bookings as SearchHit[]);
+        })
+        .catch(() => undefined);
+    }, 200);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(handle);
+    };
+  }, [query, tick, reloadKey]);
 
   const days = weekDays(date);
   const [year, month] = date.split("-").map(Number);

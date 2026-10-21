@@ -214,15 +214,17 @@ function DetailCard({
   useEffect(() => {
     setEditing(false);
     setEditError(null);
-    setServiceIds(detail?.service_ids ?? []);
+    setServiceIds((detail?.service_ids ?? []).filter((id) => !String(id).startsWith("prod-")));
     setNameEditing(false);
     setNameDraft(detail?.customer_name ?? "");
     setNameError(null);
-  }, [detail?.id, detail?.customer_name]);
+  }, [detail?.id, detail?.customer_name, detail?.status]);
+
+  const servicesLocked = detail?.status === "completed";
 
   const openEditor = () => {
-    if (!detail) return;
-    setServiceIds(detail.service_ids ?? []);
+    if (!detail || servicesLocked) return;
+    setServiceIds((detail.service_ids ?? []).filter((id) => !String(id).startsWith("prod-")));
     setEditError(null);
     setEditing(true);
     if (services.length > 0) return;
@@ -236,6 +238,14 @@ function DetailCard({
 
   const previewTotal = useMemo(() => {
     if (!detail) return 0;
+    if (detail.status === "completed") {
+      const paid = detail.final_amount;
+      if (paid != null && !Number.isNaN(Number(paid))) return Math.max(0, Math.round(Number(paid)));
+      if (detail.total_amount != null && !Number.isNaN(Number(detail.total_amount))) {
+        return Math.max(0, Math.round(Number(detail.total_amount)));
+      }
+      return 0;
+    }
     return serviceIds.reduce((sum, id) => {
       const s = services.find((x) => x.id === id);
       if (!s) return sum;
@@ -407,7 +417,9 @@ function DetailCard({
             </p>
             <p className="shrink-0 text-[16px] leading-[24px]">
               <span className="mr-2 text-[13px] font-bold text-[#9A948C]">예상 금액</span>
-              <span className="font-medium">{won(detail.total_amount)}</span>
+              <span className="font-medium">
+                {won(detail.status === "completed" ? (detail.final_amount ?? detail.total_amount) : detail.total_amount)}
+              </span>
             </p>
             <p className="shrink-0 text-[16px] leading-[24px]">
               <span className="mr-2 text-[13px] font-bold text-[#9A948C]">예약금</span>
@@ -424,8 +436,9 @@ function DetailCard({
               <span className="font-medium">{(detail.service_names || []).join(", ") || "—"}</span>
               <button
                 type="button"
+                disabled={servicesLocked}
                 onClick={openEditor}
-                className="ml-3 text-[13px] font-bold text-[#1C1C1C] underline-offset-2 hover:underline"
+                className="ml-3 text-[13px] font-bold text-[#1C1C1C] underline-offset-2 hover:underline disabled:opacity-40"
               >
                 {editing ? "편집 중" : "편집"}
               </button>
@@ -463,7 +476,7 @@ function DetailCard({
                     onClick={() => {
                       setEditing(false);
                       setEditError(null);
-                      setServiceIds(detail.service_ids ?? []);
+                      setServiceIds((detail.service_ids ?? []).filter((id) => !String(id).startsWith("prod-")));
                     }}
                     className="text-[14px] font-bold text-[#8A847C] disabled:opacity-40"
                   >

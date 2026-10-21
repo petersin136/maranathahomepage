@@ -62,17 +62,18 @@ export async function GET(request: Request) {
 
   if (artistId) query = query.eq("artist_id", artistId);
 
-  const { data, error } = await query;
-  if (error) {
-    console.error("[GET /api/admin/calendar]", error);
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-  }
-  const rows = (data ?? []) as CalendarRow[];
-
-  const [{ data: serviceData }, { data: priceData }] = await Promise.all([
+  const [bookingRes, serviceRes, priceRes] = await Promise.all([
+    query,
     db.admin.from("services").select("id, category, name, duration_minutes, price"),
     db.admin.from("service_prices").select("service_id, artist_id, price")
   ]);
+  if (bookingRes.error) {
+    console.error("[GET /api/admin/calendar]", bookingRes.error);
+    return NextResponse.json({ ok: false, error: bookingRes.error.message }, { status: 500 });
+  }
+  const rows = (bookingRes.data ?? []) as CalendarRow[];
+  const serviceData = serviceRes.data;
+  const priceData = priceRes.data;
   const services = (serviceData ?? []) as ServiceMeta[];
   const serviceById = new Map(services.map((s) => [String(s.id), s]));
   const serviceByName = new Map(services.map((s) => [s.name.trim(), s]));

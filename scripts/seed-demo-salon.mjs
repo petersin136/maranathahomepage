@@ -1,6 +1,9 @@
 /**
- * 원장님 데모용 8~10월 살롱 운영 데이터.
- * 10/16 연예인 하루 예시는 유지하고, 그 전후 재방문·신규·제품·지출·정산을 채운다.
+ * 원장님 데모용 8~11월 살롱 운영 데이터.
+ * 10/16 연예인 하루는 유지한다.
+ * 그 외 예약은 고객마다 4~6주(펌·컬러는 더 길게) 간격으로 다시 만들고,
+ * 10/18~11/30은 매장이 차 있는 예약으로 채운다.
+ * 완료 건 일부에만 홈케어 제품을 붙이고, 재고 출고·디자이너 제품 인센은 결제 건과 맞춘다.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -275,6 +278,31 @@ function extraRoster() {
   }));
 }
 
+function localRoster() {
+  const family = ["김", "이", "박", "최", "정", "강", "조", "윤", "장", "임", "한", "오", "서", "신", "권", "황", "안", "송", "전", "홍", "유", "고", "문", "양", "손", "배", "백", "허", "남", "심", "노", "하", "곽", "성", "차", "주", "우", "구", "민", "진", "류", "나", "지"];
+  const givenW = ["서연", "하은", "지우", "서현", "수아", "지민", "수빈", "예은", "다은", "채원", "지윤", "민서", "하윤", "서윤", "유진", "소율", "예린", "하늘", "다인", "윤아", "지원", "은서", "나연", "수민", "하린", "예원", "지아", "소연", "민지", "채윤"];
+  const givenM = ["민준", "서준", "도윤", "예준", "지호", "하준", "은우", "시우", "주원", "건우", "현우", "준서", "우진", "연우", "지훈", "민재", "승우", "준혁", "태양", "성민", "재원", "현준", "동현", "시현", "정우", "민성", "준영", "태민", "승현", "도현"];
+  const artists = ["jay", "seoa", "kai", "yumi"];
+  const rows = [];
+  let n = 0;
+  for (const sur of family) {
+    for (const given of [...givenW, ...givenM]) {
+      if (rows.length >= 340) return rows;
+      const gender = givenW.includes(given) ? "W" : "M";
+      rows.push({
+        name: `${sur}${given}`,
+        phone: `0108${String(2000000 + n).slice(-7)}`,
+        gender,
+        artist: artists[n % artists.length],
+        newbie: false,
+        note: NOTES[n % NOTES.length]
+      });
+      n += 1;
+    }
+  }
+  return rows;
+}
+
 function comboMeta(ids) {
   const rows = ids.map((id) => SERVICE_BY_ID[id]).filter(Boolean);
   return {
@@ -292,15 +320,40 @@ function pickPay() {
   return "cash";
 }
 
-function maybeProduct(servicePrice) {
-  if (rng() > 0.18) return null;
-  const product = pick(PRODUCTS);
-  return {
-    id: product.id,
-    name: `[제품] ${product.name}`,
-    price: product.price,
-    duration: 0
-  };
+const RETAIL_LEFT = new Map(PRODUCTS.map((product) => [product.id, 64]));
+
+function productPool(combo) {
+  const ids = combo.ids.join(" ");
+  if (ids.includes("perm-")) return PRODUCTS.filter((product) => /에센스|오일|샴푸/.test(product.name));
+  if (ids.includes("color-") || ids.includes("bleach")) {
+    return PRODUCTS.filter((product) => /샴푸|컨디셔너|오일|앰플/.test(product.name));
+  }
+  if (ids.includes("clinic-") || ids.includes("scalp")) {
+    return PRODUCTS.filter((product) => /앰플|스케일링|오일/.test(product.name));
+  }
+  return PRODUCTS.filter((product) => /샴푸|컨디셔너/.test(product.name));
+}
+
+function maybeProduct(combo, completed) {
+  const ids = combo.ids.join(" ");
+  let chance = 0.08;
+  if (ids.includes("perm-")) chance = 0.42;
+  else if (ids.includes("color-") || ids.includes("bleach")) chance = 0.38;
+  else if (ids.includes("clinic-") || ids.includes("scalp")) chance = 0.28;
+  if (rng() > chance) return null;
+  const pool = productPool(combo).filter((product) => !completed || (RETAIL_LEFT.get(product.id) ?? 0) > 6);
+  if (!pool.length) return null;
+  const product = pick(pool);
+  if (completed) RETAIL_LEFT.set(product.id, (RETAIL_LEFT.get(product.id) ?? 0) - 1);
+  return { id: product.id, name: `[제품] ${product.name}`, price: product.price, duration: 0 };
+}
+
+function requestFor(combo) {
+  const ids = combo.ids.join(" ");
+  if (ids.includes("perm-")) return pick(["지난번이랑 같은 컬로 해주세요.", "펌이 잘 안 먹는 머리라 세게 말아주세요.", "컷은 그대로 두고, 열펌만 추가해 주세요."]);
+  if (ids.includes("color-") || ids.includes("bleach")) return pick(["이번엔 톤만 살짝 올리려구요.", "두피가 예민해서 자극 적은 약으로 부탁드려요.", "지난 컬러가 빠졌어요. 같은 톤으로 맞춰 주세요."]);
+  if (ids.includes("clinic-") || ids.includes("scalp")) return pick(["두피가 예민해서 자극 적은 약으로 부탁드려요.", "끝이 많이 갈라져서 클리닉 부탁드려요.", "잘 부탁 드립니다!"]);
+  return pick(["앞머리만 가볍게 해주세요.", "지난번이랑 같은 길이로 다듬어 주세요.", "옆이 조금 더 짧았으면 해요.", "잘 부탁 드립니다!"]);
 }
 
 const occupied = new Map();
@@ -337,14 +390,17 @@ function targetCount(date) {
   return 11;
 }
 
+const TODAY = "2026-10-21";
+
 function openDates() {
   const dates = [];
   for (const [y, m] of [
     [2026, 8],
     [2026, 9],
-    [2026, 10]
+    [2026, 10],
+    [2026, 11]
   ]) {
-    const last = m === 10 ? 17 : daysInMonth(y, m);
+    const last = daysInMonth(y, m);
     for (let d = 1; d <= last; d += 1) {
       const date = ymd(y, m, d);
       if (dow(date) === 1) continue;
@@ -352,6 +408,19 @@ function openDates() {
     }
   }
   return dates;
+}
+
+function addDays(date, days) {
+  const [y, m, d] = date.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return dt.toISOString().slice(0, 10);
+}
+
+function daysBetween(a, b) {
+  const [ay, am, ad] = a.split("-").map(Number);
+  const [by, bm, bd] = b.split("-").map(Number);
+  return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86400000);
 }
 
 function depositAmountFor(serviceIds) {
@@ -393,7 +462,7 @@ function makeBooking({ customer, date, time, artist, combo, product, status }) {
     customer_name: customer.name,
     customer_gender: customer.gender,
     customer_phone: customer.phone,
-    customer_request: pick(REQUESTS),
+    customer_request: requestFor(combo),
     privacy_agreed: true,
     status,
     cancel_reason: status === "cancelled" ? "고객 요청" : status === "noshow" ? "노쇼" : null,
@@ -531,7 +600,8 @@ const EXTRA_EXPENSES = [
   { expense_date: "2026-08-19", category: "marketing", amount: 150000, vendor: "네이버", memo: "플레이스 검색광고 추가", has_tax_invoice: true, is_recurring: false, payment_method: "card", proof_type: "tax_invoice" },
   { expense_date: "2026-09-11", category: "other", amount: 180000, vendor: "코리아헤어쇼", memo: "디자이너 교육 세미나", has_tax_invoice: true, is_recurring: false, payment_method: "transfer", proof_type: "tax_invoice" },
   { expense_date: "2026-09-25", category: "supplies", amount: 74000, vendor: "다이소·쿠팡", memo: "청소용품·쓰레기봉투", has_tax_invoice: false, is_recurring: false, payment_method: "card", proof_type: "simple_receipt" },
-  { expense_date: "2026-10-09", category: "supplies", amount: 42000, vendor: "패키징마트", memo: "제품 쇼핑백·포장재", has_tax_invoice: true, is_recurring: false, payment_method: "card", proof_type: "tax_invoice" }
+  { expense_date: "2026-10-09", category: "supplies", amount: 42000, vendor: "패키징마트", memo: "제품 쇼핑백·포장재", has_tax_invoice: true, is_recurring: false, payment_method: "card", proof_type: "tax_invoice" },
+  { expense_date: "2026-08-01", category: "supplies", amount: 1860000, vendor: "오리베코리아", memo: "샴푸·오일·홈케어 판매 제품 입고", has_tax_invoice: true, is_recurring: false, payment_method: "transfer", proof_type: "tax_invoice" }
 ];
 
 async function chunkInsert(table, rows, size = 80) {
@@ -542,6 +612,59 @@ async function chunkInsert(table, rows, size = 80) {
     out.push(...(Array.isArray(inserted) ? inserted : [inserted]));
   }
   return out;
+}
+
+async function syncRetailStock(rows) {
+  await rest("/rest/v1/inventory_movements?type=eq.out_sale", {
+    method: "DELETE",
+    headers: { ...HEADERS, Prefer: "return=minimal" }
+  });
+  const items = await rest("/rest/v1/inventory_items?select=id,catalog_key,kind&kind=eq.retail");
+  const moves = await rest("/rest/v1/inventory_movements?select=item_id,quantity");
+  const sum = new Map();
+  for (const move of moves) sum.set(move.item_id, (sum.get(move.item_id) || 0) + move.quantity);
+  const inbound = [];
+  const byKey = new Map();
+  for (const item of items) {
+    const have = sum.get(item.id) || 0;
+    const target = 64;
+    if (have < target) {
+      const product = PRODUCTS.find((row) => row.id === item.catalog_key);
+      inbound.push({
+        item_id: item.id,
+        type: "in",
+        quantity: target - have,
+        unit_cost: product?.cost ?? null,
+        memo: "8월 판매 제품 입고",
+        occurred_at: "2026-08-01T09:30:00+09:00"
+      });
+    }
+    byKey.set(item.catalog_key, { id: item.id, stock: Math.max(have, target) });
+  }
+  if (inbound.length) await chunkInsert("inventory_movements", inbound, 20);
+
+  const sales = [];
+  const ordered = [...rows]
+    .filter((row) => row.status === "completed")
+    .sort((a, b) => `${a.booking_date}${a.paid_at || ""}`.localeCompare(`${b.booking_date}${b.paid_at || ""}`));
+  for (const row of ordered) {
+    for (const id of row.service_ids || []) {
+      if (!String(id).startsWith("prod-")) continue;
+      const item = byKey.get(id);
+      if (!item || item.stock <= 0) continue;
+      item.stock -= 1;
+      sales.push({
+        item_id: item.id,
+        type: "out_sale",
+        quantity: -1,
+        booking_id: row.id,
+        memo: "결제 자동 출고",
+        occurred_at: row.paid_at || `${row.booking_date}T18:00:00+09:00`
+      });
+    }
+  }
+  console.log(`inventory out_sale ${sales.length}`);
+  if (sales.length) await chunkInsert("inventory_movements", sales, 80);
 }
 
 async function main() {
@@ -592,118 +715,161 @@ async function main() {
     occupy(row.booking_date, row.artist_id, row.booking_time, 90);
   }
 
-  const customers = [...celebrityRoster(), ...extraRoster()];
-  const byPhone = new Map(customers.map((row) => [row.phone, row]));
-  const returning = customers.filter((row) => !row.newbie);
-  const newcomers = customers.filter((row) => row.newbie);
+  console.log("delete bookings except 2026-10-16");
+  for (const table of ["message_logs", "customer_reminders"]) {
+    try {
+      await rest(`/rest/v1/${table}?booking_id=not.is.null`, {
+        method: "DELETE",
+        headers: { ...HEADERS, Prefer: "return=minimal" }
+      });
+    } catch (err) {
+      const msg = String(err.message || err);
+      if (!msg.includes("404") && !msg.includes("PGRST205")) throw err;
+    }
+  }
+  await rest("/rest/v1/bookings?booking_date=neq.2026-10-16", {
+    method: "DELETE",
+    headers: { ...HEADERS, Prefer: "return=minimal" }
+  });
+
+  const customers = [...celebrityRoster(), ...extraRoster(), ...localRoster()];
+  const notes = customers.map((row) => ({ customer_phone: row.phone, memo: row.note }));
+  const history = new Map();
+  const anchors = new Map();
+  for (const row of oct16) {
+    if (!row.customer_phone) continue;
+    anchors.set(row.customer_phone, "2026-10-16");
+  }
+
+  function serviceIdsOf(ids) {
+    return (ids || []).filter((id) => !String(id).startsWith("prod-"));
+  }
+
+  function gapDays(ids) {
+    if (ids.some((id) => String(id).startsWith("perm-"))) return 49 + Math.floor(rng() * 18);
+    if (ids.some((id) => String(id).startsWith("color-"))) return 35 + Math.floor(rng() * 14);
+    if (ids.some((id) => String(id).startsWith("clinic-"))) return 21 + Math.floor(rng() * 10);
+    return 26 + Math.floor(rng() * 14);
+  }
+
+  function remember(customer, date, ids) {
+    const serviceIds = serviceIdsOf(ids);
+    history.set(customer.phone, { date, ids: serviceIds, next: addDays(date, gapDays(serviceIds)) });
+  }
+
+  function isDue(customer, date) {
+    const anchor = anchors.get(customer.phone);
+    if (anchor && Math.abs(daysBetween(date, anchor)) < 24) return false;
+    const last = history.get(customer.phone);
+    if (!last) return true;
+    if (date < last.date) return daysBetween(date, last.date) >= 26;
+    return date >= last.next;
+  }
+
+  function pickDue(date, pool, skipped) {
+    const due = pool.filter((customer) => isDue(customer, date) && !skipped.has(customer.phone));
+    const returningDue = due.filter((customer) => history.has(customer.phone));
+    const fresh = due.filter((customer) => !history.has(customer.phone));
+    if (returningDue.length && (fresh.length === 0 || rng() < 0.78)) {
+      returningDue.sort((a, b) => history.get(a.phone).date.localeCompare(history.get(b.phone).date));
+      return pick(returningDue.slice(0, Math.max(8, Math.ceil(returningDue.length * 0.18))));
+    }
+    if (fresh.length) return pick(fresh);
+    return null;
+  }
+
+  function nextCombo(customer) {
+    const last = history.get(customer.phone);
+    const pool = combosFor(customer.gender);
+    const mild = pool.filter((ids) => ids.every((id) => id.startsWith("cut-") || id.startsWith("clinic-")));
+    const chemical = pool.filter((ids) => ids.some((id) => id.startsWith("perm-") || id.startsWith("color-")));
+    const lastIds = last?.ids || [];
+    if (lastIds.some((id) => id.startsWith("perm-") || id.startsWith("color-"))) {
+      return comboMeta(pick(mild.length ? mild : pool));
+    }
+    const chemicalChance = customer.gender === "W" ? 0.2 : 0.08;
+    if (chemical.length && rng() < chemicalChance) return comboMeta(pick(chemical));
+    return comboMeta(pick(mild.length ? mild : pool));
+  }
+
+  function statusFor(date) {
+    if (date <= TODAY) {
+      const roll = rng();
+      if (roll < 0.03) return "cancelled";
+      if (roll < 0.05) return "noshow";
+      return "completed";
+    }
+    return rng() < 0.88 ? "confirmed" : "pending";
+  }
 
   const generated = [];
-  const notes = customers.map((row) => ({ customer_phone: row.phone, memo: row.note }));
+  const shortDays = [];
 
   for (const date of openDates()) {
     if (date === "2026-10-16") continue;
-    const day = dow(date);
-    const month = Number(date.slice(5, 7));
-    let want = targetCount(date);
-    if (date === "2026-10-17") want = 12;
-    const artistsToday = ARTISTS.filter((artist) => artist.off !== day);
+    const artistsToday = ARTISTS.filter((artist) => artist.off !== dow(date));
+    const want = targetCount(date);
+    const skippedToday = new Set();
     let placed = 0;
     let guard = 0;
-    while (placed < want && guard < 400) {
+    while (placed < want && guard < 500) {
       guard += 1;
-      const artist = pick(artistsToday);
-      const slots = slotList().sort(() => rng() - 0.5);
-      let customer;
-      if (date < "2026-10-01") {
-        customer = pick(returning);
-      } else if (rng() < 0.3) {
-        customer = pick(newcomers);
-      } else {
-        customer = pick(returning);
+      const customer = pickDue(date, customers, skippedToday);
+      if (!customer) break;
+      const combo = nextCombo(customer);
+      const ordered = [];
+      const preferred = artistsToday.find((artist) => artist.id === customer.artist);
+      if (preferred && rng() < 0.84) ordered.push(preferred);
+      for (const artist of [...artistsToday].sort(() => rng() - 0.5)) {
+        if (!ordered.some((row) => row.id === artist.id)) ordered.push(artist);
       }
-      const combo = comboMeta(pick(combosFor(customer.gender)));
-      const product = maybeProduct(combo.price);
-      const duration = combo.duration;
-      const start = slots.find((time) => fits(date, artist.id, time, duration));
-      if (!start) continue;
-      if (customer.artist && rng() < 0.65) {
-        const preferred = artistsToday.find((row) => row.id === customer.artist);
-        if (preferred && preferred.id !== artist.id) {
-          const altStart = slots.find((time) => fits(date, preferred.id, time, duration));
-          if (altStart) {
-            occupy(date, preferred.id, altStart, duration);
-            let status = "completed";
-            if (date < "2026-10-17") {
-              const roll = rng();
-              if (roll < 0.04) status = "cancelled";
-              else if (roll < 0.06) status = "noshow";
-            } else if (date === "2026-10-17") {
-              status = toMin(altStart) < 13 * 60 ? "completed" : rng() < 0.7 ? "confirmed" : "pending";
-            } else {
-              status = rng() < 0.7 ? "confirmed" : "pending";
-            }
-            generated.push(
-              makeBooking({ customer, date, time: altStart, artist: preferred, combo, product, status })
-            );
-            placed += 1;
-            continue;
-          }
-        }
-      }
-
-      occupy(date, artist.id, start, duration);
-      let status = "completed";
-      if (date < "2026-10-17") {
-        const roll = rng();
-        if (roll < 0.04) status = "cancelled";
-        else if (roll < 0.06) status = "noshow";
-      } else if (date === "2026-10-17") {
-        status = toMin(start) < 13 * 60 ? "completed" : rng() < 0.7 ? "confirmed" : "pending";
-      } else {
-        status = rng() < 0.7 ? "confirmed" : "pending";
-      }
-      generated.push(makeBooking({ customer, date, time: start, artist, combo, product, status }));
-      placed += 1;
-    }
-  }
-
-  const priorForCelebs = returning.filter((row) => celebrityRoster().some((c) => c.phone === row.phone));
-  for (const customer of priorForCelebs) {
-    const visits = 1 + Math.floor(rng() * 2);
-    for (let i = 0; i < visits; i += 1) {
-      const month = i === 0 ? 8 : rng() < 0.5 ? 8 : 9;
-      const last = daysInMonth(2026, month);
-      let tries = 0;
-      while (tries < 20) {
-        tries += 1;
-        const date = ymd(2026, month, 1 + Math.floor(rng() * last));
-        if (dow(date) === 1) continue;
-        const artist = ARTISTS.find((row) => row.id === customer.artist) ?? pick(ARTISTS);
-        if (artist.off === dow(date)) continue;
-        const combo = comboMeta(pick(combosFor(customer.gender)));
+      let seated = false;
+      for (const artist of ordered) {
         const start = slotList()
           .sort(() => rng() - 0.5)
           .find((time) => fits(date, artist.id, time, combo.duration));
         if (!start) continue;
+        const status = statusFor(date);
+        const completed = status === "completed";
+        const product = maybeProduct(combo, completed);
         occupy(date, artist.id, start, combo.duration);
-        generated.push(
-          makeBooking({
-            customer,
-            date,
-            time: start,
-            artist,
-            combo,
-            product: maybeProduct(combo.price),
-            status: "completed"
-          })
-        );
+        generated.push(makeBooking({ customer, date, time: start, artist, combo, product, status }));
+        if (status === "cancelled" || status === "noshow") {
+          history.set(customer.phone, { date, ids: combo.ids, next: addDays(date, 3) });
+        } else {
+          remember(customer, date, combo.ids);
+        }
+        placed += 1;
+        seated = true;
         break;
       }
+      if (!seated) skippedToday.add(customer.phone);
     }
+    if (placed < want) shortDays.push(`${date}:${placed}/${want}`);
   }
 
-  console.log(`insert bookings ${generated.length}`);
+  console.log(`customers ${customers.length} bookings ${generated.length} short ${shortDays.length}`);
+  if (shortDays.length) console.log(shortDays.slice(0, 12).join(" "));
   const inserted = await chunkInsert("bookings", generated, 70);
+
+  await syncRetailStock([
+    ...oct16.map((row) => ({
+      id: row.id,
+      booking_date: row.booking_date,
+      paid_at: row.paid_at,
+      service_ids: row.service_ids,
+      status: row.status
+    })),
+    ...inserted
+      .filter((row) => row.status === "completed")
+      .map((row) => ({
+        id: row.id,
+        booking_date: row.booking_date,
+        paid_at: row.paid_at,
+        service_ids: row.service_ids,
+        status: row.status
+      }))
+  ]);
 
   await rest("/rest/v1/customer_notes?customer_phone=eq.0100000000", { method: "DELETE" });
   await rest("/rest/v1/customer_notes?on_conflict=customer_phone", {
@@ -719,6 +885,7 @@ async function main() {
     ...MONTHLY_EXPENSES(2026, 8, 490000),
     ...MONTHLY_EXPENSES(2026, 9, 528000),
     ...MONTHLY_EXPENSES(2026, 10, 557000),
+    ...MONTHLY_EXPENSES(2026, 11, 540000),
     ...EXTRA_EXPENSES
   ].filter((row) => !have.has(expenseKey(row)));
   const skipOctDup = new Set(

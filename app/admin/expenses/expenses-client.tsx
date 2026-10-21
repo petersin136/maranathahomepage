@@ -246,7 +246,8 @@ export default function AdminExpensesPage({
     return list.filter((row) => categoryFilter.includes(row.category as ExpenseCategory));
   }, [data, categoryFilter]);
 
-  const naturePercents = s ? remainderPercents(s.natures.map((n) => n.amount)) : [];
+  const shareGroupPercents = s ? s.shareGroups.map((g) => (s.totalAmount > 0 ? Math.round((g.amount / s.totalAmount) * 100) : 0)) : [];
+  const shareBarPercents = s ? remainderPercents(s.shareGroups.map((g) => g.amount)) : [];
   const proofPercents = s ? remainderPercents(s.proofs.map((p) => p.amount)) : [];
 
   const currentEmpty = !s || s.totalAmount === 0;
@@ -277,7 +278,20 @@ export default function AdminExpensesPage({
   return (
     <div className="pb-16 font-sans-kr text-[#1C1C1C]">
       <FinanceSticky>
-      <FinanceHeader embedded subtitle={`${year}년 ${month}월 지출`} />
+      <FinanceHeader
+        embedded
+        subtitle={`${year}년 ${month}월 지출`}
+        tabAction={
+          <DownloadExportButton
+            label="지출 리포트 PDF"
+            report="expenses"
+            year={year}
+            month={month}
+            categories={categoryFilter}
+            onError={setError}
+          />
+        }
+      />
 
       <Toolbar
         className="mt-[34px]"
@@ -334,7 +348,6 @@ export default function AdminExpensesPage({
                 <span className="text-[13px] font-semibold text-[#8A847C]">{importPreview.available}건</span>
               ) : null}
             </button>
-            <DownloadExportButton labeled year={year} month={month} onError={setError} />
             <button
               type="button"
               disabled={busy}
@@ -417,29 +430,31 @@ export default function AdminExpensesPage({
               <h2 className="text-[15px] font-bold leading-normal text-[color:var(--label)]">지출 성격별 비중</h2>
               <div className="mt-4 flex h-[14px] overflow-hidden rounded-[2px] bg-[#E4DFD6]">
                 {s.totalAmount > 0
-                  ? s.natures.map((n) =>
-                      n.share > 0 ? (
+                  ? s.shareGroups.map((g, index) =>
+                      g.amount > 0 ? (
                         <span
-                          key={n.key}
+                          key={g.key}
                           className="h-full"
-                          style={{ width: `${n.share}%`, background: n.tone }}
+                          style={{ width: `${shareBarPercents[index]}%`, background: g.tone }}
                         />
                       ) : null
                     )
                   : null}
               </div>
               <ul className="mt-4">
-                {s.natures.map((n, index) => (
-                  <li key={n.key} className="flex items-center justify-between py-[10px] text-[16px] font-medium">
+                {s.shareGroups.map((g, index) => (
+                  <li key={g.key} className="flex items-center justify-between py-[10px] text-[16px] font-medium">
                     <span className="flex min-w-0 items-center">
                       <span
                         className="mr-2 inline-block h-[14px] w-[3px] shrink-0 rounded-full"
-                        style={{ background: n.tone }}
+                        style={{ background: g.tone }}
                       />
-                      <span className="font-bold tabular-nums">{naturePercents[index]}%</span>
-                      <span className="ml-2">{n.label}</span>
+                      <span className="font-bold tabular-nums">{shareGroupPercents[index]}%</span>
+                      <span className="ml-2">
+                        {g.label} ({g.count}건)
+                      </span>
                     </span>
-                    <span className="shrink-0 tabular-nums text-[color:var(--muted)]">{won(n.amount)}</span>
+                    <span className="shrink-0 tabular-nums text-[color:var(--muted)]">{won(g.amount)}</span>
                   </li>
                 ))}
               </ul>

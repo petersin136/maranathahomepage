@@ -185,7 +185,10 @@ export async function loadSettlementsView(args: {
 
   const ym = yearMonthKey(month.year, month.month);
   const onlyArtistId = args.role === "designer" && args.artistId ? args.artistId : undefined;
-  const closed = await loadClose(ym);
+  const [closed, prevMonthPayout] = await Promise.all([
+    loadClose(ym),
+    loadPrevMonthPayout(month.year, month.month, onlyArtistId)
+  ]);
 
   let data: SettlementDashboard;
   if (closed) {
@@ -197,6 +200,5 @@ export async function loadSettlementsView(args: {
     if (onlyArtistId) data = scopeSettlementsForDesigner(data, onlyArtistId);
   }
 
-  const prevMonthPayout = await loadPrevMonthPayout(data.year, data.month, onlyArtistId);
   return { ...data, prevMonthPayout };
 }

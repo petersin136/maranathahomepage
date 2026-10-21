@@ -40,10 +40,10 @@ const loadAdminUser = cache(async () => {
   return { user: user ?? null, error };
 });
 
-export async function requireAdminUser(): Promise<
+export const requireAdminUser = cache(async (): Promise<
   | { ok: true; user: User; role: AdminUserRow["role"]; artistId: string | null }
   | { ok: false; response: NextResponse }
-> {
+> => {
   const { user, error } = await loadAdminUser();
 
   if (error || !user) {
@@ -81,7 +81,7 @@ export async function requireAdminUser(): Promise<
   }
 
   return { ok: true, user, role: row.role, artistId: row.artistId };
-}
+});
 
 /** 셸이 그릴 역할. 클라이언트는 이 값만 받고, 역할을 다시 판단하지 않는다. */
 export const getAdminShellSession = cache(async (): Promise<AdminShellSession | null> => {
@@ -99,5 +99,12 @@ export const getAdminShellSession = cache(async (): Promise<AdminShellSession | 
     }
   }
 
-  return { role: auth.role, artistId: auth.artistId, artistName };
+  const meta = auth.user.user_metadata ?? {};
+  const metaName =
+    (typeof meta.name === "string" && meta.name.trim()) ||
+    (typeof meta.full_name === "string" && meta.full_name.trim()) ||
+    "";
+  const profileName = metaName || (auth.user.email ? auth.user.email.split("@")[0] : "관리자");
+
+  return { role: auth.role, artistId: auth.artistId, artistName, profileName };
 });

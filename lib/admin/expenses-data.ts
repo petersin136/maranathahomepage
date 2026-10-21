@@ -2,9 +2,11 @@ import {
   EXPENSE_CATEGORIES,
   EXPENSE_NATURES,
   EXPENSE_PROOF_BUCKETS,
+  EXPENSE_SHARE_GROUPS,
   expenseCategoryLabel,
   expenseNatureKey,
   expenseProofBucket,
+  expenseShareGroupKey,
   isExpenseCategory,
   isExpensePaymentMethod,
   isExpenseProofType,
@@ -49,6 +51,15 @@ export type ExpenseNatureShare = {
   tone: string;
 };
 
+export type ExpenseShareGroup = {
+  key: string;
+  label: string;
+  amount: number;
+  count: number;
+  share: number;
+  tone: string;
+};
+
 export type ExpenseProofShare = {
   key: string;
   label: string;
@@ -71,6 +82,7 @@ export type ExpenseSummary = {
   monthRevenue: number;
   categories: ExpenseCategoryShare[];
   natures: ExpenseNatureShare[];
+  shareGroups: ExpenseShareGroup[];
   proofs: ExpenseProofShare[];
 };
 
@@ -285,6 +297,19 @@ export function buildExpenseSummary(
     };
   });
 
+  const shareGroups: ExpenseShareGroup[] = EXPENSE_SHARE_GROUPS.map((g) => {
+    const rows = current.filter((e) => expenseShareGroupKey(e.category) === g.key);
+    const amount = rows.reduce((sum, row) => sum + row.amount, 0);
+    return {
+      key: g.key,
+      label: g.label,
+      amount,
+      count: rows.length,
+      share: totalAmount > 0 ? (amount / totalAmount) * 100 : 0,
+      tone: g.tone
+    };
+  });
+
   const proofs: ExpenseProofShare[] = EXPENSE_PROOF_BUCKETS.map((b) => {
     const amount = sumBy(current, (e) => expenseProofBucket(e.proof_type) === b.key);
     return {
@@ -310,6 +335,7 @@ export function buildExpenseSummary(
     monthRevenue,
     categories,
     natures,
+    shareGroups,
     proofs
   };
 }

@@ -1,5 +1,24 @@
 import { NextResponse } from "next/server";
 import { requireAdminUser, requireSupabaseAdmin } from "@/lib/admin/auth";
+import {
+  attachRetailToServices,
+  isRetailCatalogKey,
+  parseRetailProductBody,
+  splitServicesAndRetail
+} from "@/lib/admin/inventory-sales";
+import {
+  clearBookingSaleMovements,
+  SALE_SYNC_WARNING,
+  syncBookingSaleMovements
+} from "@/lib/admin/inventory-sales-sync";
+import { RETAIL_PRODUCTS } from "@/lib/admin/retail-products";
+import {
+  SETTLEMENT_LOCK_ERROR,
+  bookingLockYearMonths,
+  findClosedYearMonths,
+  isClosedMonthSafePatch,
+  kstYearMonthFromIso
+} from "@/lib/admin/settlement-lock";
 import { BLOCKING_STATUSES, isStartTimeAvailable, resolveDurationMinutes } from "@/lib/booking/overlap";
 import { loadOccupiedIntervals, resolveServiceDurations } from "@/lib/booking/occupied";
 import type { BookingStatus, PaymentMethod } from "@/lib/bookings/types";
@@ -99,18 +118,24 @@ export async function PATCH(
   if (!db.ok) return db.response;
 
   const { id } = await context.params;
+  const currentRes = await db.admin
+    .from("bookings")
+    .select("id, artist_id, booking_date, booking_time, status, service_ids, service_names, paid_at, deposit_paid")
+    .eq("id", id)
+    .maybeSingle();
+  if (currentRes.error) {
+    console.error("[PATCH /api/admin/bookings/:id] current", currentRes.error);
+    return NextResponse.json({ ok: false, error: "예약을 찾을 수 없습니다." }, { status: 500 });
+  }
+  if (!currentRes.data) {
+    return NextResponse.json({ ok: false, error: "예약을 찾을 수 없습니다." }, { status: 404 });
+  }
   if (auth.role === "designer") {
     if (!auth.artistId) return forbidden();
-    const current = await db.admin.from("bookings").select("artist_id").eq("id", id).maybeSingle();
-    if (current.error) {
-      console.error("[PATCH /api/admin/bookings/:id] artist", current.error);
-      return NextResponse.json({ ok: false, error: "예약을 찾을 수 없습니다." }, { status: 500 });
-    }
-    if (!current.data) {
-      return NextResponse.json({ ok: false, error: "예약을 찾을 수 없습니다." }, { status: 404 });
-    }
-    if (current.data.artist_id !== auth.artistId) return forbidden();
+    if (currentRes.data.artist_id !== auth.artistId) return forbidden();
   }
+  const current = currentRes.data;
+  const previousStatus = String(current.status);
 
   let body: {
     status?: BookingStatus;
@@ -122,13 +147,47 @@ export async function PATCH(
     payment_method?: PaymentMethod | null;
     cash_receipt_issued?: boolean | null;
     serviceIds?: string[];
+    products?: unknown;
     customer_name?: string;
+    customer_request?: string | null;
+    booking_date?: string;
+    booking_time?: string;
+    artist_id?: string;
   };
 
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ ok: false, error: "잘못된 요청입니다." }, { status: 400 });
+  }
+
+  const hasPaymentFields =
+    body.final_amount !== undefined ||
+    body.payment_method !== undefined ||
+    body.cash_receipt_issued !== undefined;
+
+  if (!isClosedMonthSafePatch(body as Record<string, unknown>)) {
+    const extraMonths: string[] = [];
+    if (hasPaymentFields) {
+      const existingPaidAt = current.paid_at ? String(current.paid_at) : "";
+      const nextPaidAt =
+        previousStatus === "completed" && existingPaidAt
+          ? existingPaidAt
+          : new Date().toISOString();
+      const paidYm = kstYearMonthFromIso(nextPaidAt);
+      if (paidYm) extraMonths.push(paidYm);
+    }
+    const lock = await findClosedYearMonths(db.admin, [
+      ...bookingLockYearMonths(current),
+      ...extraMonths
+    ]);
+    if (lock.error) {
+      console.error("[PATCH /api/admin/bookings/:id] settlement lock", lock.error);
+      return NextResponse.json({ ok: false, error: "수정에 실패했습니다." }, { status: 500 });
+    }
+    if (lock.closed.length > 0) {
+      return NextResponse.json({ ok: false, error: SETTLEMENT_LOCK_ERROR }, { status: 409 });
+    }
   }
 
   const patch: Record<string, unknown> = {};
@@ -147,15 +206,15 @@ export async function PATCH(
       patch.cancel_reason = null;
     }
     // 확정 = 예약금 확인 후 스케줄 확정. 입금 여부를 따로 안 넘기면 입금 완료로 맞춤.
-    if (body.status === "confirmed" && body.deposit_paid === undefined) {
+    // 완료를 푸는 경우에는 예약금 입금 여부를 바꾸지 않는다.
+    if (
+      body.status === "confirmed" &&
+      body.deposit_paid === undefined &&
+      previousStatus !== "completed"
+    ) {
       patch.deposit_paid = true;
     }
   }
-
-  const hasPaymentFields =
-    body.final_amount !== undefined ||
-    body.payment_method !== undefined ||
-    body.cash_receipt_issued !== undefined;
 
   if (body.status === "completed" && !hasPaymentFields) {
     return NextResponse.json(
@@ -165,15 +224,7 @@ export async function PATCH(
   }
 
   if (body.status === "noshow") {
-    const currentStatus = await db.admin.from("bookings").select("status").eq("id", id).maybeSingle();
-    if (currentStatus.error) {
-      console.error("[PATCH /api/admin/bookings/:id] status", currentStatus.error);
-      return NextResponse.json({ ok: false, error: "예약을 찾을 수 없습니다." }, { status: 500 });
-    }
-    if (!currentStatus.data) {
-      return NextResponse.json({ ok: false, error: "예약을 찾을 수 없습니다." }, { status: 404 });
-    }
-    if (currentStatus.data.status !== "confirmed") {
+    if (previousStatus !== "confirmed") {
       return NextResponse.json(
         { ok: false, error: "확정된 예약만 노쇼 처리할 수 있습니다." },
         { status: 400 }
@@ -192,16 +243,33 @@ export async function PATCH(
   }
   if (body.deposit_paid !== undefined) patch.deposit_paid = Boolean(body.deposit_paid);
   if (body.admin_memo !== undefined) patch.admin_memo = body.admin_memo;
+  if (body.customer_request !== undefined) {
+    const request =
+      body.customer_request == null ? null : String(body.customer_request).trim() || null;
+    if (request && request.length > 500) {
+      return NextResponse.json(
+        { ok: false, error: "요청사항은 500자 이내로 입력해 주세요." },
+        { status: 400 }
+      );
+    }
+    patch.customer_request = request;
+  }
   if (body.deposit_amount !== undefined) {
     patch.deposit_amount =
       body.deposit_amount == null ? null : Math.max(0, Math.round(Number(body.deposit_amount)));
   }
   if (body.serviceIds !== undefined) {
+    if (previousStatus === "completed") {
+      return NextResponse.json(
+        { ok: false, error: "완료된 예약은 시술을 변경할 수 없습니다. 확정으로 되돌린 뒤 수정해 주세요." },
+        { status: 400 }
+      );
+    }
     const serviceIds = [
       ...new Set(
         (Array.isArray(body.serviceIds) ? body.serviceIds : [])
           .map((sid) => String(sid).trim())
-          .filter(Boolean)
+          .filter((sid) => sid && !sid.startsWith("prod-"))
       )
     ];
     if (serviceIds.length < 1) {
@@ -211,18 +279,9 @@ export async function PATCH(
       );
     }
 
-    const current = await db.admin
-      .from("bookings")
-      .select("id, artist_id, booking_date, booking_time, status")
-      .eq("id", id)
-      .maybeSingle();
-    if (current.error || !current.data) {
-      return NextResponse.json({ ok: false, error: "예약을 찾을 수 없습니다." }, { status: 404 });
-    }
-
-    const artistId = String(current.data.artist_id);
-    const bookingDate = String(current.data.booking_date).slice(0, 10);
-    const bookingTime = String(current.data.booking_time);
+    const artistId = String(current.artist_id);
+    const bookingDate = String(current.booking_date).slice(0, 10);
+    const bookingTime = String(current.booking_time);
 
     const [servicesRes, pricesRes] = await Promise.all([
       db.admin.from("services").select("id, name, price, deposit_amount").in("id", serviceIds),
@@ -258,7 +317,7 @@ export async function PATCH(
       }
     }
 
-    const blocksSlot = (BLOCKING_STATUSES as readonly string[]).includes(String(current.data.status));
+    const blocksSlot = (BLOCKING_STATUSES as readonly string[]).includes(String(current.status));
     if (blocksSlot) {
       const { durations, error: durError } = await resolveServiceDurations(db.admin, serviceIds);
       if (durError) {
@@ -287,10 +346,37 @@ export async function PATCH(
       }
     }
 
-    patch.service_ids = serviceIds;
-    patch.service_names = serviceNames;
-    patch.total_amount = totalAmount;
-    patch.deposit_amount = depositAmount;
+    const preserved = splitServicesAndRetail(
+      Array.isArray(current.service_ids) ? current.service_ids.map(String) : [],
+      Array.isArray(current.service_names) ? current.service_names.map(String) : []
+    ).retail;
+    const qtyByKey = new Map<string, { name: string; quantity: number }>();
+    for (const row of preserved) {
+      const cur = qtyByKey.get(row.catalogKey) ?? { name: row.name, quantity: 0 };
+      cur.quantity += 1;
+      if (row.name) cur.name = row.name;
+      qtyByKey.set(row.catalogKey, cur);
+    }
+    const attached = attachRetailToServices(
+      serviceIds,
+      serviceNames,
+      [...qtyByKey.entries()].map(([catalogKey, row]) => ({
+        catalogKey,
+        name: row.name.replace(/^\[제품\]\s*/, ""),
+        quantity: row.quantity
+      }))
+    );
+    let productAmount = 0;
+    for (const [catalogKey, row] of qtyByKey) {
+      const catalog = RETAIL_PRODUCTS.find((item) => item.id === catalogKey);
+      productAmount += (catalog?.price ?? 0) * row.quantity;
+    }
+    patch.service_ids = attached.service_ids;
+    patch.service_names = attached.service_names;
+    patch.total_amount = totalAmount + productAmount;
+    if (current.deposit_paid !== true) {
+      patch.deposit_amount = depositAmount;
+    }
   }
 
   if (hasPaymentFields) {
@@ -315,11 +401,135 @@ export async function PATCH(
     if (body.cash_receipt_issued !== undefined) {
       patch.cash_receipt_issued = Boolean(body.cash_receipt_issued);
     }
-    // 결제 정보 저장 시 완료 시각 기록 (클라이언트 시각 신뢰하지 않음)
-    patch.paid_at = new Date().toISOString();
+    // 이미 완료된 결제를 다시 저장하면 매출 월·출고 시각이 밀리지 않게 paid_at을 유지한다.
+    const existingPaidAt = current.paid_at ? String(current.paid_at) : "";
+    patch.paid_at =
+      previousStatus === "completed" && existingPaidAt
+        ? existingPaidAt
+        : new Date().toISOString();
     if (body.status === undefined) {
       patch.status = "completed";
       patch.cancel_reason = null;
+    }
+    if (body.final_amount !== undefined) {
+      patch.total_amount = patch.final_amount;
+    }
+  }
+
+  if (body.products !== undefined) {
+    if (!hasPaymentFields) {
+      return NextResponse.json({ ok: false, error: "수정할 수 없는 항목입니다." }, { status: 400 });
+    }
+    const parsed = parseRetailProductBody(body.products);
+    if (!parsed.ok) {
+      return NextResponse.json({ ok: false, error: parsed.error }, { status: 400 });
+    }
+    for (const product of parsed.products) {
+      if (!isRetailCatalogKey(product.catalogKey)) {
+        return NextResponse.json({ ok: false, error: "판매 제품을 찾을 수 없습니다." }, { status: 400 });
+      }
+    }
+    const keys = parsed.products.map((product) => product.catalogKey);
+    const nameByKey = new Map<string, string>();
+    if (keys.length > 0) {
+      const { data: itemRows, error: itemError } = await db.admin
+        .from("inventory_items")
+        .select("catalog_key, name")
+        .eq("kind", "retail")
+        .in("catalog_key", keys);
+      if (itemError) {
+        console.error("[PATCH /api/admin/bookings/:id] retail items", itemError);
+        return NextResponse.json({ ok: false, error: "판매 제품을 찾을 수 없습니다." }, { status: 500 });
+      }
+      for (const row of itemRows ?? []) {
+        if (row.catalog_key) nameByKey.set(String(row.catalog_key), String(row.name ?? ""));
+      }
+      for (const product of parsed.products) {
+        if (!nameByKey.has(product.catalogKey)) {
+          return NextResponse.json({ ok: false, error: "판매 제품을 찾을 수 없습니다." }, { status: 400 });
+        }
+      }
+    }
+    const baseIds = Array.isArray(patch.service_ids)
+      ? (patch.service_ids as string[])
+      : Array.isArray(current.service_ids)
+        ? current.service_ids.map(String)
+        : [];
+    const baseNames = Array.isArray(patch.service_names)
+      ? (patch.service_names as string[])
+      : Array.isArray(current.service_names)
+        ? current.service_names.map(String)
+        : [];
+    const attached = attachRetailToServices(
+      baseIds,
+      baseNames,
+      parsed.products.map((product) => ({
+        catalogKey: product.catalogKey,
+        name: nameByKey.get(product.catalogKey) ?? product.catalogKey,
+        quantity: product.quantity
+      }))
+    );
+    patch.service_ids = attached.service_ids;
+    patch.service_names = attached.service_names;
+  }
+
+  const requestedStatus =
+    body.status !== undefined ? body.status : hasPaymentFields ? "completed" : previousStatus;
+  const leavingCompleted = previousStatus === "completed" && requestedStatus !== "completed";
+  if (leavingCompleted) {
+    patch.final_amount = null;
+    patch.payment_method = null;
+    patch.cash_receipt_issued = false;
+    patch.paid_at = null;
+    const baseIds = Array.isArray(patch.service_ids)
+      ? (patch.service_ids as string[])
+      : Array.isArray(current.service_ids)
+        ? current.service_ids.map(String)
+        : [];
+    const baseNames = Array.isArray(patch.service_names)
+      ? (patch.service_names as string[])
+      : Array.isArray(current.service_names)
+        ? current.service_names.map(String)
+        : [];
+    const { services } = splitServicesAndRetail(baseIds, baseNames);
+    patch.service_ids = services.map((row) => row.id);
+    patch.service_names = services.map((row) => row.name);
+
+    const serviceIds = services.map((row) => row.id);
+    if (serviceIds.length === 0) {
+      patch.total_amount = 0;
+    } else {
+      const artistId = String(current.artist_id);
+      const [servicesRes, pricesRes] = await Promise.all([
+        db.admin.from("services").select("id, price").in("id", serviceIds),
+        db.admin
+          .from("service_prices")
+          .select("service_id, price")
+          .eq("artist_id", artistId)
+          .in("service_id", serviceIds)
+      ]);
+      const serviceById = new Map((servicesRes.data ?? []).map((row) => [String(row.id), row]));
+      const priceById = new Map(
+        (pricesRes.data ?? []).map((row) => [String(row.service_id), Number(row.price)])
+      );
+      const canQuote =
+        !servicesRes.error &&
+        !pricesRes.error &&
+        serviceIds.every((sid) => serviceById.has(sid));
+      if (canQuote) {
+        patch.total_amount = serviceIds.reduce((sum, sid) => {
+          const listed = serviceById.get(sid);
+          const price = priceById.get(sid) ?? Number(listed?.price) ?? 0;
+          return sum + Math.max(0, Math.round(price));
+        }, 0);
+      } else {
+        console.error("[PATCH /api/admin/bookings/:id] service quote", {
+          bookingId: id,
+          serviceIds,
+          servicesError: servicesRes.error,
+          pricesError: pricesRes.error
+        });
+      }
     }
   }
 
@@ -342,7 +552,39 @@ export async function PATCH(
     );
   }
 
-  return NextResponse.json({ ok: true, booking: data });
+  const nextStatus = String(data.status);
+  let warning: string | undefined;
+  if (nextStatus === "completed" && hasPaymentFields) {
+    // 방금 쓴 service_ids를 우선 사용(응답 round-trip 의존 제거)
+    const serviceIdsForSync = Array.isArray(patch.service_ids)
+      ? (patch.service_ids as string[]).map(String)
+      : Array.isArray(data.service_ids)
+        ? data.service_ids.map(String)
+        : [];
+    const sync = await syncBookingSaleMovements({
+      admin: db.admin,
+      bookingId: id,
+      serviceIds: serviceIdsForSync,
+      paidAt: data.paid_at ? String(data.paid_at) : null,
+      userId: auth.user.id
+    });
+    if (!sync.ok) {
+      console.error("[PATCH /api/admin/bookings/:id] sale sync failed", {
+        bookingId: id,
+        serviceIdsForSync,
+        error: sync.error
+      });
+      warning = SALE_SYNC_WARNING;
+    }
+  } else if (previousStatus === "completed" && nextStatus !== "completed") {
+    const cleared = await clearBookingSaleMovements(db.admin, id);
+    if (cleared.error) {
+      console.error("[PATCH /api/admin/bookings/:id] clear out_sale", cleared.error);
+      warning = SALE_SYNC_WARNING;
+    }
+  }
+
+  return NextResponse.json({ ok: true, booking: data, warning: warning ?? null });
 }
 
 export async function DELETE(
@@ -357,6 +599,36 @@ export async function DELETE(
   if (!db.ok) return db.response;
 
   const { id } = await context.params;
+
+  const currentRes = await db.admin
+    .from("bookings")
+    .select("id, booking_date, paid_at")
+    .eq("id", id)
+    .maybeSingle();
+  if (currentRes.error) {
+    console.error("[DELETE /api/admin/bookings/:id] current", currentRes.error);
+    return NextResponse.json({ ok: false, error: "삭제에 실패했습니다." }, { status: 500 });
+  }
+  if (!currentRes.data) {
+    return NextResponse.json({ ok: false, error: "예약을 찾을 수 없습니다." }, { status: 404 });
+  }
+  const lock = await findClosedYearMonths(db.admin, bookingLockYearMonths(currentRes.data));
+  if (lock.error) {
+    console.error("[DELETE /api/admin/bookings/:id] settlement lock", lock.error);
+    return NextResponse.json({ ok: false, error: "삭제에 실패했습니다." }, { status: 500 });
+  }
+  if (lock.closed.length > 0) {
+    return NextResponse.json({ ok: false, error: SETTLEMENT_LOCK_ERROR }, { status: 409 });
+  }
+
+  const saleCleared = await clearBookingSaleMovements(db.admin, id);
+  if (saleCleared.error) {
+    console.error("[DELETE /api/admin/bookings/:id] out_sale", saleCleared.error);
+    return NextResponse.json(
+      { ok: false, error: "이 예약의 재고 출고를 지우지 못해 삭제할 수 없습니다." },
+      { status: 500 }
+    );
+  }
 
   const logs = await db.admin.from("message_logs").delete().eq("booking_id", id);
   if (logs.error && logs.error.code !== "42P01") {
