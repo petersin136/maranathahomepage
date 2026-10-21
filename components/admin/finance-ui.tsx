@@ -40,15 +40,7 @@ export function FinanceSearch() {
   const [q, setQ] = useState("");
   return (
     <div className="flex items-center gap-[8px]">
-      <label className="flex h-[36px] w-[308px] items-center gap-[8px] rounded-[8px] border-[1.5px] border-[#9A948C] bg-white px-[12px]">
-        <Icon src="/admin-icons/lnb/search-bold.png" className="h-[16px] w-[16px]" />
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="고객명, 연락처 검색"
-          className={`min-w-0 flex-1 bg-transparent text-[15px] font-bold leading-none text-[#1C1C1C] outline-none placeholder:text-[#9A948C] ${TRIM_KR}`}
-        />
-      </label>
+      <AdminHeaderSearch value={q} onChange={setQ} />
       <AdminBellButton />
     </div>
   );

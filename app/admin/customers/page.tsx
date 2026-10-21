@@ -11,7 +11,7 @@ import {
   type CustomerState
 } from "@/components/admin/CustomerFilters";
 import type { CustomerDirectoryRow, CustomersDashboard } from "@/lib/admin/customers-data";
-import { AdminBellButton } from "@/components/admin/AdminBellButton";
+import { AdminBellButton, AdminHeaderSearch } from "@/components/admin/AdminBellButton";
 import { AdminPageTitle } from "@/components/admin/AdminPageTitle";
 
 const PAGE_SIZE = 12;
@@ -208,15 +208,7 @@ export default function AdminCustomersPage() {
           </span>
         </AdminPageTitle>
         <div className="mt-[24px] flex items-start gap-[8px]">
-          <label className="flex h-[36px] w-[300px] items-center gap-2 rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white px-3">
-            <Icon src="/admin-icons/lnb/search-bold.png" className="h-[16px] w-[16px] text-[#9A948C]" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="고객명, 연락처 검색"
-              className="w-full bg-transparent text-[15px] font-bold text-[#9A948C] outline-none placeholder:text-[#9A948C]"
-            />
-          </label>
+          <AdminHeaderSearch value={query} onChange={setQuery} />
           <AdminBellButton />
         </div>
       </div>

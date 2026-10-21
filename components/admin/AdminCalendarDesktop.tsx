@@ -17,7 +17,7 @@ import { isKoreanHoliday } from "@/lib/admin/kr-holidays";
 import { todayKst } from "@/lib/admin/sales-data";
 import { AdminDatePicker } from "@/components/admin/AdminDatePicker";
 import BookingCreateModal from "@/components/admin/BookingCreateModal";
-import { AdminBellButton } from "@/components/admin/AdminBellButton";
+import { AdminBellButton, AdminHeaderSearch, AdminNewBookingButton } from "@/components/admin/AdminBellButton";
 import { AdminPageTitle } from "@/components/admin/AdminPageTitle";
 import { useAdminSession } from "@/components/admin/admin-session";
 import "./admin-calendar.css";
@@ -334,19 +334,14 @@ export function CalendarDesktopView({
         <AdminPageTitle>캘린더</AdminPageTitle>
         <div ref={searchRef} className="cal-search-wrap">
           <div className="cal-search-row">
-            <label className="cal-search">
-              <CalIcon src="/admin-icons/lnb/search-bold.png" className="cal-search-icon" />
-              <input
-                value={query}
-                onChange={(e) => {
-                  onQuery(e.target.value);
-                  setSearchOpen(true);
-                }}
-                onFocus={() => setSearchOpen(true)}
-                placeholder="고객명, 연락처 검색"
-                className="cal-search-input"
-              />
-            </label>
+            <AdminHeaderSearch
+              value={query}
+              onChange={(value) => {
+                onQuery(value);
+                setSearchOpen(true);
+              }}
+              onFocus={() => setSearchOpen(true)}
+            />
             <AdminBellButton />
           </div>
           {searchOpen && query.trim() ? (
@@ -497,15 +492,11 @@ export function CalendarDesktopView({
               <CalIcon src="/admin-icons/lnb/refresh.png" className="cal-refresh-icon" />
             </button>
 
-            <button
-              type="button"
+            <AdminNewBookingButton
+              className="ml-auto"
               disabled={empty}
               onClick={() => setCreateSlot(isWeek && weekArtist ? { artistId: weekArtist.id } : {})}
-              className={clsx("cal-new", empty && "is-disabled")}
-            >
-              <CalIcon src="/admin-icons/lnb/plus.png" className="cal-new-icon" />
-              <span className="cal-new-label">새 예약</span>
-            </button>
+            />
           </div>
 
           {empty ? (

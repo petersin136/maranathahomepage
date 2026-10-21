@@ -9,7 +9,7 @@ import { AdminDatePicker } from "@/components/admin/AdminDatePicker";
 import BookingCreateModal from "@/components/admin/BookingCreateModal";
 import BookingPaymentModal from "@/components/admin/BookingPaymentModal";
 import { useBookingActions } from "@/lib/admin/useBookingActions";
-import { AdminBellButton } from "@/components/admin/AdminBellButton";
+import { AdminBellButton, AdminHeaderSearch, AdminNewBookingButton } from "@/components/admin/AdminBellButton";
 import { AdminPageTitle } from "@/components/admin/AdminPageTitle";
 import { useAdminSession } from "@/components/admin/admin-session";
 import { useRefreshPendingCount } from "@/components/admin/pending-count";
@@ -491,19 +491,14 @@ export default function AdminBookingsPage() {
         <AdminPageTitle>예약관리</AdminPageTitle>
         <div className="-mr-[8px] mt-[24px] flex items-start gap-[8px]">
         <div ref={searchRef} className="relative">
-          <label className="flex h-[36px] w-[300px] items-center gap-2 rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white px-3">
-            <Icon src="/admin-icons/lnb/search-bold.png" className="h-[16px] w-[16px] text-[#9A948C]" />
-            <input
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setSearchOpen(true);
-              }}
-              onFocus={() => setSearchOpen(true)}
-              placeholder="고객명, 연락처 검색"
-              className="w-full bg-transparent text-[15px] font-bold text-[#9A948C] outline-none placeholder:text-[#9A948C]"
-            />
-          </label>
+          <AdminHeaderSearch
+            value={query}
+            onChange={(value) => {
+              setQuery(value);
+              setSearchOpen(true);
+            }}
+            onFocus={() => setSearchOpen(true)}
+          />
           {searchOpen && query.trim() ? (
             <div className="absolute right-0 top-[42px] z-30 max-h-[320px] w-[360px] overflow-auto rounded-[8px] border border-[#C4C0BA] bg-white shadow-[0_8px_24px_rgba(28,28,28,0.08)]">
               {base.length === 0 ? (
@@ -710,14 +705,7 @@ export default function AdminBookingsPage() {
               ) : null}
             </>
           ) : null}
-          <button
-            type="button"
-            onClick={() => setCreateOpen(true)}
-            className="flex h-[34px] w-[136px] items-center justify-center rounded-[8px] bg-[#2F3A2F] text-[14px] font-bold leading-none text-white"
-          >
-            <Icon src="/admin-icons/lnb/plus.png" className="h-[14px] w-[14px]" />
-            <span className={clsx(TRIM_KR, "ml-2")}>새 예약</span>
-          </button>
+          <AdminNewBookingButton onClick={() => setCreateOpen(true)} />
         </div>
       </div>
 
