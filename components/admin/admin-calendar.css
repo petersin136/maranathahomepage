@@ -1,7 +1,7 @@
 /* 캘린더 PC(≥1440) — 1024 시안 × 1.40625 */
 
 html:has(.ADMIN-CALENDAR) {
-  scrollbar-gutter: stable;
+  scrollbar-gutter: auto;
 }
 
 html:has(.ADMIN-CALENDAR) main {

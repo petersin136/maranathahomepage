@@ -12,6 +12,7 @@ import {
   isExpenseProofType,
   isMissingExpenseProof,
   normalizeExpenseCategory,
+  storedExpenseCategory,
   parseExpenseCategory,
   resolveExpenseProofType,
   type ExpenseCategory,
@@ -172,7 +173,8 @@ export function previousExpenseMonth(year: number, month: number) {
 
 /** 카테고리 + 거래처 조합 키 (중복 방지용). 거래처는 trim 후 소문자. */
 export function expenseDedupeKey(category: string, vendor: string | null | undefined) {
-  return `${normalizeExpenseCategory(category)}::${(vendor || "").trim().toLowerCase()}`;
+  const key = parseExpenseCategory(category) ?? category.trim().toLowerCase();
+  return `${key}::${(vendor || "").trim().toLowerCase()}`;
 }
 
 export function mapRecurringDateToMonth(
@@ -199,7 +201,7 @@ export function mapExpenseRow(raw: Record<string, unknown>): ExpenseRow {
   return {
     id: String(raw.id || ""),
     expense_date: String(raw.expense_date || ""),
-    category: normalizeExpenseCategory(String(raw.category || "other")),
+    category: storedExpenseCategory(String(raw.category || "other")),
     amount: Number(raw.amount || 0),
     vendor: raw.vendor == null ? null : String(raw.vendor),
     memo: raw.memo == null ? null : String(raw.memo),
@@ -362,7 +364,7 @@ export function buildRecurringImportPreview(args: {
     const proof = resolveExpenseProofType(row);
     candidates.push({
       expense_date: mapRecurringDateToMonth(row.expense_date, args.targetYear, args.targetMonth),
-      category: normalizeExpenseCategory(String(row.category || "other")),
+      category: storedExpenseCategory(String(row.category || "other")),
       amount: Number(row.amount || 0),
       vendor: row.vendor,
       memo: row.memo,
@@ -381,7 +383,7 @@ export function buildRecurringImportPreview(args: {
 
 export type NormalizedExpenseInput = {
   expense_date: string;
-  category: ExpenseCategory;
+  category: string;
   amount: number;
   vendor: string | null;
   memo: string | null;
@@ -406,8 +408,11 @@ export function normalizeExpenseInput(body: {
   const expense_date = (body.expense_date || "").trim();
   if (!isYmd(expense_date)) return { error: "날짜가 올바르지 않습니다." };
 
-  const category = parseExpenseCategory((body.category || "").trim());
-  if (!category) return { error: "카테고리가 올바르지 않습니다." };
+  const rawCategory = (body.category || "").trim();
+  if (!rawCategory) return { error: "카테고리를 선택하거나 입력해 주세요." };
+  if (rawCategory.length > 40) return { error: "카테고리는 40자까지 입력할 수 있습니다." };
+  const byLabel = EXPENSE_CATEGORIES.find((c) => c.label === rawCategory)?.value;
+  const category = parseExpenseCategory(rawCategory) ?? byLabel ?? rawCategory;
 
   const amount = Math.round(Number(body.amount));
   if (!Number.isFinite(amount) || amount < 0) {

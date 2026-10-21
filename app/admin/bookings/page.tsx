@@ -18,7 +18,7 @@ const PAGE_SIZE = 12;
 const DEPOSIT_WINDOW_MS = 3 * 60 * 60 * 1000;
 
 type TabKey = "pending" | "confirmed" | "completed" | "cancelled_noshow";
-type PeriodKey = "all" | "today" | "week" | "month" | "day";
+type PeriodKey = "all" | "tomorrow" | "today" | "week" | "month" | "day";
 type SortKey = "date" | "name";
 
 type Artist = { id: string; name: string; role: string };
@@ -36,6 +36,7 @@ const TABS: { key: TabKey; label: string; statuses: BookingStatus[]; empty: stri
 ];
 
 const PERIODS: { key: PeriodKey; label: string }[] = [
+  { key: "tomorrow", label: "내일" },
   { key: "today", label: "오늘" },
   { key: "week", label: "이번 주" },
   { key: "month", label: "이번 달" },
@@ -134,6 +135,20 @@ function ymdOf(d: Date) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
+function tomorrowYmd(now = new Date()) {
+  return ymdOf(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
+}
+
+/** 20시 이후는 당일 영업이 끝나 확정·대기는 내일 예약을 본다. */
+function afterClose(now = new Date()) {
+  return now.getHours() >= 20;
+}
+
+function periodForTab(nextTab: TabKey, now = new Date()): PeriodKey {
+  if (afterClose(now) && (nextTab === "confirmed" || nextTab === "pending")) return "tomorrow";
+  return "today";
+}
+
 function formatWon(amount: number | null) {
   return amount != null ? `${amount.toLocaleString("ko-KR")}원` : "—";
 }
@@ -149,6 +164,7 @@ function inPeriod(ymd: string, period: PeriodKey, day: string) {
   if (period === "day") return ymd === day;
   const now = new Date();
   const today = ymdOf(now);
+  if (period === "tomorrow") return ymd === tomorrowYmd(now);
   if (period === "today") return ymd === today;
   if (period === "month") return ymd.slice(0, 7) === today.slice(0, 7);
   const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
@@ -161,6 +177,10 @@ function periodRange(period: PeriodKey, day: string): { from?: string; to?: stri
   const now = new Date();
   const today = ymdOf(now);
   if (period === "day") return { from: day, to: day };
+  if (period === "tomorrow") {
+    const next = tomorrowYmd(now);
+    return { from: next, to: next };
+  }
   if (period === "today") return { from: today, to: today };
   if (period === "month") {
     const start = `${today.slice(0, 7)}-01`;
@@ -198,8 +218,12 @@ export default function AdminBookingsPage() {
   const [tab, setTab] = useState<TabKey>("confirmed");
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
-  const [period, setPeriod] = useState<PeriodKey>("today");
-  const [day, setDay] = useState(() => ymdOf(new Date()));
+  const [period, setPeriod] = useState<PeriodKey>(() => periodForTab("confirmed"));
+  const [day, setDay] = useState(() => {
+    const now = new Date();
+    return afterClose(now) ? tomorrowYmd(now) : ymdOf(now);
+  });
+  const periodPinned = useRef(false);
   const [artistFilter, setArtistFilter] = useState<string[]>([]);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "date", dir: "asc" });
   const [selected, setSelected] = useState<string[]>([]);
@@ -463,9 +487,14 @@ export default function AdminBookingsPage() {
     setDeleting(false);
   };
 
+  const choosePeriod = (next: PeriodKey) => {
+    periodPinned.current = true;
+    setPeriod(next);
+  };
+
   const resetFilters = () => {
     setQuery("");
-    setPeriod("all");
+    choosePeriod("all");
     setArtistFilter([]);
     setOpenFilter(null);
   };
@@ -513,7 +542,7 @@ export default function AdminBookingsPage() {
                     type="button"
                     onClick={() => {
                       setTab(row.status === "cancelled" || row.status === "noshow" ? "cancelled_noshow" : row.status);
-                      setPeriod("all");
+                      choosePeriod("all");
                       setSearchOpen(false);
                     }}
                     className="flex w-full flex-col items-start gap-1 border-t border-[#F3EFEA] px-3 py-[10px] text-left first:border-t-0 hover:bg-[#F9F8F4]"
@@ -549,7 +578,10 @@ export default function AdminBookingsPage() {
             <button
               key={t.key}
               type="button"
-              onClick={() => setTab(t.key)}
+              onClick={() => {
+                setTab(t.key);
+                if (!periodPinned.current) setPeriod(periodForTab(t.key));
+              }}
               className={clsx(
                 "-mb-px flex items-end border-b-2 px-[18px] pb-[14px] text-[16px] leading-none",
                 on ? "border-[#1C1C1C] text-[#1C1C1C]" : "border-transparent text-[#8A847C]"
@@ -591,7 +623,7 @@ export default function AdminBookingsPage() {
                   key={p.key}
                   type="button"
                   onClick={() => {
-                    setPeriod(p.key);
+                    choosePeriod(p.key);
                     setOpenFilter(null);
                   }}
                   className="flex w-full items-center justify-between px-5 py-2 text-left text-[14px] text-[#1C1C1C] hover:bg-[#F6F4F0]"
@@ -607,7 +639,7 @@ export default function AdminBookingsPage() {
                   ariaLabel="날짜 선택"
                   onChange={(ymd) => {
                     setDay(ymd);
-                    setPeriod("day");
+                    choosePeriod("day");
                     setOpenFilter(null);
                   }}
                   className="mt-2 h-[34px] w-full rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white px-3 text-[14px] font-medium text-[#1C1C1C]"

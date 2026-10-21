@@ -46,8 +46,17 @@ export function parseExpenseCategory(value: string): ExpenseCategory | null {
   return LEGACY_CATEGORY_MAP[value] ?? null;
 }
 
+/** 알려진 코드는 코드로 두고, 직접 입력한 이름은 그대로 둔다. */
+export function storedExpenseCategory(value: string): string {
+  const trimmed = value.trim();
+  return parseExpenseCategory(trimmed) ?? (trimmed || "other");
+}
+
 export function expenseCategoryLabel(value: string) {
-  return EXPENSE_CATEGORY_LABEL[normalizeExpenseCategory(value)];
+  const known = parseExpenseCategory(value);
+  if (known) return EXPENSE_CATEGORY_LABEL[known];
+  const trimmed = value.trim();
+  return trimmed || "기타";
 }
 
 export const EXPENSE_NATURES = [

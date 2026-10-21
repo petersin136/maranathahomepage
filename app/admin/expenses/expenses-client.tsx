@@ -9,6 +9,7 @@ import {
   FinanceHeader,
   FinanceSticky,
   INPUT,
+  Icon,
   Modal,
   MonthPicker,
   Note,
@@ -51,10 +52,57 @@ type ExpenseForm = {
 const LINE_BTN =
   "inline-flex h-[34px] items-center gap-2 rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white px-3 text-[13px] font-semibold leading-normal text-[#1C1C1C] hover:bg-[#F6F4F0] disabled:opacity-40";
 
-const SELECT = clsx(
-  INPUT,
-  "appearance-none bg-[url('/admin-icons/lnb/chevron-down.png')] bg-[length:14px] bg-[right_10px_center] bg-no-repeat pr-8"
-);
+function FieldSelect({
+  value,
+  options,
+  onChange
+}: {
+  value: string;
+  options: readonly { value: string; label: string }[];
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const close = () => setOpen(false);
+  const ref = useOutsideClose(open, close);
+  const current = options.find((option) => option.value === value)?.label ?? "";
+  return (
+    <div ref={ref} className={clsx("relative", open && "z-20")}>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className={clsx(INPUT, "flex w-full items-center text-left")}
+      >
+        <span className="min-w-0 flex-1 truncate">{current}</span>
+        <Icon
+          src={open ? "/admin-icons/lnb/chevron-down-bold.png" : "/admin-icons/lnb/chevron-down.png"}
+          className={clsx("ml-2 h-[16px] w-[16px] shrink-0 text-[#9A948C]", open && "rotate-180")}
+        />
+      </button>
+      {open ? (
+        <div className="absolute left-0 top-[calc(100%+6px)] z-30 w-full rounded-[12px] border border-[#EFEBE6] bg-white py-2 shadow-[0_8px_24px_rgba(28,28,28,0.08)]">
+          {options.map((option) => {
+            const selected = option.value === value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  onChange(option.value);
+                  close();
+                }}
+                className="flex w-full items-center justify-between px-4 py-2 text-left text-[14px] text-[#1C1C1C] hover:bg-[#F6F4F0]"
+              >
+                {option.label}
+                {selected ? <Icon src="/admin-icons/lnb/check.png" className="ml-4 h-[12px] w-[12px]" /> : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 function defaultDate(year: number, month: number) {
   const today = todayKst();
@@ -243,7 +291,11 @@ export default function AdminExpensesPage({
   const rows = useMemo(() => {
     const list = data?.expenses ?? [];
     if (categoryFilter.length === 0) return list;
-    return list.filter((row) => categoryFilter.includes(row.category as ExpenseCategory));
+    return list.filter(
+      (row) =>
+        categoryFilter.includes(row.category as ExpenseCategory) ||
+        (categoryFilter.includes("other") && !EXPENSE_CATEGORIES.some((c) => c.value === row.category))
+    );
   }, [data, categoryFilter]);
 
   const shareGroupPercents = s ? s.shareGroups.map((g) => (s.totalAmount > 0 ? Math.round((g.amount / s.totalAmount) * 100) : 0)) : [];
@@ -614,20 +666,39 @@ export default function AdminExpensesPage({
                 className={clsx(INPUT, "w-full")}
               />
             </label>
-            <label className="block">
+            <div>
               <span className="mb-1 block text-[13px] font-semibold text-[#8A847C]">카테고리</span>
-              <select
-                value={form.category}
-                onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                className={clsx(SELECT, "w-full")}
-              >
-                {EXPENSE_CATEGORIES.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <div className="flex flex-wrap">
+                {EXPENSE_CATEGORIES.map((c) => {
+                  const on = form.category === c.value;
+                  return (
+                    <button
+                      key={c.value}
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, category: c.value }))}
+                      className={clsx(
+                        "mb-2 mr-2 inline-flex h-[36px] items-center rounded-[8px] border-[1.5px] px-3 text-[14px] font-bold",
+                        on ? "border-[#2F3A2F] bg-[#2F3A2F] text-white" : "border-[#9A948C] bg-white text-[#1C1C1C]"
+                      )}
+                    >
+                      {c.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <input
+                type="text"
+                value={EXPENSE_CATEGORIES.some((c) => c.value === form.category) ? "" : form.category}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  const match = EXPENSE_CATEGORIES.find((c) => c.label === text.trim());
+                  setForm((f) => ({ ...f, category: match ? match.value : text }));
+                }}
+                className={clsx(INPUT, "w-full")}
+                placeholder="직접 입력"
+                maxLength={40}
+              />
+            </div>
             <label className="block">
               <span className="mb-1 block text-[13px] font-semibold text-[#8A847C]">거래처</span>
               <input
@@ -649,20 +720,14 @@ export default function AdminExpensesPage({
               />
             </label>
             <div className="grid grid-cols-2 gap-3">
-              <label className="block">
+              <div>
                 <span className="mb-1 block text-[13px] font-semibold text-[#8A847C]">결제 수단</span>
-                <select
+                <FieldSelect
                   value={form.payment_method}
-                  onChange={(e) => setForm((f) => ({ ...f, payment_method: e.target.value }))}
-                  className={clsx(SELECT, "w-full")}
-                >
-                  {EXPENSE_PAYMENT_METHODS.map((m) => (
-                    <option key={m.value} value={m.value}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  options={EXPENSE_PAYMENT_METHODS}
+                  onChange={(payment_method) => setForm((f) => ({ ...f, payment_method }))}
+                />
+              </div>
               <label className="block">
                 <span className="mb-1 block text-[13px] font-semibold text-[#8A847C]">지출 금액</span>
                 <input
@@ -677,20 +742,14 @@ export default function AdminExpensesPage({
                 />
               </label>
             </div>
-            <label className="block">
+            <div>
               <span className="mb-1 block text-[13px] font-semibold text-[#8A847C]">증빙 상태</span>
-              <select
+              <FieldSelect
                 value={form.proof_type}
-                onChange={(e) => setForm((f) => ({ ...f, proof_type: e.target.value }))}
-                className={clsx(SELECT, "w-full")}
-              >
-                {EXPENSE_PROOF_TYPES.map((p) => (
-                  <option key={p.value} value={p.value}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+                options={EXPENSE_PROOF_TYPES}
+                onChange={(proof_type) => setForm((f) => ({ ...f, proof_type }))}
+              />
+            </div>
             <CheckBox
               label="매달 반복"
               checked={form.is_recurring}
