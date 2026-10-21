@@ -42,11 +42,13 @@ export default function AdminDashboardPage() {
 }
 
 async function DashboardLoaded() {
-  const [session, data] = await Promise.all([getAdminShellSession(), getDashboardData()]);
-  const range = monthRangeOf(data.today);
-  const [services, monthPay] = await Promise.all([
+  const today = todayKst();
+  const range = monthRangeOf(today);
+  const [session, data, services, monthPay] = await Promise.all([
+    getAdminShellSession(),
+    getDashboardData(),
     fetchPopularServices(range.start, range.end),
-    session?.role === "owner" ? loadMonthPay(data.today) : Promise.resolve(null)
+    loadMonthPay(today)
   ]);
   return (
     <div className="mt-6 pb-4 pl-[6px]">
@@ -55,7 +57,7 @@ async function DashboardLoaded() {
         pendingCount={data.pendingCount}
         monthTrend={data.monthTrend}
         services={services}
-        monthPay={monthPay}
+        monthPay={session?.role === "owner" ? monthPay : null}
       />
     </div>
   );

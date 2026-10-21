@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { getAdminUser, type AdminUserRow } from "@/lib/admin/admin-users";
 import type { AdminShellSession } from "@/lib/admin/shell-session";
@@ -32,6 +33,20 @@ export function requireSupabaseAdmin():
 }
 
 const loadAdminUser = cache(async () => {
+  // 미들웨어가 JWT를 이미 검증하고 헤더로 넘긴다. 여기서 getUser()를 다시 치면
+  // 관리자 화면마다 Auth 서버를 한 번 더 왕복한다.
+  const h = await headers();
+  const id = h.get("x-hairup-user-id");
+  if (id) {
+    const name = decodeHeader(h.get("x-hairup-user-name"));
+    const user = {
+      id,
+      email: decodeHeader(h.get("x-hairup-user-email")),
+      user_metadata: name ? { name } : {}
+    } as User;
+    return { user, error: null };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -39,6 +54,17 @@ const loadAdminUser = cache(async () => {
   } = await supabase.auth.getUser();
   return { user: user ?? null, error };
 });
+
+function decodeHeader(value: string | null) {
+  if (!value) return null;
+  try {
+    const binary = atob(value);
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  } catch {
+    return null;
+  }
+}
 
 export const requireAdminUser = cache(async (): Promise<
   | { ok: true; user: User; role: AdminUserRow["role"]; artistId: string | null }

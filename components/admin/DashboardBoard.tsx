@@ -1,10 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import type { Route } from "next";
 import { useMemo } from "react";
 import { clsx } from "clsx";
-import { DashboardMonthChart } from "@/components/admin/DashboardMonthChart";
+
+const DashboardMonthChart = dynamic(
+  () => import("@/components/admin/DashboardMonthChart").then((mod) => mod.DashboardMonthChart),
+  { loading: () => <div className="h-[220px]" /> }
+);
 import type { DashBooking, DashMonthPoint, MonthPaySnapshot, PopularService } from "@/lib/admin/dashboard-data";
 
 const HOURS = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19];

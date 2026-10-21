@@ -1,16 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { clsx } from "clsx";
 import {
   STATE_META,
   STATE_ORDER,
   customerDetailHref,
   customerState,
+  useCustomerFilters,
   type CustomerState
 } from "@/components/admin/CustomerFilters";
-import type { CustomerDirectoryRow, CustomersDashboard } from "@/lib/admin/customers-data";
 import { AdminBellButton, AdminHeaderSearch } from "@/components/admin/AdminBellButton";
 import { AdminPageTitle } from "@/components/admin/AdminPageTitle";
 
@@ -66,9 +66,7 @@ function formatVisit(date: string | null, days: number | null) {
 }
 
 export default function AdminCustomersPage() {
-  const [rows, setRows] = useState<CustomerDirectoryRow[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { rows, loading, error, load } = useCustomerFilters();
   const [query, setQuery] = useState("");
   const [services, setServices] = useState<string[]>([]);
   const [dayIds, setDayIds] = useState<string[]>([]);
@@ -79,27 +77,6 @@ export default function AdminCustomersPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [openFilter, setOpenFilter] = useState<"service" | "day" | "status" | null>(null);
   const filterRef = useRef<HTMLDivElement>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/admin/customers");
-      const json = await res.json();
-      if (!res.ok || !json.ok) throw new Error(json.error || "로드 실패");
-      const data = json as CustomersDashboard;
-      setRows(data.directory ?? []);
-    } catch (e) {
-      setRows([]);
-      setError(e instanceof Error ? e.message : "로드 실패");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   useEffect(() => {
     if (!openFilter) return;

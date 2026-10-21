@@ -16,12 +16,10 @@ const AUTH_PATHS = [
 export default function AdminLayoutClient({
   pendingCount,
   session,
-  salonName,
   children
 }: {
   pendingCount: number | null;
   session: AdminShellSession | null;
-  salonName: string | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -36,7 +34,7 @@ export default function AdminLayoutClient({
   return (
     <PendingCountProvider initialCount={pendingCount}>
       <AdminSessionProvider value={session}>
-        <AdminShell session={session} salonName={salonName}>{children}</AdminShell>
+        <AdminShell session={session}>{children}</AdminShell>
       </AdminSessionProvider>
     </PendingCountProvider>
   );

@@ -221,7 +221,7 @@ export type PopularService = {
   count: number;
 };
 
-const POPULAR_FIELDS = "id, booking_date, status, service_ids, service_names";
+const POPULAR_FIELDS = "service_ids, service_names";
 
 /** 인기 시술은 매장 전체 트렌드라 designer 도 전체를 본다. 금액은 조회하지 않는다. */
 export async function fetchPopularServices(from: string, to: string): Promise<PopularService[]> {

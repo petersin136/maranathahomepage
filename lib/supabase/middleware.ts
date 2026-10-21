@@ -13,9 +13,28 @@ function copyAuthCookies(from: NextResponse, to: NextResponse) {
   return to;
 }
 
-function nextWithPathname(request: NextRequest) {
+function encodeHeader(value: string) {
+  const bytes = new TextEncoder().encode(value.replace(/[\r\n]/g, "").slice(0, 80));
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function nextWithPathname(
+  request: NextRequest,
+  user: { id: string; email: string; name: string } | null = null
+) {
   const requestHeaders = new Headers(request.headers);
+  // 클라이언트가 같은 헤더를 심어도 여기서 지운 뒤, 검증된 경우에만 다시 넣는다.
+  requestHeaders.delete("x-hairup-user-id");
+  requestHeaders.delete("x-hairup-user-email");
+  requestHeaders.delete("x-hairup-user-name");
   requestHeaders.set("x-pathname", request.nextUrl.pathname);
+  if (user) {
+    requestHeaders.set("x-hairup-user-id", user.id);
+    if (user.email) requestHeaders.set("x-hairup-user-email", encodeHeader(user.email));
+    if (user.name) requestHeaders.set("x-hairup-user-name", encodeHeader(user.name));
+  }
   return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
@@ -57,10 +76,35 @@ export async function updateSession(request: NextRequest) {
   // getClaims()는 JWT 검증(가능하면 로컬) + 만료 임박 시만 갱신.
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
+  const meta =
+    claims?.user_metadata && typeof claims.user_metadata === "object"
+      ? (claims.user_metadata as Record<string, unknown>)
+      : {};
+  const name =
+    typeof meta.name === "string"
+      ? meta.name
+      : typeof meta.full_name === "string"
+        ? meta.full_name
+        : "";
   const user =
-    claims && typeof claims.sub === "string" ? { id: claims.sub } : null;
+    claims && typeof claims.sub === "string"
+      ? {
+          id: claims.sub,
+          email: typeof claims.email === "string" ? claims.email : "",
+          name
+        }
+      : null;
 
-  return { supabaseResponse, user };
+  const forwarded = nextWithPathname(request, user);
+  for (const cookie of supabaseResponse.headers.getSetCookie()) {
+    forwarded.headers.append("set-cookie", cookie);
+  }
+  for (const header of ["cache-control", "expires", "pragma"] as const) {
+    const value = supabaseResponse.headers.get(header);
+    if (value) forwarded.headers.set(header, value);
+  }
+
+  return { supabaseResponse: forwarded, user };
 }
 
 export { copyAuthCookies };
