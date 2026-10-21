@@ -219,7 +219,6 @@ export function DashboardBoard({
                 const hot = count === hourPeak && count > 0;
                 return (
                   <div key={hour} className="relative z-[1] flex h-full min-w-0 flex-1 flex-col justify-end">
-                    <div className="flex min-h-0 flex-1 items-end">
                     {count > 0 ? (
                       <div
                         className="w-full rounded-t-[6px] shadow-[0_1px_0_rgba(28,28,28,0.06),inset_0_1px_0_rgba(255,255,255,0.4)]"
