@@ -188,6 +188,24 @@ export function DashboardBoard({
         <section className="flex flex-col rounded-[8px] bg-[color:var(--sidebar-bg)] px-5 py-5">
           <SectionTitle href="/admin/calendar" title="오늘 시간대" hint="예약 건수" />
           <div className="mt-4 flex min-h-[220px] flex-1 flex-col">
+            <div className="mb-[8px] flex gap-1.5">
+              {HOURS.map((hour, index) => {
+                const count = hourCounts[index];
+                const current = hour === now.hour;
+                const hot = count === hourPeak && count > 0;
+                return (
+                  <p
+                    key={hour}
+                    className={clsx(
+                      "min-w-0 flex-1 text-center text-[12px] font-bold tabular-nums leading-none",
+                      current || hot ? "text-[#1C1C1C]" : "text-[color:var(--muted)]"
+                    )}
+                  >
+                    {count > 0 ? `${count}건` : "\u00a0"}
+                  </p>
+                );
+              })}
+            </div>
             <div className="relative flex min-h-0 flex-1 items-end gap-1.5">
               <div aria-hidden className="pointer-events-none absolute inset-0 flex flex-col justify-between pb-0">
                 {[0, 1, 2, 3].map((step) => (
@@ -201,31 +219,22 @@ export function DashboardBoard({
                 const hot = count === hourPeak && count > 0;
                 return (
                   <div key={hour} className="relative z-[1] flex h-full min-w-0 flex-1 flex-col justify-end">
-                    <p
-                      className={clsx(
-                        "mb-1.5 text-center text-[12px] font-bold tabular-nums leading-none",
-                        current || hot ? "text-[#1C1C1C]" : "text-[color:var(--muted)]"
-                      )}
-                    >
-                      {count > 0 ? count : ""}
-                    </p>
                     <div className="flex min-h-0 flex-1 items-end">
-                      {count > 0 ? (
-                        <div
-                          className="w-full rounded-t-[6px] shadow-[0_1px_0_rgba(28,28,28,0.06),inset_0_1px_0_rgba(255,255,255,0.4)]"
-                          style={{
-                            height: `${height}%`,
-                            background: current
-                              ? "linear-gradient(180deg, #5A6B5A 0%, #2F3A2F 55%, #1F2820 100%)"
-                              : hot
-                                ? "linear-gradient(180deg, #5C675C 0%, #3A463A 100%)"
-                                : "linear-gradient(180deg, #A39B90 0%, #6F6962 100%)"
-                          }}
-                        />
-                      ) : (
-                        <div className="h-[4px] w-full rounded-full bg-[#DED8CF]" />
-                      )}
-                    </div>
+                    {count > 0 ? (
+                      <div
+                        className="w-full rounded-t-[6px] shadow-[0_1px_0_rgba(28,28,28,0.06),inset_0_1px_0_rgba(255,255,255,0.4)]"
+                        style={{
+                          height: `${height}%`,
+                          background: current
+                            ? "linear-gradient(180deg, #5A6B5A 0%, #2F3A2F 55%, #1F2820 100%)"
+                            : hot
+                              ? "linear-gradient(180deg, #5C675C 0%, #3A463A 100%)"
+                              : "linear-gradient(180deg, #A39B90 0%, #6F6962 100%)"
+                        }}
+                      />
+                    ) : (
+                      <div className="h-[4px] w-full rounded-full bg-[#DED8CF]" />
+                    )}
                   </div>
                 );
               })}
@@ -241,7 +250,7 @@ export function DashboardBoard({
                       current ? "font-bold text-[#1C1C1C]" : "text-[color:var(--muted)]"
                     )}
                   >
-                    {hour}
+                    {hour}시
                   </p>
                 );
               })}

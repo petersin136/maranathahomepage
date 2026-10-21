@@ -339,6 +339,7 @@ export default function AdminCustomerDetailPage() {
             <Field label="첫 예약 등록" value={formatDate(summary.registered)} />
             <Field label="취소 · 노쇼" value={`${summary.cancelled}회 · ${summary.noshow}회`} />
           </dl>
+          <UpcomingCard booking={next} today={today} extraCount={Math.max(0, upcoming.length - 1)} />
         </section>
 
         <section>
@@ -395,13 +396,15 @@ export default function AdminCustomerDetailPage() {
         </section>
       </div>
 
-      <BookingTable
-        title="예정된 예약"
-        rows={upcoming}
-        today={today}
-        kind="upcoming"
-        empty="예정된 예약이 없습니다."
-      />
+      {upcoming.length > 1 ? (
+        <BookingTable
+          title="예정된 예약"
+          rows={upcoming.slice(1)}
+          today={today}
+          kind="upcoming"
+          empty="예정된 예약이 없습니다."
+        />
+      ) : null}
       <BookingTable
         title="시술 이력"
         rows={history}
@@ -419,6 +422,66 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
       <dt className="text-[15px] font-bold text-[#9A948C]">{label}</dt>
       <dd className="mt-3 truncate text-[20px] font-bold leading-[24px]">{value}</dd>
       {hint ? <dd className="mt-1 truncate text-[13px] text-[#8A847C]">{hint}</dd> : null}
+    </div>
+  );
+}
+
+function UpcomingCard({
+  booking,
+  today,
+  extraCount
+}: {
+  booking: CustomerBooking | null;
+  today: string;
+  extraCount: number;
+}) {
+  return (
+    <div className="mt-8">
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-[18px] font-bold [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">다음 예약</h2>
+        {booking ? (
+          <span className="text-[13px] font-medium text-[#8A847C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+            {dDay(booking.booking_date, today)}
+            {extraCount > 0 ? ` · 외 ${extraCount}건` : ""}
+          </span>
+        ) : null}
+      </div>
+      {booking ? (
+        <div className="mt-4 rounded-[8px] bg-[color:var(--sidebar-bg)] px-5 py-5">
+          <p className="text-[20px] font-bold leading-none">
+            {formatDate(booking.booking_date)}{" "}
+            <span className="text-[16px] font-medium">{booking.booking_time}</span>
+          </p>
+          <p className="mt-3 text-[16px] font-medium leading-normal [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+            {booking.artist_name || booking.artist_id || "—"}
+            <span className="mx-[8px] text-[#C9C3BB]">·</span>
+            {services(booking)}
+          </p>
+          <div className="mt-4 flex items-end justify-between gap-4">
+            <div>
+              <p className="text-[13px] leading-none text-[#8A847C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+                {BOOKING_STATUS_LABEL[booking.status] ?? booking.status}
+                {booking.deposit_amount
+                  ? ` · 예약금 ${won(booking.deposit_amount)} ${booking.deposit_paid ? "입금" : "미입금"}`
+                  : ""}
+              </p>
+              <p className="mt-2 text-[16px] font-bold leading-none tabular-nums [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+                {won(booking.total_amount)}
+              </p>
+            </div>
+            <Link
+              href={`/admin/bookings/${booking.id}` as Route}
+              className="shrink-0 text-[14px] font-medium text-[#8A847C] hover:text-[#1C1C1C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]"
+            >
+              상세보기
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-4 rounded-[8px] bg-[color:var(--sidebar-bg)] px-5 py-5 text-[15px] font-medium text-[#8A847C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+          예정된 예약이 없습니다.
+        </p>
+      )}
     </div>
   );
 }

@@ -35,10 +35,11 @@ export function DashboardMonthChart({ points }: { points: DashMonthPoint[] }) {
         <YAxis
           allowDecimals={false}
           domain={[0, Math.max(4, max)]}
-          width={28}
+          width={48}
           axisLine={false}
           tickLine={false}
           tick={{ fill: MUTED, fontSize: 12 }}
+          tickFormatter={(value) => `${value}건`}
         />
         <Tooltip cursor={{ fill: "#F6F4F0" }} content={<ChartTip />} />
         <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={42}>
