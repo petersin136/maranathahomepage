@@ -42,6 +42,13 @@ export function intervalsOverlap(
   return newStart < oldEnd && oldStart < newEnd;
 }
 
+export function sumServiceDurationMinutes(serviceDurationMinutes: number[]): number {
+  return serviceDurationMinutes.reduce(
+    (acc, d) => acc + (Number.isFinite(d) ? Number(d) : 0),
+    0
+  );
+}
+
 /**
  * 예약 점유 시간(분).
  * - storedDuration 이 있으면 그대로 사용

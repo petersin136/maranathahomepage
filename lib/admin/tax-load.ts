@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { designerPaySplit } from "@/lib/admin/retail-products";
 import { kstDayEndExclusiveIso, kstDayStartIso, todayKst } from "@/lib/admin/sales-data";
 import {
   aggregateTaxDashboard,
@@ -18,6 +19,7 @@ type BookingRow = {
   payment_method: string | null;
   cash_receipt_issued: boolean | null;
   artist_id: string | null;
+  service_names: string[] | null;
 };
 
 type ExpenseRow = {
@@ -57,7 +59,7 @@ export async function loadTaxDashboard(): Promise<TaxDashboard> {
     loadShopSettings(admin),
     admin
       .from("bookings")
-      .select("paid_at, final_amount, payment_method, cash_receipt_issued, artist_id")
+      .select("paid_at, final_amount, payment_method, cash_receipt_issued, artist_id, service_names")
       .eq("status", "completed")
       .not("final_amount", "is", null)
       .gte("paid_at", kstDayStartIso(yearStart))
@@ -103,11 +105,25 @@ export async function loadTaxDashboard(): Promise<TaxDashboard> {
       )
       .map((a) => a.id as string)
   );
+  const artistRate = new Map(
+    (artistsRes.data ?? []).map((a) => {
+      const rate = Number(a.commission_rate);
+      return [
+        String(a.id),
+        { rate: Number.isFinite(rate) ? rate : 0, hasCommission: Number.isFinite(rate) && rate > 0 }
+      ] as const;
+    })
+  );
 
   const revenueMonths: { year: number; month: number; amount: number }[] = [];
+  const productCostMonths: { year: number; month: number; amount: number }[] = [];
+  const incentiveMonths: { year: number; month: number; amount: number }[] = [];
   let yearRevenue = 0;
   let vatPeriodRevenue = 0;
+  let vatPeriodProductCost = 0;
   let ytdRevenue = 0;
+  let ytdProductCost = 0;
+  let ytdIncentive = 0;
   let cashReceiptCount = 0;
   let cashReceiptAmount = 0;
   let hasFreelancePayouts = false;
@@ -117,10 +133,26 @@ export async function loadTaxDashboard(): Promise<TaxDashboard> {
     const amount = Number(b.final_amount);
     if (!Number.isFinite(amount)) continue;
     const { year: by, month: bm, ymd } = paidAtToKstYearMonth(b.paid_at);
+    const artist = b.artist_id ? artistRate.get(String(b.artist_id)) : null;
+    const split = designerPaySplit({
+      totalAmount: amount,
+      serviceNames: b.service_names,
+      commissionRate: artist?.rate ?? 0,
+      hasCommission: artist?.hasCommission ?? false
+    });
     revenueMonths.push({ year: by, month: bm, amount });
+    productCostMonths.push({ year: by, month: bm, amount: split.productCost });
+    incentiveMonths.push({ year: by, month: bm, amount: split.incentive });
     yearRevenue += amount;
-    if (ymd >= vatPeriod.from && ymd <= vatPeriod.to) vatPeriodRevenue += amount;
-    if (ymd >= yearStart && ymd <= today) ytdRevenue += amount;
+    if (ymd >= vatPeriod.from && ymd <= vatPeriod.to) {
+      vatPeriodRevenue += amount;
+      vatPeriodProductCost += split.productCost;
+    }
+    if (ymd >= yearStart && ymd <= today) {
+      ytdRevenue += amount;
+      ytdProductCost += split.productCost;
+      ytdIncentive += split.incentive;
+    }
 
     if (
       b.payment_method &&
@@ -167,12 +199,17 @@ export async function loadTaxDashboard(): Promise<TaxDashboard> {
     monthlyExpense: sumByMonth(expenseMonths),
     monthlyProofExpense: sumByMonth(proofMonths),
     monthlyUnprovenExpense: sumByMonth(unprovenMonths),
+    monthlyProductCost: sumByMonth(productCostMonths),
+    monthlyIncentive: sumByMonth(incentiveMonths),
     yearRevenue,
     previousYearRevenue,
     vatPeriodRevenue,
     vatPeriodProofExpense: vatPeriodProof,
+    vatPeriodProductCost,
     ytdRevenue,
     ytdExpense,
+    ytdProductCost,
+    ytdIncentive,
     ytdUnprovenExpense: ytdUnproven,
     cashReceiptCount,
     cashReceiptAmount,

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdminUser, requireSupabaseAdmin } from "@/lib/admin/auth";
 import { buildProfiles, type CustomerBookingRow } from "@/lib/admin/customers-data";
 import { resolveCustomerRequestText } from "@/lib/admin/booking-display";
-import { resolveDurationMinutes } from "@/lib/booking/overlap";
+import { resolveDurationMinutes, sumServiceDurationMinutes } from "@/lib/booking/overlap";
 import { bookingTone } from "@/lib/admin/calendar-tone";
 
 type CalendarRow = {
@@ -106,10 +106,10 @@ export async function GET(request: Request) {
     const metas = ids.length
       ? ids.map((id) => serviceById.get(id) ?? null)
       : names.map((n) => serviceByName.get(String(n || "").trim()) ?? null);
-    const durationMinutes = resolveDurationMinutes(
-      row.duration_minutes,
-      metas.map((m) => Number(m?.duration_minutes) || 0)
-    );
+    const serviceDurations = metas.map((m) => Number(m?.duration_minutes) || 0);
+    const serviceSum = sumServiceDurationMinutes(serviceDurations);
+    const durationMinutes =
+      serviceSum > 0 ? serviceSum : resolveDurationMinutes(row.duration_minutes, serviceDurations);
     const tone = bookingTone(
       metas.map((m, i) => ({
         category: m?.category ?? null,

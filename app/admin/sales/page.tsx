@@ -11,7 +11,7 @@ export default async function SalesPage() {
   if (auth.ok && auth.role === "designer" && !auth.artistId) redirect("/admin");
   const artistIds = auth.ok && auth.role === "designer" && auth.artistId ? [auth.artistId] : [];
   try {
-    const initial = await loadSalesDashboard("this_month", null, null, artistIds);
+    const initial = await loadSalesDashboard("last_month", null, null, artistIds);
     return <AdminSalesPage initial={initial} initialError={null} />;
   } catch (e) {
     console.error("[admin/sales page]", e);

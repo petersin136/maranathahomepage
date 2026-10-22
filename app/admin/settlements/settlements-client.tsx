@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clsx } from "clsx";
 import {
   ChipDropdown,
-  DownloadExportButton,
   Empty,
   FinanceHeader,
   FinanceSticky,
@@ -29,9 +28,11 @@ import {
   bankAccountDisplay,
   remainderPercents,
   type SettlementArtistRow,
+  type SettlementBookingRow,
   type SettlementDashboard
 } from "@/lib/admin/settlements-data";
 import { productAmountFromNames } from "@/lib/admin/retail-products";
+import { splitSettlementHistory } from "@/lib/admin/settlement-history";
 import { todayKst } from "@/lib/admin/sales-data";
 
 const STATUS_FILTERS = [
@@ -302,7 +303,7 @@ export default function AdminSettlementsPage({
           {
             label: "매출액",
             value: won(s.totalRevenue),
-            hint: `정산 대상 실적(${s.completedCount}건)`,
+            hint: `시술 + 제품 매출 · ${s.completedCount}건`,
             up: false,
             dark: false
           },
@@ -320,7 +321,7 @@ export default function AdminSettlementsPage({
           {
             label: "총 매출액",
             value: won(s.totalRevenue),
-            hint: `정산 대상 실적(${s.completedCount}건)`,
+            hint: `시술 + 제품 매출 · ${s.completedCount}건`,
             up: false,
             dark: false
           },
@@ -402,12 +403,11 @@ export default function AdminSettlementsPage({
               >
                 정산 마감
               </button>
-              <DownloadExportButton
-                label="정산 리포트 PDF"
-                report="settlements"
+              <SettlementReportMenu
                 year={year}
                 month={month}
                 status={statusFilter}
+                artists={rows}
                 onError={setError}
               />
             </>
@@ -663,13 +663,26 @@ function StructureCard({ net, tax, title }: { net: number; tax: number; title: s
   );
 }
 
-function PayMeta({ label, value }: { label: string; value: string }) {
+function PayMeta({
+  label,
+  value,
+  tone
+}: {
+  label: string;
+  value: string;
+  tone?: "ok" | "wait";
+}) {
   return (
-    <span className="mr-[28px] inline-flex items-baseline">
-      <span className="text-[13px] leading-none text-[#8A847C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+    <span className="mr-[22px] inline-flex items-baseline">
+      <span className="text-[12px] leading-none text-[#9A948C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
         {label}
       </span>
-      <span className="ml-[8px] text-[15px] font-medium leading-none text-[#1C1C1C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+      <span
+        className={clsx(
+          "ml-[6px] text-[13px] leading-none [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]",
+          tone === "ok" ? "font-medium text-[#2A744B]" : tone === "wait" ? "font-medium text-[#B16242]" : "text-[#5C564F]"
+        )}
+      >
         {value}
       </span>
     </span>
@@ -681,37 +694,50 @@ function PayAmount({
   detail,
   amount,
   strong = false,
-  minus = false,
-  line = true
+  size = "md",
+  tone = "ink"
 }: {
   label: string;
   detail?: string;
   amount: string;
   strong?: boolean;
-  minus?: boolean;
-  line?: boolean;
+  size?: "md" | "lg";
+  tone?: "service" | "product" | "minus" | "ink" | "net";
 }) {
+  const amountColor =
+    tone === "service"
+      ? "text-[#2F3A2F]"
+      : tone === "product"
+        ? "text-[#3A5476]"
+        : tone === "minus"
+          ? "text-[#B16242]"
+          : tone === "net"
+            ? "text-[#2F3A2F]"
+            : "text-[#1C1C1C]";
+  const swatch =
+    tone === "service" ? "#2F3A2F" : tone === "product" ? "#3A5476" : tone === "minus" ? "#B16242" : null;
   return (
-    <div
-      className={clsx(
-        "flex items-baseline justify-between py-[14px]",
-        strong ? "border-t-[1.5px] border-[#C9C3BB]" : line ? "border-b border-[#EFEBE6]" : ""
-      )}
-    >
-      <span>
-        <span className="block text-[16px] font-medium leading-none text-[#1C1C1C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
-          {label}
-        </span>
+    <div className={clsx("flex items-baseline justify-between py-[7px]", strong && "mt-[2px] border-t border-[#D7E0D4] pt-[10px]")}>
+      <span
+        className={clsx(
+          "inline-flex min-w-0 items-baseline leading-none [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]",
+          size === "lg" ? "text-[15px] text-[#1C1C1C]" : "text-[13px] text-[#8A847C]"
+        )}
+      >
+        {swatch ? (
+          <span className="mr-[8px] inline-block h-[6px] w-[6px] shrink-0 rounded-full" style={{ background: swatch }} />
+        ) : null}
+        {label}
         {detail ? (
-          <span className="mt-[8px] block text-[14px] leading-none tabular-nums text-[#8A847C] [text-box-edge:text_alphabetic] [text-box-trim:trim-both]">
-            {detail}
-          </span>
+          <span className="ml-[10px] tabular-nums [text-box-edge:text_alphabetic] [text-box-trim:trim-both]">{detail}</span>
         ) : null}
       </span>
       <span
         className={clsx(
-          "shrink-0 text-[16px] tabular-nums",
-          strong ? "font-bold text-[#1C1C1C]" : minus ? "font-semibold text-[#B16242]" : "font-semibold text-[#1C1C1C]"
+          "shrink-0 tabular-nums leading-none",
+          size === "lg" ? "text-[15px]" : "text-[13px]",
+          strong && "font-medium",
+          amountColor
         )}
       >
         {amount}
@@ -720,56 +746,395 @@ function PayAmount({
   );
 }
 
+function SettlementReportMenu({
+  year,
+  month,
+  status,
+  artists,
+  onError
+}: {
+  year: number;
+  month: number;
+  status: string;
+  artists: SettlementArtistRow[];
+  onError: (message: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setPicked([]);
+  }, [year, month, status]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (event: MouseEvent) => {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false);
+    };
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  const download = async (ids: string[]) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const params = new URLSearchParams({ year: String(year), month: String(month) });
+      if (!ids.length && status !== "all") params.set("status", status);
+      for (const id of ids) params.append("artistId", id);
+      const res = await fetch(`/api/admin/settlements/pdf?${params.toString()}`);
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error || "다운로드에 실패했습니다.");
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") || "";
+      const utfMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+      const mm = String(month).padStart(2, "0");
+      const filename = utfMatch
+        ? decodeURIComponent(utfMatch[1])
+        : `헤어업_${year}년${mm}월_정산리포트.pdf`;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setOpen(false);
+    } catch (e) {
+      onError(e instanceof Error ? e.message : "다운로드에 실패했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const allIds = artists.map((row) => row.artistId);
+  const allOn = allIds.length > 0 && allIds.every((id) => picked.includes(id));
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => setOpen((value) => !value)}
+        className="inline-flex h-[34px] items-center gap-2 whitespace-nowrap rounded-[8px] border-[length:var(--input-border-width)] border-[color:var(--input-border)] bg-white px-3 text-[13px] font-semibold leading-normal text-[#1C1C1C] hover:bg-[#F6F4F0] disabled:opacity-40"
+      >
+        <DownloadGlyph />
+        <span>{busy ? "준비 중" : "정산 리포트 PDF"}</span>
+      </button>
+      {open ? (
+        <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-[260px] rounded-[12px] border border-[#EFEBE6] bg-white p-3 shadow-[0_8px_24px_rgba(28,28,28,0.08)]">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void download([])}
+            className="flex h-[34px] w-full items-center rounded-[8px] bg-[#1C1C1C] px-3 text-left text-[13px] font-semibold text-white disabled:opacity-40"
+          >
+            전체 리포트
+          </button>
+          <div className="mt-3 flex items-center justify-between">
+            <p className="text-[12px] font-medium text-[#9A948C]">인원별</p>
+            <button
+              type="button"
+              disabled={!artists.length}
+              onClick={() => setPicked(allOn ? [] : allIds)}
+              className="text-[12px] font-medium text-[#1C1C1C]"
+            >
+              {allOn ? "선택 해제" : "모두 선택"}
+            </button>
+          </div>
+          <div className="mt-2 max-h-[220px] overflow-auto">
+            {artists.length ? (
+              artists.map((row) => (
+                <label key={row.artistId} className="flex cursor-pointer items-center gap-2 py-1.5 text-[13px] text-[#1C1C1C]">
+                  <input
+                    type="checkbox"
+                    checked={picked.includes(row.artistId)}
+                    onChange={() =>
+                      setPicked((current) =>
+                        current.includes(row.artistId)
+                          ? current.filter((id) => id !== row.artistId)
+                          : [...current, row.artistId]
+                      )
+                    }
+                    className="h-[14px] w-[14px] accent-[#1C1C1C]"
+                  />
+                  <span className="min-w-0 truncate">
+                    {row.artistName}
+                    <span className="text-[#9A948C]"> ({row.employmentLabel})</span>
+                  </span>
+                </label>
+              ))
+            ) : (
+              <p className="py-2 text-[13px] text-[#9A948C]">이 달에 정산할 디자이너가 없습니다.</p>
+            )}
+          </div>
+          <button
+            type="button"
+            disabled={busy || !picked.length}
+            onClick={() => void download(picked)}
+            className="mt-2 flex h-[34px] w-full items-center justify-center rounded-[8px] border border-[#E6E1DA] text-[13px] font-semibold text-[#1C1C1C] disabled:opacity-40"
+          >
+            선택 인원 다운로드
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function historyDate(ymd: string) {
+  return ymd.slice(2).replaceAll("-", ". ");
+}
+
+const KIND_TONE: Record<string, string> = {
+  cut: "#78716C",
+  perm: "#BF7768",
+  color: "#4E7970",
+  care: "#4C7CA2",
+  etc: "#9A948C"
+};
+
+function FolderTab({
+  on,
+  label,
+  count,
+  small = false,
+  onClick
+}: {
+  on: boolean;
+  label: string;
+  count?: number;
+  small?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={clsx(
+        "relative -mb-px border border-[#D5DFD2] leading-none",
+        small
+          ? "rounded-t-[7px] px-[12px] pb-[7px] pt-[6px] text-[12px]"
+          : "rounded-t-[9px] px-[16px] pb-[9px] pt-[8px] text-[13px]",
+        on
+          ? "z-[1] border-b-[#F4F7F2] bg-[#F4F7F2] font-semibold text-[#1C1C1C]"
+          : "bg-[#E3EBDF] font-medium text-[#7A8476]"
+      )}
+    >
+      <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+        {label}
+        {count != null ? <span className="ml-[6px] font-medium tabular-nums">{count}</span> : null}
+      </span>
+    </button>
+  );
+}
+
+function payMethodColor(label: string) {
+  if (label === "카드") return "#2F3A2F";
+  if (label === "계좌이체") return "#3A5476";
+  if (label === "현금") return "#B16242";
+  return "#8A847C";
+}
+
+function HistoryTable({
+  rows
+}: {
+  rows: { id: string; bookingDate: string; customerName: string; names: string; paymentMethodLabel: string; amount: number }[];
+}) {
+  return (
+    <table className="w-full table-fixed text-left text-[13px] font-medium leading-[18px]">
+      <tbody>
+        {rows.map((row) => (
+          <tr key={row.id} className="border-b border-[#D7E0D4] last:border-b-0">
+            <td className="w-[14%] py-[10px] pr-3 tabular-nums text-[#8A847C]">{historyDate(row.bookingDate)}</td>
+            <td className="w-[14%] truncate py-[10px] pr-3 text-[13px] text-[#1C1C1C]">{row.customerName}</td>
+            <td className="truncate py-[10px] pr-3 text-[#3A3A3A]">{row.names || "—"}</td>
+            <td className="w-[12%] py-[10px] pr-3" style={{ color: payMethodColor(row.paymentMethodLabel) }}>
+              {row.paymentMethodLabel}
+            </td>
+            <td className="w-[14%] py-[10px] text-right tabular-nums text-[#1C1C1C]">{won(row.amount)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function CompletedHistory({ bookings }: { bookings: SettlementBookingRow[] }) {
+  const [tab, setTab] = useState<"service" | "product">("service");
+  const [view, setView] = useState<"date" | "kind">("date");
+  const history = useMemo(() => splitSettlementHistory(bookings), [bookings]);
+
+  if (bookings.length === 0) {
+    return (
+      <>
+        <p className="text-[12px] font-medium leading-none text-[#3A5476] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+          완료 내역
+        </p>
+        <Empty>완료된 예약이 없습니다.</Empty>
+      </>
+    );
+  }
+
+  const tabs = [
+    { id: "service" as const, label: "시술", count: history.serviceCount, amount: history.serviceAmount },
+    { id: "product" as const, label: "제품 판매", count: history.productCount, amount: history.productAmount }
+  ];
+
+  return (
+    <div>
+      <p className="text-[12px] font-medium leading-none text-[#8A847C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+        완료 내역
+      </p>
+      <div className="mt-[14px] flex items-end gap-[18px]">
+        <div className="flex items-end gap-[4px]">
+          {tabs.map((item) => (
+            <FolderTab
+              key={item.id}
+              on={tab === item.id}
+              label={item.label}
+              count={item.count}
+              onClick={() => setTab(item.id)}
+            />
+          ))}
+        </div>
+        {tab === "service" ? (
+          <div className="flex items-end gap-[4px]">
+            {(
+              [
+                { id: "date" as const, label: "일자별 보기" },
+                { id: "kind" as const, label: "시술별 보기" }
+              ] as const
+            ).map((item) => (
+              <FolderTab
+                key={item.id}
+                small
+                on={view === item.id}
+                label={item.label}
+                onClick={() => setView(item.id)}
+              />
+            ))}
+          </div>
+        ) : null}
+      </div>
+      <div className="-mt-px border-t border-[#D5DFD2] pt-[12px]">
+        {tab === "service" ? (
+          history.serviceCount === 0 ? (
+            <Empty>시술 내역이 없습니다.</Empty>
+          ) : view === "date" ? (
+            <HistoryTable
+              rows={history.serviceVisits.map((row) => ({
+                id: row.id,
+                bookingDate: row.bookingDate,
+                customerName: row.customerName,
+                names: row.names.join(" / "),
+                paymentMethodLabel: row.paymentMethodLabel,
+                amount: row.amount
+              }))}
+            />
+          ) : (
+            <div>
+              {history.kindGroups.map((group) => (
+                <div key={group.kind} className="mt-[12px] border-l-2 pl-[10px] first:mt-0" style={{ borderColor: KIND_TONE[group.kind] }}>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p
+                      className="text-[12px] font-medium leading-none [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]"
+                      style={{ color: KIND_TONE[group.kind] }}
+                    >
+                      {group.label}
+                      <span className="ml-1 tabular-nums">{group.count}건</span>
+                    </p>
+                    <p className="text-[13px] font-medium tabular-nums leading-none text-[#1C1C1C] [text-box-edge:text_alphabetic] [text-box-trim:trim-both]">
+                      {won(group.amount)}
+                    </p>
+                  </div>
+                  <div className="mt-[4px]">
+                    <HistoryTable
+                      rows={group.lines.map((row) => ({
+                        id: row.id,
+                        bookingDate: row.bookingDate,
+                        customerName: row.customerName,
+                        names: row.name,
+                        paymentMethodLabel: row.paymentMethodLabel,
+                        amount: row.amount
+                      }))}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        ) : history.productCount === 0 ? (
+          <Empty>제품 판매 내역이 없습니다.</Empty>
+        ) : (
+          <HistoryTable
+            rows={history.productVisits.map((row) => ({
+              id: row.id,
+              bookingDate: row.bookingDate,
+              customerName: row.customerName,
+              names: row.names.join(" / "),
+              paymentMethodLabel: row.paymentMethodLabel,
+              amount: row.amount
+            }))}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
 function PayBreakdown({ row }: { row: SettlementArtistRow }) {
   const serviceBasis = won(row.serviceRevenue ?? row.revenue);
   const productBasis = won(row.productRevenue ?? 0);
+  if (!row.hasCommission) {
+    return (
+      <p className="text-[13px] leading-none text-[#8A847C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+        커미션 요율이 없어 인센티브를 산정하지 않습니다.
+      </p>
+    );
+  }
   return (
-    <div className="rounded-[8px] bg-white px-5 py-[18px]">
-      <p className="text-[15px] font-bold leading-none text-[color:var(--label)] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+    <div>
+      <p className="text-[15px] font-medium leading-none text-[#2F3A2F] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
         지급 산정
       </p>
-      {row.hasCommission ? (
-        <div className="mt-[12px]">
-          <PayAmount
-            label="시술 인센티브"
-            detail={`${serviceBasis} × ${row.commissionRate}%`}
-            amount={row.serviceIncentive != null ? won(row.serviceIncentive) : "—"}
-          />
-          <PayAmount
-            label="제품 인센티브"
-            detail={`${productBasis} × ${PRODUCT_DESIGNER_RATE}%`}
-            amount={row.productIncentive != null ? won(row.productIncentive) : "—"}
-            line={false}
-          />
-          <PayAmount
-            label="발생 인센티브"
-            amount={row.incentive != null ? won(row.incentive) : "—"}
-            strong
-          />
-          {row.isFreelance ? (
-            <>
-              <PayAmount
-                label="소득세"
-                detail="발생 인센티브의 3%, 10원 미만 버림"
-                amount={row.incomeTax != null ? `−${won(row.incomeTax)}` : "—"}
-                minus
-              />
-              <PayAmount
-                label="지방소득세"
-                detail="소득세의 10%, 10원 미만 버림"
-                amount={row.localIncomeTax != null ? `−${won(row.localIncomeTax)}` : "—"}
-                minus
-                line={false}
-              />
-            </>
-          ) : null}
-          <PayAmount label="실지급액" amount={row.netPay != null ? won(row.netPay) : "—"} strong />
-        </div>
-      ) : (
-        <p className="mt-[14px] text-[15px] leading-[22px] text-[#8A847C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
-          커미션 요율이 없어 인센티브를 산정하지 않습니다.
-        </p>
-      )}
+      <div className="mt-[8px]">
+        <PayAmount
+          label="시술 인센티브"
+          detail={`${serviceBasis} × ${row.commissionRate}%`}
+          amount={row.serviceIncentive != null ? won(row.serviceIncentive) : "—"}
+          tone="service"
+        />
+        <PayAmount
+          label="제품 인센티브"
+          detail={`${productBasis} × ${PRODUCT_DESIGNER_RATE}%`}
+          amount={row.productIncentive != null ? won(row.productIncentive) : "—"}
+          tone="product"
+        />
+        <PayAmount label="발생 인센티브" amount={row.incentive != null ? won(row.incentive) : "—"} strong size="lg" />
+        {row.isFreelance ? (
+          <>
+            <PayAmount
+              label="소득세"
+              detail="발생 인센티브의 3%, 10원 미만 버림"
+              amount={row.incomeTax != null ? `−${won(row.incomeTax)}` : "—"}
+              tone="minus"
+            />
+            <PayAmount
+              label="지방소득세"
+              detail="소득세의 10%, 10원 미만 버림"
+              amount={row.localIncomeTax != null ? `−${won(row.localIncomeTax)}` : "—"}
+              tone="minus"
+            />
+          </>
+        ) : null}
+        <PayAmount label="실지급액" amount={row.netPay != null ? won(row.netPay) : "—"} strong size="lg" tone="net" />
+      </div>
     </div>
   );
 }
@@ -798,18 +1163,22 @@ function ArtistRow({
   const payable = row.netPay != null && row.netPay > 0;
   return (
     <>
-      <tr
-        className={clsx(TABLE_ROW, "cursor-pointer hover:bg-[#F9F8F4]", open && "bg-[#F4EFE9]")}
-        onClick={onToggle}
-      >
+      <tr className={TABLE_ROW}>
         <td className={clsx(TD, "truncate pl-1")}>
-          <span className="inline-flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-expanded={open}
+            className="inline-flex max-w-full items-center gap-2 text-left"
+          >
             <Icon
               src="/admin-icons/lnb/chevron-down.png"
-              className={clsx("h-[14px] w-[14px] text-[#9A948C] transition-transform", open && "rotate-180")}
+              className={clsx("h-[14px] w-[14px] shrink-0 text-[#9A948C] transition-transform", open && "rotate-180")}
             />
-            {row.artistName}({row.employmentLabel})
-          </span>
+            <span className="truncate">
+              {row.artistName}({row.employmentLabel})
+            </span>
+          </button>
         </td>
         <td className={clsx(TD, "text-right tabular-nums")}>{won(row.revenue)}</td>
         <td className={clsx(TD, "text-right tabular-nums")}>
@@ -840,56 +1209,41 @@ function ArtistRow({
         </td>
       </tr>
       {open ? (
-        <tr className="bg-[#F9F8F4]">
-          <td colSpan={7} className="px-5 pb-5 pt-4">
-            <PayBreakdown row={row} />
-            <div className="mt-[16px] flex flex-wrap items-center">
-              <PayMeta label="완료" value={`${row.count}건`} />
-              <PayMeta label="예금주" value={row.bankHolder || "—"} />
-              <PayMeta label="상태" value={row.status} />
-              {row.status === "지급 완료" && row.paidAt ? (
-                <PayMeta label="지급일시" value={formatPaidAt(row.paidAt)} />
-              ) : null}
-            </div>
-            {owner && payable && row.status !== "지급 완료" ? (
-              <div className="mt-[14px]">
-                <button
-                  type="button"
-                  disabled={!payoutReady || busy}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onPayout();
-                  }}
-                  className="inline-flex h-[34px] items-center rounded-[8px] bg-[color:var(--accent)] px-4 text-[13px] font-bold text-white disabled:opacity-40"
-                >
-                  지급 완료 처리
-                </button>
+        <tr>
+          <td colSpan={7} className="px-0 pb-[18px] pt-[16px]">
+            <div className="rounded-[10px] bg-[#F4F7F2] px-[20px] pb-[18px] pt-[20px]">
+              <PayBreakdown row={row} />
+              <div className="mt-[12px] flex flex-wrap items-center">
+                <PayMeta label="완료" value={`${row.count}건`} />
+                <PayMeta label="예금주" value={row.bankHolder || "—"} />
+                <PayMeta
+                  label="상태"
+                  value={row.status}
+                  tone={row.status === "지급 완료" ? "ok" : row.status === "정산대기" ? "wait" : undefined}
+                />
+                {row.status === "지급 완료" && row.paidAt ? (
+                  <PayMeta label="지급일시" value={formatPaidAt(row.paidAt)} />
+                ) : null}
               </div>
-            ) : null}
-            <p className="mt-[22px] text-[15px] font-bold leading-none text-[color:var(--label)] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
-              완료 내역
-            </p>
-            {row.bookings.length === 0 ? (
-              <Empty>완료된 예약이 없습니다.</Empty>
-            ) : (
-              <table className="mt-[8px] w-full table-fixed text-left text-[15px] font-medium leading-[20px]">
-                <tbody>
-                  {row.bookings.map((b) => (
-                    <tr key={b.id} className="border-b border-[#EFEBE6] last:border-b-0">
-                      <td className="w-[14%] py-3 pr-3 tabular-nums text-[#8A847C]">
-                        {b.bookingDate.slice(2).replaceAll("-", ". ")}
-                      </td>
-                      <td className="w-[14%] truncate py-3 pr-3">{b.customerName}</td>
-                      <td className="truncate py-3 pr-3 text-[#3A3A3A]">
-                        {b.serviceNames.length ? b.serviceNames.join(" / ") : "—"}
-                      </td>
-                      <td className="w-[12%] py-3 pr-3 text-[#8A847C]">{b.paymentMethodLabel}</td>
-                      <td className="w-[14%] py-3 text-right tabular-nums">{won(b.amount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+              {owner && payable && row.status !== "지급 완료" ? (
+                <div className="mt-[14px]">
+                  <button
+                    type="button"
+                    disabled={!payoutReady || busy}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPayout();
+                    }}
+                    className="inline-flex h-[34px] items-center rounded-[8px] bg-[color:var(--accent)] px-4 text-[13px] font-bold text-white disabled:opacity-40"
+                  >
+                    지급 완료 처리
+                  </button>
+                </div>
+              ) : null}
+              <div className="mt-[16px] border-t border-[#D7E0D4] pt-[16px]">
+                <CompletedHistory bookings={row.bookings} />
+              </div>
+            </div>
           </td>
         </tr>
       ) : null}

@@ -18,13 +18,14 @@ import {
   type SettlementArtistRow,
   type SettlementDashboard
 } from "@/lib/admin/settlements-data";
+import { INCOME_TAX_BRACKETS_2026 } from "@/lib/admin/tax-data";
 import {
-  BASIC_DEDUCTION,
-  INCOME_TAX_BRACKETS_2026,
-  LOCAL_INCOME_TAX_RATE,
-  calcIncomeTax,
-  extractVatIncluded
-} from "@/lib/admin/tax-data";
+  incomeTaxReserveFromProfit,
+  operatingProfitFrom,
+  ownerRemainFrom,
+  taxSetAsideFrom,
+  vatFromIncluded
+} from "@/lib/admin/finance-kpis";
 
 export type OwnerProductRow = {
   id: string;
@@ -295,21 +296,13 @@ export function buildOwnerPnl(args: {
   const shopKeepDesignerService = Math.max(0, designerServiceRevenue - designerServiceIncentive);
   const fixedAmount = natureAmount(args.expenses, "fixed");
   const operatingAmount = natureAmount(args.expenses, "operating");
-  const operatingProfit = revenue - expenseTotal - productCost - designerIncentive;
-
-  const vatOutput = extractVatIncluded(revenue);
-  const vatInput = extractVatIncluded(proofExpense + productCost);
-  const vatPayable = vatOutput - vatInput;
-
+  const operatingProfit = operatingProfitFrom(revenue, expenseTotal, productCost, designerIncentive);
+  const { vatOutput, vatInput, vatPayable } = vatFromIncluded(revenue, proofExpense, productCost);
   const periodsPerYear = periodsInYear(args.period ?? "month");
-  const annualizedProfit = operatingProfit * periodsPerYear;
-  const taxableBase = Math.max(0, annualizedProfit - BASIC_DEDUCTION);
-  const { incomeTax, bracketRate } = calcIncomeTax(taxableBase);
-  const bracket = incomeBracketMeta(taxableBase);
-  const localIncomeTax = Math.floor(incomeTax * LOCAL_INCOME_TAX_RATE);
-  const incomeTaxReserve = Math.ceil((incomeTax + localIncomeTax) / periodsPerYear);
-  const taxSetAside = vatPayable + incomeTaxReserve;
-  const ownerRemain = operatingProfit - taxSetAside;
+  const tax = incomeTaxReserveFromProfit(operatingProfit, periodsPerYear);
+  const bracket = incomeBracketMeta(tax.taxableBase);
+  const taxSetAside = taxSetAsideFrom(vatPayable, tax.incomeTaxReserve);
+  const ownerRemain = ownerRemainFrom(operatingProfit, taxSetAside);
 
   const natures: OwnerNatureRow[] = EXPENSE_NATURES.map((item) => {
     const amount = natureAmount(args.expenses, item.key);
@@ -378,14 +371,14 @@ export function buildOwnerPnl(args: {
       vatInput,
       vatPayable,
       incomeTaxPeriods: periodsPerYear,
-      annualizedProfit,
-      taxableBase,
-      incomeTaxAnnual: incomeTax,
-      localIncomeTaxAnnual: localIncomeTax,
-      incomeTaxBracketRate: bracketRate,
+      annualizedProfit: tax.annualizedProfit,
+      taxableBase: tax.taxableBase,
+      incomeTaxAnnual: tax.incomeTaxAnnual,
+      localIncomeTaxAnnual: tax.localIncomeTaxAnnual,
+      incomeTaxBracketRate: tax.bracketRate,
       incomeTaxProgressiveDeduction: bracket.deduction,
       incomeTaxBracketLabel: bracket.label,
-      incomeTaxReserve,
+      incomeTaxReserve: tax.incomeTaxReserve,
       taxSetAside,
       operatingProfit,
       ownerRemain,

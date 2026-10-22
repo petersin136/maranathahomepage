@@ -131,7 +131,7 @@ function drawFlow(doc: Doc, y: number, s: PnlSummary, meta: PnlReportMeta) {
     },
     {
       label: "부가가치세(예상)",
-      caption: `${noun} 매출·매입 기준 추정 · 매출세액 − 매입세액`,
+      caption: `${noun} 매출·매입 기준으로 낼 부가세 추정`,
       amount: s.vatPayable,
       sign: "-",
       dot: DOT.tax

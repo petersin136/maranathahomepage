@@ -89,7 +89,7 @@ export default function AdminTaxPage({
           <Note>
             {vat.taxType === "simplified"
               ? `간이과세 · 부가가치율 30% 적용(미용업). 증빙 매입의 0.5%를 공제합니다.${vat.simplifiedExemptNote ? ` ${vat.simplifiedExemptNote}` : ""}`
-              : "일반과세 · 매출과 증빙 지출을 부가세 포함 금액으로 보고 세액 = 금액 × 10/110 으로 계산합니다."}
+              : "일반과세 · 매출세액은 총 매출액의 10/110, 매입세액은 세금계산서 지출과 제품 원가의 10/110입니다. 매장 손익과 같습니다."}
           </Note>
         </Section>
       ) : null}
@@ -113,7 +113,10 @@ export default function AdminTaxPage({
               {
                 label: "필요경비",
                 value: won(income.expenseTotal),
-                hint: income.expenseUnproven > 0 ? `증빙 없음 ${won(income.expenseUnproven)}` : undefined
+                hint:
+                  income.expenseUnproven > 0
+                    ? `지출+제품원가+인센 · 증빙 없음 ${won(income.expenseUnproven)}`
+                    : "지출 + 제품 원가 + 디자이너 인센티브"
               },
               { label: "소득금액", value: won(income.income) },
               { label: "과세표준", value: won(income.taxableBase), hint: "기본공제 150만원 반영" },
@@ -143,7 +146,7 @@ export default function AdminTaxPage({
                 <tr className={TABLE_HEAD_ROW}>
                   <th className={clsx(TH, "pl-1")}>월</th>
                   <th className={clsx(TH, "text-right")}>매출</th>
-                  <th className={clsx(TH, "text-right")}>비용</th>
+                  <th className={clsx(TH, "text-right")}>지출 및 인센</th>
                   <th className={clsx(TH, "text-right")}>소득</th>
                   <th className={clsx(TH, "pr-0 text-right")}>누적 소득</th>
                 </tr>

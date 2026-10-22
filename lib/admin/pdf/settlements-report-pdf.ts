@@ -4,7 +4,11 @@ import {
   type SettlementSummary
 } from "@/lib/admin/settlements-data";
 import { PRODUCT_DESIGNER_RATE } from "@/lib/admin/retail-products";
+import { splitSettlementHistory } from "@/lib/admin/settlement-history";
 import {
+  COLOR,
+  CW,
+  M,
   createReportDoc,
   drawCover,
   drawHeader,
@@ -13,8 +17,11 @@ import {
   drawSharePair,
   drawTable,
   finalizeFooters,
-  won,
+  hline,
+  t,
+  tr,
   type Chip,
+  type Doc,
   type HeaderSpec
 } from "@/lib/admin/pdf/report-kit";
 
@@ -162,4 +169,213 @@ export function buildSettlementsReportPdf(input: {
   finalizeFooters(doc, `${input.salon} · ${reportName} · ${input.periodLabel}`);
   doc.end();
   return done;
+}
+
+function payLine(doc: Doc, y: number, label: string, detail: string, amount: string, strong = false) {
+  if (strong) hline(doc, M, M + CW, y, 0.6, COLOR.lineStrong);
+  const top = strong ? y + 12 : y;
+  t(doc, label, M, top, { size: 10, bold: strong });
+  if (detail) t(doc, detail, M + 92, top + 1, { size: 8.5, color: COLOR.sub });
+  tr(doc, amount, M + CW, top, { size: 10, bold: strong, color: amount.startsWith("−") || amount.startsWith("-") ? COLOR.minus : COLOR.ink });
+  return top + 24;
+}
+
+function bookingDate(ymd: string) {
+  return ymd.length >= 10 ? `${ymd.slice(2, 4)}. ${ymd.slice(5, 7)}. ${ymd.slice(8, 10)}` : ymd;
+}
+
+export function buildArtistSettlementsPdf(input: {
+  salon: string;
+  periodLabel: string;
+  chip: Chip;
+  issuedAt: Date;
+  artists: SettlementArtistRow[];
+}) {
+  const reportName = input.artists.length === 1 ? `${input.artists[0].artistName} 정산 리포트` : "디자이너별 정산 리포트";
+  const names = input.artists.map((row) => row.artistName).join(" · ");
+  const sumOf = (pick: (row: SettlementArtistRow) => number | null) =>
+    input.artists.reduce((sum, row) => sum + (pick(row) ?? 0), 0);
+  const one = input.artists.length === 1 ? input.artists[0] : null;
+  const { doc, done, addPage } = createReportDoc(`${input.salon} ${reportName} ${input.periodLabel}`);
+  drawCover(doc, {
+    salon: input.salon,
+    kicker: "DESIGNER SETTLEMENT",
+    title: `${input.periodLabel} 디자이너 정산 리포트`,
+    subtitle: `포함 인원 ${names}`,
+    heroLabel: one ? "실지급액" : "총 실지급액",
+    heroValue: screenWon(one ? one.netPay : sumOf((row) => row.netPay)),
+    mini: [
+      { label: one ? "담당 매출" : "총 매출액", value: screenWon(one ? one.revenue : sumOf((row) => row.revenue)) },
+      { label: one ? "발생 인센티브" : "총 발생 인센티브", value: screenWon(one ? one.incentive : sumOf((row) => row.incentive)) },
+      { label: "원천징수(3.3%)", value: withholdingCell(one ? one.withholding : sumOf((row) => row.withholding)) }
+    ],
+    chip: input.chip,
+    issuedAt: input.issuedAt
+  });
+  addPage();
+  let lastY = M;
+  input.artists.forEach((row, index) => {
+    if (index > 0) addPage();
+    const header: HeaderSpec = {
+      salon: input.salon,
+      kicker: "DESIGNER SETTLEMENT",
+      subtitle: `${input.periodLabel} · ${row.artistName}(${row.employmentLabel})`,
+      chip: input.chip,
+      issuedAt: input.issuedAt
+    };
+    let y = drawHeader(doc, header) + 8;
+    const nextPage = () => {
+      addPage();
+      return drawHeader(doc, header, true);
+    };
+    y = drawKpis(doc, y, [
+      { label: "실지급액", value: screenWon(row.netPay), caption: row.status, dark: true },
+      { label: "담당 매출", value: screenWon(row.revenue), caption: `완료 ${row.count}건` },
+      { label: "발생 인센티브", value: screenWon(row.incentive), caption: row.hasCommission ? `커미션 ${row.commissionRate}%` : "커미션 없음" },
+      { label: "원천징수(3.3%)", value: withholdingCell(row.withholding), caption: "소득세 + 지방소득세" }
+    ]);
+    y += 8;
+    t(doc, "지급 산정", M, y, { size: 12, bold: true });
+    y += 22;
+    if (!row.hasCommission) {
+      t(doc, "커미션 요율이 없어 인센티브를 산정하지 않습니다.", M, y, { size: 9, color: COLOR.sub });
+      y += 18;
+    } else {
+      y = payLine(
+        doc,
+        y,
+        "시술 인센티브",
+        `${screenWon(row.serviceRevenue)} × ${row.commissionRate}%`,
+        screenWon(row.serviceIncentive)
+      );
+      y = payLine(
+        doc,
+        y,
+        "제품 인센티브",
+        `${screenWon(row.productRevenue)} × ${PRODUCT_DESIGNER_RATE}%`,
+        screenWon(row.productIncentive)
+      );
+      y = payLine(doc, y, "발생 인센티브", "", screenWon(row.incentive), true);
+      if (row.isFreelance) {
+        y = payLine(doc, y, "소득세", "발생 인센티브의 3%, 10원 미만 버림", row.incomeTax != null ? `−${screenWon(row.incomeTax)}` : "—");
+        y = payLine(doc, y, "지방소득세", "소득세의 10%, 10원 미만 버림", row.localIncomeTax != null ? `−${screenWon(row.localIncomeTax)}` : "—");
+      }
+      y = payLine(doc, y, "실지급액", "", screenWon(row.netPay), true);
+    }
+    const meta = [
+      `완료 ${row.count}건`,
+      `예금주 ${row.bankHolder || "—"}`,
+      `상태 ${row.status}`,
+      row.paidAt ? `지급일시 ${kstPaid(row.paidAt)}` : ""
+    ].filter(Boolean).join("   ");
+    t(doc, meta, M, y + 8, { size: 8.5, color: COLOR.sub });
+    y += 28;
+    const history = splitSettlementHistory(row.bookings);
+    const visitCols = [
+      { key: "date", label: "일자", w: 62, maxLines: 1 },
+      { key: "customer", label: "고객", w: 70, maxLines: 1 },
+      { key: "item", label: "항목", w: 230, maxLines: 2 },
+      { key: "method", label: "결제", w: 58, maxLines: 1 },
+      { key: "amount", label: "금액", w: 95, align: "right" as const, maxLines: 1 }
+    ];
+    y = drawTable(
+      doc,
+      y,
+      {
+        title: "시술 내역",
+        count: `${history.serviceCount}건`,
+        empty: "시술 내역이 없습니다.",
+        cellPad: 4,
+        cols: visitCols,
+        rows: history.serviceVisits.map((b) => ({
+          date: bookingDate(b.bookingDate),
+          customer: b.customerName || "—",
+          item: b.names.length ? b.names.join(" / ") : "—",
+          method: b.paymentMethodLabel || "—",
+          amount: screenWon(b.amount)
+        }))
+      },
+      nextPage
+    );
+    if (history.kindGroups.length) {
+      y = drawTable(
+        doc,
+        y,
+        {
+          title: "시술별",
+          count: `${history.kindGroups.length}항목`,
+          empty: "시술 내역이 없습니다.",
+          cellPad: 4,
+          cols: [
+            { key: "kind", label: "구분", w: 90, maxLines: 1 },
+            { key: "count", label: "건수", w: 70, maxLines: 1 },
+            { key: "amount", label: "금액", w: 120, align: "right", maxLines: 1 },
+            { key: "share", label: "비중", w: 70, align: "right", maxLines: 1 }
+          ],
+          rows: history.kindGroups.map((group) => ({
+            kind: group.label,
+            count: `${group.count}건`,
+            amount: screenWon(group.amount),
+            share: history.serviceAmount > 0 ? `${Math.round((group.amount / history.serviceAmount) * 100)}%` : "—"
+          }))
+        },
+        nextPage
+      );
+    }
+    y = drawTable(
+      doc,
+      y,
+      {
+        title: "제품 판매",
+        count: `${history.productCount}건`,
+        empty: "제품 판매 내역이 없습니다.",
+        cellPad: 4,
+        cols: visitCols,
+        rows: history.productVisits.map((b) => ({
+          date: bookingDate(b.bookingDate),
+          customer: b.customerName || "—",
+          item: b.names.length ? b.names.join(" / ") : "—",
+          method: b.paymentMethodLabel || "—",
+          amount: screenWon(b.amount)
+        }))
+      },
+      nextPage
+    );
+    lastY = y + 4;
+  });
+  const note =
+    "원천징수 3.3%는 일반적인 사업소득 기준입니다. 원천징수한 세액은 지급일이 속한 달의 다음 달 10일까지 신고·납부해야 하며, 실제 신고는 세무 대리인과 확인하세요.";
+  drawNote(doc, lastY, note, () => {
+    addPage();
+    return drawHeader(
+      doc,
+      {
+        salon: input.salon,
+        kicker: "DESIGNER SETTLEMENT",
+        subtitle: input.periodLabel,
+        chip: input.chip,
+        issuedAt: input.issuedAt
+      },
+      true
+    );
+  });
+  finalizeFooters(doc, `${input.salon} · ${reportName} · ${input.periodLabel}`);
+  doc.end();
+  return done;
+}
+
+function kstPaid(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  const parts = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).formatToParts(date);
+  const g = (k: string) => parts.find((p) => p.type === k)?.value ?? "";
+  return `${g("year")}. ${g("month")}. ${g("day")} ${g("hour")}:${g("minute")}`;
 }

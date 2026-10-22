@@ -141,7 +141,11 @@ export function resolveExpenseMonth(
   const today = todayKst();
   const { y: ty, m: tm } = parseYmd(today);
   let year = ty;
-  let month = tm;
+  let month = tm - 1;
+  if (month < 1) {
+    year -= 1;
+    month = 12;
+  }
 
   if (yearRaw != null || monthRaw != null) {
     const y = Number(yearRaw);

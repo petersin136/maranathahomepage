@@ -331,13 +331,18 @@ export function aggregateTaxDashboard(args: {
   monthlyExpense: MonthAmount[];
   monthlyProofExpense: MonthAmount[];
   monthlyUnprovenExpense: MonthAmount[];
+  monthlyProductCost: MonthAmount[];
+  monthlyIncentive: MonthAmount[];
   yearRevenue: number;
   /** 직전 연도 매출 (간이 예정부과 판정용) */
   previousYearRevenue: number;
   vatPeriodRevenue: number;
   vatPeriodProofExpense: number;
+  vatPeriodProductCost: number;
   ytdRevenue: number;
   ytdExpense: number;
+  ytdProductCost: number;
+  ytdIncentive: number;
   ytdUnprovenExpense: number;
   cashReceiptCount: number;
   cashReceiptAmount: number;
@@ -357,7 +362,7 @@ export function aggregateTaxDashboard(args: {
 
     if (taxType === "general") {
       const outputVat = extractVatIncluded(args.vatPeriodRevenue);
-      const inputVat = extractVatIncluded(args.vatPeriodProofExpense);
+      const inputVat = extractVatIncluded(args.vatPeriodProofExpense + args.vatPeriodProductCost);
       vat = {
         taxType,
         periodKind: vatPeriod.kind,
@@ -365,7 +370,7 @@ export function aggregateTaxDashboard(args: {
         from: vatPeriod.from,
         to: vatPeriod.to,
         revenue: args.vatPeriodRevenue,
-        proofExpense: args.vatPeriodProofExpense,
+        proofExpense: args.vatPeriodProofExpense + args.vatPeriodProductCost,
         outputVat,
         inputVat,
         payable: outputVat - inputVat,
@@ -398,7 +403,8 @@ export function aggregateTaxDashboard(args: {
       };
     }
 
-    const incomeAmount = args.ytdRevenue - args.ytdExpense;
+    const incomeAmount =
+      args.ytdRevenue - args.ytdExpense - args.ytdProductCost - args.ytdIncentive;
     const taxableBase = Math.max(0, incomeAmount - BASIC_DEDUCTION);
     const { incomeTax, bracketRate } = calcIncomeTax(taxableBase);
     const localIncomeTax = Math.floor(incomeTax * LOCAL_INCOME_TAX_RATE);
@@ -406,7 +412,7 @@ export function aggregateTaxDashboard(args: {
       from: formatYmd(year, 1, 1),
       to: today,
       revenue: args.ytdRevenue,
-      expenseTotal: args.ytdExpense,
+      expenseTotal: args.ytdExpense + args.ytdProductCost + args.ytdIncentive,
       expenseUnproven: args.ytdUnprovenExpense,
       income: incomeAmount,
       taxableBase,
@@ -426,14 +432,19 @@ export function aggregateTaxDashboard(args: {
       args.monthlyRevenue.find((r) => r.year === year && r.month === m)?.amount ?? 0;
     const expense =
       args.monthlyExpense.find((r) => r.year === year && r.month === m)?.amount ?? 0;
-    const monthIncome = revenue - expense;
+    const productCost =
+      args.monthlyProductCost.find((r) => r.year === year && r.month === m)?.amount ?? 0;
+    const incentive =
+      args.monthlyIncentive.find((r) => r.year === year && r.month === m)?.amount ?? 0;
+    const outgo = expense + productCost + incentive;
+    const monthIncome = revenue - outgo;
     cumulative += monthIncome;
     monthly.push({
       year,
       month: m,
       label: `${m}월`,
       revenue,
-      expense,
+      expense: outgo,
       income: monthIncome,
       cumulativeIncome: cumulative
     });

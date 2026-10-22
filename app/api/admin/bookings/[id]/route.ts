@@ -317,15 +317,17 @@ export async function PATCH(
       }
     }
 
+    const { durations, error: durError } = await resolveServiceDurations(db.admin, serviceIds);
+    if (durError) {
+      return NextResponse.json(
+        { ok: false, error: "시술 정보를 불러오지 못했습니다." },
+        { status: 500 }
+      );
+    }
+    patch.duration_minutes = durations.reduce((sum, minutes) => sum + (Number(minutes) || 0), 0);
+
     const blocksSlot = (BLOCKING_STATUSES as readonly string[]).includes(String(current.status));
     if (blocksSlot) {
-      const { durations, error: durError } = await resolveServiceDurations(db.admin, serviceIds);
-      if (durError) {
-        return NextResponse.json(
-          { ok: false, error: "시술 정보를 불러오지 못했습니다." },
-          { status: 500 }
-        );
-      }
       const { intervals, error: occError } = await loadOccupiedIntervals({
         supabase: db.admin,
         artistId,

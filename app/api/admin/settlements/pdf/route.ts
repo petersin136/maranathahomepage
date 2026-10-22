@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/admin/auth";
 import { loadSettlementsView, SettlementsQueryError } from "@/lib/admin/settlements-load";
-import { buildSettlementsReportPdf } from "@/lib/admin/pdf/settlements-report-pdf";
+import { buildArtistSettlementsPdf, buildSettlementsReportPdf } from "@/lib/admin/pdf/settlements-report-pdf";
 import { getSalonName, reportDisposition } from "@/lib/admin/salon-name";
 
 export const runtime = "nodejs";
@@ -41,24 +41,32 @@ export async function GET(request: Request) {
         ? { text: "마감 확정", filled: true }
         : { text: "집계 중", filled: false };
     const statusLabel = status === "정산대기" || status === "지급 완료" ? ` · 상태: ${status}` : "";
-    const pdf = await buildSettlementsReportPdf({
-      salon,
-      periodLabel,
-      subtitle: designer ? `현재 상태 ${chip.text}` : `디자이너 정산${statusLabel}`,
-      chip,
-      issuedAt: new Date(),
-      designer,
-      summary: data.summary,
-      artists: data.artists,
-      tableRows,
-      prevMonthPayout: data.prevMonthPayout,
-      hasStaff: data.artists.some((row) => !row.isFreelance && row.hasCommission)
-    });
+    const pickedIds = new Set(searchParams.getAll("artistId").filter(Boolean));
+    const picked = pickedIds.size ? data.artists.filter((row) => pickedIds.has(row.artistId)) : [];
+    if (pickedIds.size && !picked.length) {
+      return NextResponse.json({ ok: false, error: "선택한 디자이너를 찾을 수 없습니다." }, { status: 404 });
+    }
     const fileKey = `${data.year}-${String(data.month).padStart(2, "0")}`;
+    const pdf = picked.length
+      ? await buildArtistSettlementsPdf({ salon, periodLabel, chip, issuedAt: new Date(), artists: picked })
+      : await buildSettlementsReportPdf({
+          salon,
+          periodLabel,
+          subtitle: designer ? `현재 상태 ${chip.text}` : `디자이너 정산${statusLabel}`,
+          chip,
+          issuedAt: new Date(),
+          designer,
+          summary: data.summary,
+          artists: data.artists,
+          tableRows,
+          prevMonthPayout: data.prevMonthPayout,
+          hasStaff: data.artists.some((row) => !row.isFreelance && row.hasCommission)
+        });
+    const reportName = picked.length === 1 ? `${picked[0].artistName} 정산 리포트` : picked.length ? "디자이너별 정산 리포트" : "디자이너 정산 리포트";
     return new Response(new Uint8Array(pdf), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": reportDisposition(salon, "디자이너 정산 리포트", fileKey, `settlements-${fileKey}.pdf`),
+        "Content-Disposition": reportDisposition(salon, reportName, fileKey, `settlements-${fileKey}.pdf`),
         "Cache-Control": "no-store"
       }
     });

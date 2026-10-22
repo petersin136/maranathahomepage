@@ -161,6 +161,7 @@ export async function loadMonthPay(today: string): Promise<MonthPaySnapshot> {
     .from("bookings")
     .select("final_amount, payment_method")
     .eq("status", "completed")
+    .not("final_amount", "is", null)
     .gte("paid_at", kstDayStartIso(start))
     .lt("paid_at", kstDayEndExclusiveIso(end))
     .limit(5000);
