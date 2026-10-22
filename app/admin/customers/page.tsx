@@ -4,23 +4,28 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { clsx } from "clsx";
 import {
-  STATE_META,
-  STATE_ORDER,
   customerDetailHref,
-  customerState,
-  useCustomerFilters,
-  type CustomerState
+  useCustomerFilters
 } from "@/components/admin/CustomerFilters";
+import type { CustomerSendStatus } from "@/lib/admin/customers-data";
 import { AdminBellButton, AdminHeaderSearch } from "@/components/admin/AdminBellButton";
 import { AdminPageTitle } from "@/components/admin/AdminPageTitle";
 
 const PAGE_SIZE = 12;
 
-const STATE_COLOR: Record<CustomerState, string> = {
-  churn: "var(--danger)",
-  returning: "var(--ink)",
-  new: "var(--muted)"
+const SEND_COLOR: Record<CustomerSendStatus, string> = {
+  pending: "var(--muted)",
+  alert: "var(--ink)",
+  sent: "var(--ink)",
+  failed: "var(--danger)"
 };
+
+const SEND_OPTIONS: { id: CustomerSendStatus; label: string }[] = [
+  { id: "pending", label: "발송 대기" },
+  { id: "alert", label: "알림 발송" },
+  { id: "sent", label: "발송 완료" },
+  { id: "failed", label: "발송 실패" }
+];
 
 const DAY_OPTIONS = [
   { id: "0-7", label: "7일 이내", min: 0, max: 7 },
@@ -70,7 +75,7 @@ export default function AdminCustomersPage() {
   const [query, setQuery] = useState("");
   const [services, setServices] = useState<string[]>([]);
   const [dayIds, setDayIds] = useState<string[]>([]);
-  const [states, setStates] = useState<CustomerState[]>([]);
+  const [sendStatuses, setSendStatuses] = useState<CustomerSendStatus[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const [sortKey, setSortKey] = useState<"name" | "date">("date");
@@ -115,8 +120,7 @@ export default function AdminCustomersPage() {
         );
         if (!ok) return false;
       }
-      const state = customerState(row);
-      if (states.length && (!state || !states.includes(state))) return false;
+      if (sendStatuses.length && !sendStatuses.includes(row.sendStatus)) return false;
       return true;
     });
     list.sort((a, b) => {
@@ -125,7 +129,7 @@ export default function AdminCustomersPage() {
       return (a.lastVisitDate || "").localeCompare(b.lastVisitDate || "") * dir;
     });
     return list;
-  }, [rows, query, services, dayIds, states, sortKey, sortDir]);
+  }, [rows, query, services, dayIds, sendStatuses, sortKey, sortDir]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
@@ -135,7 +139,7 @@ export default function AdminCustomersPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [query, services, dayIds, states, sortKey, sortDir]);
+  }, [query, services, dayIds, sendStatuses, sortKey, sortDir]);
 
   const toggleSort = (key: "name" | "date") => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -167,7 +171,7 @@ export default function AdminCustomersPage() {
     setQuery("");
     setServices([]);
     setDayIds([]);
-    setStates([]);
+    setSendStatuses([]);
     setOpenFilter(null);
     void load();
   };
@@ -240,19 +244,19 @@ export default function AdminCustomersPage() {
           </FilterChip>
           <FilterChip
             icon="/admin-icons/lnb/filter.png"
-            label="상태"
-            count={states.length}
+            label="발송 상태"
+            count={sendStatuses.length}
             open={openFilter === "status"}
             onToggle={() => setOpenFilter((v) => (v === "status" ? null : "status"))}
           >
-            {STATE_ORDER.map((key) => (
+            {SEND_OPTIONS.map((opt) => (
               <FilterCheck
-                key={key}
-                label={STATE_META[key].label}
-                checked={states.includes(key)}
+                key={opt.id}
+                label={opt.label}
+                checked={sendStatuses.includes(opt.id)}
                 onChange={() =>
-                  setStates((cur) =>
-                    cur.includes(key) ? cur.filter((x) => x !== key) : [...cur, key]
+                  setSendStatuses((cur) =>
+                    cur.includes(opt.id) ? cur.filter((x) => x !== opt.id) : [...cur, opt.id]
                   )
                 }
               />
@@ -329,7 +333,7 @@ export default function AdminCustomersPage() {
             <tbody>
               {pageRows.map((row) => {
                 const on = selected.has(row.phone);
-                const state = customerState(row);
+                const send = SEND_OPTIONS.find((opt) => opt.id === row.sendStatus) ?? SEND_OPTIONS[0];
                 return (
                   <tr
                     key={row.phone}
@@ -355,17 +359,13 @@ export default function AdminCustomersPage() {
                     <td className="truncate py-[15px] pr-3 font-medium">{row.services.join(" / ") || "—"}</td>
                     <td className="truncate py-[15px] pr-3 font-medium">{formatVisit(row.lastVisitDate, row.daysSince)}</td>
                     <td className="py-[15px]">
-                      {state ? (
-                        <span
-                          className="inline-flex items-center gap-[6px] font-medium"
-                          style={{ color: STATE_COLOR[state] }}
-                        >
-                          <span className="h-[7px] w-[7px] shrink-0 rounded-full bg-current" />
-                          {STATE_META[state].label}
-                        </span>
-                      ) : (
-                        <span className="font-medium">—</span>
-                      )}
+                      <span
+                        className="inline-flex items-center gap-[6px] font-medium"
+                        style={{ color: SEND_COLOR[send.id] }}
+                      >
+                        <span className="h-[7px] w-[7px] shrink-0 rounded-full bg-current" />
+                        {send.label}
+                      </span>
                     </td>
                     <td className="py-[15px] text-right font-normal text-[#8A847C]">
                       <Link href={customerDetailHref(row.phone)} className="hover:text-[#1C1C1C]">

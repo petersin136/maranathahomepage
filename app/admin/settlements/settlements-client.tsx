@@ -663,6 +663,117 @@ function StructureCard({ net, tax, title }: { net: number; tax: number; title: s
   );
 }
 
+function PayMeta({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="mr-[28px] inline-flex items-baseline">
+      <span className="text-[13px] leading-none text-[#8A847C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+        {label}
+      </span>
+      <span className="ml-[8px] text-[15px] font-medium leading-none text-[#1C1C1C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+        {value}
+      </span>
+    </span>
+  );
+}
+
+function PayAmount({
+  label,
+  detail,
+  amount,
+  strong = false,
+  minus = false,
+  line = true
+}: {
+  label: string;
+  detail?: string;
+  amount: string;
+  strong?: boolean;
+  minus?: boolean;
+  line?: boolean;
+}) {
+  return (
+    <div
+      className={clsx(
+        "flex items-baseline justify-between py-[14px]",
+        strong ? "border-t-[1.5px] border-[#C9C3BB]" : line ? "border-b border-[#EFEBE6]" : ""
+      )}
+    >
+      <span>
+        <span className="block text-[16px] font-medium leading-none text-[#1C1C1C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+          {label}
+        </span>
+        {detail ? (
+          <span className="mt-[8px] block text-[14px] leading-none tabular-nums text-[#8A847C] [text-box-edge:text_alphabetic] [text-box-trim:trim-both]">
+            {detail}
+          </span>
+        ) : null}
+      </span>
+      <span
+        className={clsx(
+          "shrink-0 text-[16px] tabular-nums",
+          strong ? "font-bold text-[#1C1C1C]" : minus ? "font-semibold text-[#B16242]" : "font-semibold text-[#1C1C1C]"
+        )}
+      >
+        {amount}
+      </span>
+    </div>
+  );
+}
+
+function PayBreakdown({ row }: { row: SettlementArtistRow }) {
+  const serviceBasis = won(row.serviceRevenue ?? row.revenue);
+  const productBasis = won(row.productRevenue ?? 0);
+  return (
+    <div className="rounded-[8px] bg-white px-5 py-[18px]">
+      <p className="text-[15px] font-bold leading-none text-[color:var(--label)] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+        지급 산정
+      </p>
+      {row.hasCommission ? (
+        <div className="mt-[12px]">
+          <PayAmount
+            label="시술 인센티브"
+            detail={`${serviceBasis} × ${row.commissionRate}%`}
+            amount={row.serviceIncentive != null ? won(row.serviceIncentive) : "—"}
+          />
+          <PayAmount
+            label="제품 인센티브"
+            detail={`${productBasis} × ${PRODUCT_DESIGNER_RATE}%`}
+            amount={row.productIncentive != null ? won(row.productIncentive) : "—"}
+            line={false}
+          />
+          <PayAmount
+            label="발생 인센티브"
+            amount={row.incentive != null ? won(row.incentive) : "—"}
+            strong
+          />
+          {row.isFreelance ? (
+            <>
+              <PayAmount
+                label="소득세"
+                detail="발생 인센티브의 3%, 10원 미만 버림"
+                amount={row.incomeTax != null ? `−${won(row.incomeTax)}` : "—"}
+                minus
+              />
+              <PayAmount
+                label="지방소득세"
+                detail="소득세의 10%, 10원 미만 버림"
+                amount={row.localIncomeTax != null ? `−${won(row.localIncomeTax)}` : "—"}
+                minus
+                line={false}
+              />
+            </>
+          ) : null}
+          <PayAmount label="실지급액" amount={row.netPay != null ? won(row.netPay) : "—"} strong />
+        </div>
+      ) : (
+        <p className="mt-[14px] text-[15px] leading-[22px] text-[#8A847C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+          커미션 요율이 없어 인센티브를 산정하지 않습니다.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ArtistRow({
   row,
   owner,
@@ -730,46 +841,38 @@ function ArtistRow({
       </tr>
       {open ? (
         <tr className="bg-[#F9F8F4]">
-          <td colSpan={7} className="px-6 pb-5 pt-3">
-            {row.hasCommission ? (
-              <p className="text-[13px] text-[#8A847C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
-                {`계산법 (시술 매출 × ${row.commissionRate}%) + (제품 매출 × ${PRODUCT_DESIGNER_RATE}%)`}
-              </p>
-            ) : null}
-            <p className={clsx("text-[13px] text-[#8A847C]", row.hasCommission && "mt-[6px]")}>
-              건수 {row.count}건
-              {` · 시술 ${won(row.serviceRevenue ?? row.revenue)}`}
-              {` · 제품 ${won(row.productRevenue ?? 0)}`}
-              {row.serviceIncentive != null ? ` · 시술 인센 ${won(row.serviceIncentive)}` : ""}
-              {row.productIncentive != null ? ` · 제품 인센 ${won(row.productIncentive)}` : ""}
-              {row.incomeTax != null ? ` · 소득세 ${won(row.incomeTax)}` : " · 소득세 —"}
-              {row.localIncomeTax != null ? ` · 지방소득세 ${won(row.localIncomeTax)}` : " · 지방소득세 —"}
-              {` · 예금주 ${row.bankHolder || "—"}`}
-              {` · 상태 ${row.status}`}
-            </p>
-            {owner && ((row.status === "지급 완료" && row.paidAt) || payable) ? (
-              <div className="mt-3">
-                {row.status === "지급 완료" && row.paidAt ? (
-                  <p className="text-[13px] text-[#8A847C]">지급일시 {formatPaidAt(row.paidAt)}</p>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={!payoutReady || busy}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onPayout();
-                    }}
-                    className="inline-flex h-[34px] items-center rounded-[8px] bg-[color:var(--accent)] px-4 text-[13px] font-bold text-white disabled:opacity-40"
-                  >
-                    지급 완료 처리
-                  </button>
-                )}
+          <td colSpan={7} className="px-5 pb-5 pt-4">
+            <PayBreakdown row={row} />
+            <div className="mt-[16px] flex flex-wrap items-center">
+              <PayMeta label="완료" value={`${row.count}건`} />
+              <PayMeta label="예금주" value={row.bankHolder || "—"} />
+              <PayMeta label="상태" value={row.status} />
+              {row.status === "지급 완료" && row.paidAt ? (
+                <PayMeta label="지급일시" value={formatPaidAt(row.paidAt)} />
+              ) : null}
+            </div>
+            {owner && payable && row.status !== "지급 완료" ? (
+              <div className="mt-[14px]">
+                <button
+                  type="button"
+                  disabled={!payoutReady || busy}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPayout();
+                  }}
+                  className="inline-flex h-[34px] items-center rounded-[8px] bg-[color:var(--accent)] px-4 text-[13px] font-bold text-white disabled:opacity-40"
+                >
+                  지급 완료 처리
+                </button>
               </div>
             ) : null}
+            <p className="mt-[22px] text-[15px] font-bold leading-none text-[color:var(--label)] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+              완료 내역
+            </p>
             {row.bookings.length === 0 ? (
               <Empty>완료된 예약이 없습니다.</Empty>
             ) : (
-              <table className="mt-2 w-full table-fixed text-left text-[15px] font-medium leading-[20px]">
+              <table className="mt-[8px] w-full table-fixed text-left text-[15px] font-medium leading-[20px]">
                 <tbody>
                   {row.bookings.map((b) => (
                     <tr key={b.id} className="border-b border-[#EFEBE6] last:border-b-0">

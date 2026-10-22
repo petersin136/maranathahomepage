@@ -15,6 +15,7 @@ import {
 } from "@/components/admin/finance-ui";
 import { compareNoun, periodNoun } from "@/lib/admin/briefing-period";
 import type { OwnerPeriodKind, OwnerPnlDashboard, OwnerPnlSummary } from "@/lib/admin/owner-pnl";
+import { BASIC_DEDUCTION } from "@/lib/admin/tax-data";
 import { todayKst } from "@/lib/admin/sales-data";
 
 const C = {
@@ -206,6 +207,65 @@ function FlowVatRow({ s, hint }: { s: OwnerPnlSummary; hint: string }) {
           </li>
           <li className="mt-[6px] text-[13px] leading-[20px] text-[#5C564F] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
             └ 산출 공식: 매출세액 - 매입세액
+          </li>
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+function FlowIncomeTaxRow({ s, hint }: { s: OwnerPnlSummary; hint: string }) {
+  const [open, setOpen] = useState(false);
+  const periods = s.incomeTaxPeriods;
+  const ratePct =
+    s.incomeTaxBracketRate == null ? null : Math.round(s.incomeTaxBracketRate * 100);
+  const incomeFormula =
+    ratePct == null
+      ? `└ 종합소득세: +${won(s.incomeTaxAnnual)}(과세표준이 없음)`
+      : `└ 종합소득세: +${won(s.incomeTaxAnnual)}(${s.incomeTaxBracketLabel} · 과세표준 × ${ratePct}% − 누진공제 ${won(s.incomeTaxProgressiveDeduction)})`;
+  return (
+    <div className="border-b border-[#EFEBE6]">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-start justify-between gap-6 py-[16px] text-left"
+      >
+        <span>
+          <span className="flex items-center gap-[10px] text-[16px] font-medium [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+            <span className="h-[10px] w-[10px] shrink-0 rounded-full" style={{ background: C.tax }} />
+            종합소득세(예상 적립액)
+            <span className="text-[11px] leading-none text-[#8A847C]" aria-hidden>
+              {open ? "▴" : "▾"}
+            </span>
+          </span>
+          <span className="mt-1 block pl-[20px] text-[13px] leading-[20px] text-[#8A847C] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+            {hint}
+          </span>
+        </span>
+        <span className="shrink-0 text-[16px] font-semibold tabular-nums text-[#B16242]">
+          −{won(Math.abs(s.incomeTaxReserve))}
+        </span>
+      </button>
+      {open ? (
+        <ul className="mb-[14px] pl-[20px]">
+          <li className="text-[13px] leading-[20px] text-[#5C564F] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+            └ 연환산 영업이익: +{won(s.annualizedProfit)}(세전 영업이익 × {periods})
+          </li>
+          <li className="mt-[6px] text-[13px] leading-[20px] text-[#5C564F] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+            └ 기본공제: −{won(BASIC_DEDUCTION)}
+          </li>
+          <li className="mt-[6px] text-[13px] leading-[20px] text-[#5C564F] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+            └ 과세표준: {won(s.taxableBase)}(연환산 영업이익 − 기본공제)
+          </li>
+          <li className="mt-[6px] text-[13px] leading-[20px] text-[#5C564F] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+            {incomeFormula}
+          </li>
+          <li className="mt-[6px] text-[13px] leading-[20px] text-[#5C564F] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+            └ 지방소득세: +{won(s.localIncomeTaxAnnual)}(종합소득세의 10%)
+          </li>
+          <li className="mt-[6px] text-[13px] leading-[20px] text-[#5C564F] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
+            └ 산출 공식: (종합소득세 + 지방소득세) ÷ {periods}, 원 미만 올림
           </li>
         </ul>
       ) : null}
@@ -500,16 +560,13 @@ export default function AdminOwnerPage({
                 strong
               />
               <FlowVatRow s={s} hint={`${noun} 매출·매입 기준으로 낼 부가세 추정`} />
-              <LineRow
-                label="종합소득세(예상 적립액)"
-                amount={-s.incomeTaxReserve}
-                color={C.tax}
+              <FlowIncomeTaxRow
+                s={s}
                 hint={
                   viewPeriod === "month"
                     ? "이 달이 1년 내내 같다고 보고 12로 나눈 적립액"
                     : "이 기간이 1년 내내 같다고 보고 나눠 둔 적립액"
                 }
-                sign="minus"
               />
               <LineRow
                 label="= 최종 세후 순수익(실수령)"
